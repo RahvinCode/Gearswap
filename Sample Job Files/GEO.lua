@@ -27,9 +27,6 @@ state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC effects WS a
 --Set default mode (TP,ACC,DT)
 state.OffenseMode:set('DT')
 
--- Set to true to run organizer on job changes
-Organizer = false
-
 --Weapons options
 state.WeaponMode:options('Idris','Black Halo','Unlocked')
 state.WeaponMode:set('Unlocked')
@@ -156,7 +153,7 @@ function get_sets()
 		head={ name="Merlinic Hood", augments={'"Mag.Atk.Bns."+22','"Fast Cast"+7','STR+6',}}, -- 15
 		body="Zendik Robe", -- 13
 		hands={ name="Agwu's Gages", augments={'Path: A',}}, -- 6
-		legs="Geomancy Pants +3", -- 15
+		legs="Geomancy Pants +4", -- 15
 		feet={ name="Merlinic Crackows", augments={'Mag. Acc.+12','"Fast Cast"+7','INT+9','"Mag.Atk.Bns."+8',}}, -- 12
 		neck="Voltsurge Torque", -- 4
 		waist="Witful Belt", -- 3 and 3 Quick Magic
@@ -241,11 +238,11 @@ function get_sets()
 		main={ name="Idris", augments={'Path: A',}},
 		sub="Ammurapi Shield",
 		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head="Geo. Galero +3",
-		body="Geomancy Tunic +3",
+		head="Geo. Galero +4",
+		body="Geomancy Tunic +4",
 		hands="Azimuth Gloves +3",
-		legs="Geomancy Pants +3",
-		feet="Geo. Sandals +3",
+		legs="Geomancy Pants +4",
+		feet="Geo. Sandals +4",
 		neck={ name="Bagua Charm +2", augments={'Path: A',}},
 		waist="Luminary Sash",
 		left_ear="Regal Earring",
@@ -322,8 +319,8 @@ function get_sets()
 		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
 		head={ name="Bagua Galero +4", augments={'Enhances "Primeval Zeal" effect',}},
 		body="Azimuth Coat +3",
-		hands="Geo. Mitaines +3",
-		legs={ name="Bagua Pants +3", augments={'Enhances "Mending Halation" effect',}}, -- 21
+		hands="Geo. Mitaines +4",
+		legs={ name="Bagua Pants +4", augments={'Enhances "Mending Halation" effect',}}, -- 21
 		feet="Azimuth Gaiters +3", -- 30
 		neck={ name="Bagua Charm +2", augments={'Path: A',}},
 		waist="Luminary Sash",
@@ -356,7 +353,7 @@ function get_sets()
 	sets.JA["Collimated Fervor"] = {}
 	sets.JA["Convert"] = {}
 	sets.JA["Bolster"] = {
-	    body={ name="Bagua Tunic +3", augments={'Enhances "Bolster" effect',}}, 
+	    body={ name="Bagua Tunic +4", augments={'Enhances "Bolster" effect',}}, 
 	}
 	sets.JA["Full Circle"] = {
 		head="Azimuth Hood +3", -- 3
@@ -365,7 +362,7 @@ function get_sets()
 	sets.JA["Lasting Emanation"] = {}
 	sets.JA["Ecliptic Attrition"] = {} 
 	sets.JA["Life Cycle"] = {
-		body="Geomancy Tunic +3",
+		body="Geomancy Tunic +4",
 		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
 	}
 	sets.JA["Blaze of Glory"] = {}
@@ -373,7 +370,7 @@ function get_sets()
 	sets.JA["Theurgic Focus"] = {}
 	sets.JA["Concentric Pulse"] = {}
 	sets.JA["Mending Halation"] = {
-	    legs={ name="Bagua Pants +3", augments={'Enhances "Mending Halation" effect',}},
+	    legs={ name="Bagua Pants +4", augments={'Enhances "Mending Halation" effect',}},
 	}
 	sets.JA["Radial Arcana"] = {
 	    feet={ name="Bagua Sandals +4", augments={'Enhances "Radial Arcana" effect',}},
@@ -508,13 +505,8 @@ function Luopan() --  This maintains the extra 600hp during midcast of spells wh
 	if head_item and head_item:contains("Bagua") then relic_equiped = true end
 	-- Swap the right head
 	if pet.isvalid and relic_equiped then
-		if pet.hpp > 68 then
-			log('Relic ['..pet.hpp..']% HP')
-			equipSet = sets.Luopan
-		else
-			log('Regen ['..pet.hpp..']% HP')
-			equip_set_command()
-		end
+		if pet.hpp > 68 then equipSet = sets.Luopan end
+		log('Regen ['..pet.hpp..']% HP')
 	end
 	return equipSet
 end
