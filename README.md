@@ -1,5 +1,6 @@
 # Version 1.6
 Enhanced version of Mirdain-Include created by Rahvin
+
 Use //gs c version to check your active version
 
 ##Discord Link: https://discord.gg/kt68622p
@@ -11,16 +12,20 @@ Use //gs c version to check your active version
 Cycle via Keybind: <kbd><kbd>CTRL</kbd> + <kbd>F9</kbd></kbd>
 
 This feature enables multiboxers to automatically equip spell-received potency and duration gear when a locally connected character is casting on you.  This action occurs at the pretargetcheck and precast phases, ensuring instantaneous swapping before the spell lands, even with Quick Magic.
+
 Supported Spells: `Cure` `Cursna` `Protect` `Shell` `Phalanx` `Regen` `Refresh` `Waltz`
+
 Changed in game via command: `gs c SpellReceived  <mode>`
 
 Ex: `gs c SpellReceived ON-Locked`
+
 Available Modes: `ON-Locked` `ON-Unlocked` `OFF`
 
 ## Hoxne Ampulla Mode
 Cycle via Keybind: <kbd><kbd>CTRL</kbd> + <kbd>F10</kbd></kbd>
 
 This feature locks Hoxne Ampulla to your ammo slot and prevents automated unlocks until disabled.  Persists through zoning.  Hoxne Ampulla must be manually used after engaging Hoxne Mode to gain the benefit of the buff.
+
 Changed in game via command: `gs c hoxne`
 
 Available Modes: `ON` `OFF`
@@ -148,11 +153,9 @@ Ex: `Display Location`
 Resets HUD position
 
 ## `display`
-
 Toggles the in game HUD visibility.
 
 ## `displaymode`
-
 Toggles one line or full view for HUD.
 
 ## `spellreceived`
