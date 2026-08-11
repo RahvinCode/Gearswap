@@ -1,11 +1,30 @@
-# Version 1.4
+# Version 1.6
+Enhanced version of Mirdain-Include created by Rahvin
 Use //gs c version to check your active version
 
 ##Discord Link: https://discord.gg/kt68622p
 
-### Write up: `Sotel` 
+### Write up: `Rahvin` 
 
 # Keybinds
+## Spell Received Gear Tracking
+Cycle via Keybind: <kbd><kbd>CTRL</kbd> + <kbd>F9</kbd></kbd>
+
+This feature enables multiboxers to automatically equip spell-received potency and duration gear when a locally connected character is casting on you.  This action occurs at the pretargetcheck and precast phases, ensuring instantaneous swapping before the spell lands, even with Quick Magic.
+Supported Spells: `Cure` `Cursna` `Protect` `Shell` `Phalanx` `Regen` `Refresh` `Waltz`
+Changed in game via command: `gs c SpellReceived  <mode>`
+
+Ex: `gs c SpellReceived ON-Locked`
+Available Modes: `ON-Locked` `ON-Unlocked` `OFF`
+
+## Hoxne Ampulla Mode
+Cycle via Keybind: <kbd><kbd>CTRL</kbd> + <kbd>F10</kbd></kbd>
+
+This feature locks Hoxne Ampulla to your ammo slot and prevents automated unlocks until disabled.  Persists through zoning.  Hoxne Ampulla must be manually used after engaging Hoxne Mode to gain the benefit of the buff.
+Changed in game via command: `gs c hoxne`
+
+Available Modes: `ON` `OFF`
+
 ## OffenseMode
 Cycle via Keybind: <kbd>F12</kbd>
 
@@ -123,12 +142,25 @@ Sends `terminate` command to kill the game
 
 ## `save`
 Saves the current settings for the character.
-
 Ex: `Display Location`
+
+## `zero`
+Resets HUD position
 
 ## `display`
 
 Toggles the in game HUD visibility.
+
+## `displaymode`
+
+Toggles one line or full view for HUD.
+
+## `spellreceived`
+Cycle through spell-received modes.  ON-Locked temporarily locks your spell-recieved potency gear in place until the spell lands or is interrupted (Recommended).  ON-Unlocked allows gear to be overwritten by other combat actions (Niche Uses). OFF disables spell-received gear checking (Not Recommended)
+Set up your gear-received sets for proper functionality.
+
+## `hoxne`
+Toggle on Hoxne Ampulla locking.  Will not turn on if the character is missing Hoxne Ampulla in inventory or wardrobe. Persists through zoning.  Must manually use the item to gain the buff.
 
 ## `debug`
 Toggles the debug state to enable in-game logs and a HUD.
@@ -286,6 +318,18 @@ sets.OffenseMode.AM = {}
 sets.OffenseMode.AM1 = {}
 sets.OffenseMode.AM2 = {}
 sets.OffenseMode.AM3 = {}
+```
+## Spell Received Sets
+
+```lua
+sets.Cure_Received = {}
+sets.Cursna_Received = {}
+sets.Phalanx_Received = {}
+sets.Protect_Shell_Received = {}
+sets.Regen_Received = {}
+sets.Refresh_Received = {}
+sets.Waltz_Received = {}
+sets.Holy_Water = {}
 ```
 
 ## Misc Sets
