@@ -13,7 +13,7 @@ Original credit to Mirdain.  Pull request to be submitted after beta testing.
 ]]
 
 -- Global Variables
-Mirdain_GS = '1.6.1'
+Mirdain_GS = '1.6.2'
 
 -- Modes is the include file for a mode-tracking variable class.  Used for state vars, below.
 include('Modes')
