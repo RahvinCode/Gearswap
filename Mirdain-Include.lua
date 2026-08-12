@@ -3106,8 +3106,12 @@ do
             send_command('terminate')
             -- Saves the location of HUD
         elseif command == 'save' then
-            config.save(settings)
-            add_to_chat(80, 'Settings saved')
+            if windower.ffxi.get_info().logged_in then
+                config.save(settings)
+                add_to_chat(80, 'Settings saved')
+            else
+                add_to_chat(80, 'Cannot save while zoning - try again in a moment.')
+            end
             -- Toggles dispay of the HUD
         elseif command == 'display' then
             if settings.visible == true then
@@ -4154,24 +4158,21 @@ do
     windower.raw_register_event('zone change', on_zone_change_for_th)
 
     local is_dragging = false
+    local drag_sx, drag_sy, drag_dx, drag_dy
     windower.raw_register_event('mouse', function(type, x, y, delta, blocked)
-        -- Mouse move is type 0.  Reject anything other than left click up (2) and down (1).
+        -- Mouse move is type 0.  Reject anything that is not a left button press (1) or release (2).
         if type ~= 1 and type ~= 2 then return end
 
         if type == 1 then
             is_dragging = gs_status:hover(x, y) or gs_debug:hover(x, y)
+            if is_dragging then
+                drag_sx, drag_sy = gs_status:pos_x(), gs_status:pos_y()
+                drag_dx, drag_dy = gs_debug:pos_x(), gs_debug:pos_y()
+            end
         elseif is_dragging then
             is_dragging = false
-            local status_pos = gs_status:settings().pos
-            local debug_pos = gs_debug:settings().pos
-
-            if settings.Display_Box.pos.x ~= status_pos.x or settings.Display_Box.pos.y ~= status_pos.y
-                or settings.Debug_Box.pos.x ~= debug_pos.x or settings.Debug_Box.pos.y ~= debug_pos.y then
-                settings.Display_Box.pos.x = status_pos.x
-                settings.Display_Box.pos.y = status_pos.y
-                settings.Debug_Box.pos.x = debug_pos.x
-                settings.Debug_Box.pos.y = debug_pos.y
-
+            if gs_status:pos_x() ~= drag_sx or gs_status:pos_y() ~= drag_sy
+                or gs_debug:pos_x() ~= drag_dx or gs_debug:pos_y() ~= drag_dy then
                 config.save(settings)
                 windower.add_to_chat(80, "Settings saved")
             end
