@@ -4,8 +4,6 @@
 
 Enhanced version of Mirdain-Include, created by Rahvin. Check your running version in game with `//gs c version`.
 
-**Discord:** https://discord.gg/kt68622p
-
 ---
 
 ## Table of Contents
@@ -728,4 +726,4 @@ Confirm `Mirdain-Include.lua` is in `GearSwap/libs/` and your job file is in `Ge
 
 Original concept and engine by **Mirdain**. This enhanced revision conceived and programmed by **Rahvin**.
 
-Contributions and issue reports welcome via the [Discord](https://discord.gg/kt68622p).
+Contributions and issue reports welcome via the Silmaril or Vinland discords.  IYKYK.
