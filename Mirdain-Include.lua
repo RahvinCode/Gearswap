@@ -505,9 +505,6 @@ do
     local TARGET_PARTY1 = '{Self, Party}'
     local TARGET_PARTY2 = '{Self, Party, Ally, NPC}'
 
-    -- Reusable persistent arrays to prevent table generation churn
-    local NEARBY_MEMBERS_BUFFER = {}
-
     -- Tracking vars for TH
     local th_info = {}
     th_info.tagged_mobs = T {}
@@ -664,10 +661,9 @@ do
 
     --Check if a name is currently in the character's party.
     --Return true if target is in party
-    local function is_target_in_party(target_name)
+    local function is_target_in_party(target_name, party_info)
         if not target_name then return false end
 
-        local party_info = get_party()
         if not party_info then return false end
 
         for i = 0, 5 do
@@ -729,7 +725,7 @@ do
     end
 
     local function equip_spell_received_gear(spell_id, spell_type)
-        debug("Equip gear function triggered: " .. spell_id .. ", " .. spell_type)
+        if settings.debug then debug("Equip gear function triggered: " .. spell_id .. ", " .. spell_type) end
         local s_info = {}
         if spell_type == "spell" then
             s_info = spell_info[spell_id]
@@ -738,7 +734,7 @@ do
         end
 
         --Calculate delta since cast start time in milliseconds
-        local elapsed_ms = get_time() - cast_start_time
+        --local elapsed_ms = get_time() - cast_start_time
 
         local spell_received_set = {}
         if s_info.equip == "cure_set" then
@@ -802,7 +798,7 @@ do
                 for slot, item in pairs(spell_received_set) do
                     disable(slot)
 
-                    debug("Locking " .. tostring(slot))
+                    if settings.debug then debug("Locking " .. tostring(slot)) end
                     active_external_locks[slot] = true
                 end
             end
@@ -887,7 +883,7 @@ do
             if state.SpellReceived.value ~= "OFF" then
                 if spell.name == "Divine Seal" then
                     divine_seal_predicted = true
-                    debug("Divine Seal detected while tracking. Divine_Seal_Predicted = True")
+                    if settings.debug then debug("Divine Seal detected while tracking. Divine_Seal_Predicted = True") end
                 end
                 local a_info = ability_info[spell.id]
                 if a_info then
@@ -896,14 +892,14 @@ do
 
                     local target_name = spell.target.name
                     outgoing_cast_active = true
-                    debug(player.name .. ' is using tracked ability measured at pretarget: ' ..
-                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                    if settings.debug then debug(player.name .. ' is using tracked ability measured at pretarget: ' ..
+                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
 
                     --AoE Checks
-                    if a_info.aoe and is_target_in_party(target_name) then
-                        debug("AoE Ability Cast Detected.  Calculating targets.")
+                    if a_info.aoe then
+                        if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
                         local party = get_party()
-                        if party then
+                        if party and is_target_in_party(target_name, party) then
                             local count = 0
                             for k, v in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
 
@@ -914,22 +910,22 @@ do
                                         local dx, dy, dz = m_mob.x - target_mob.x, m_mob.y - target_mob.y,
                                             m_mob.z - target_mob.z
                                         if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                            debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name)
+                                            if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
                                             count = count + 1
                                             NEARBY_MEMBERS_BUFFER[count] = member.name
                                         else
-                                            debug(member.name .. " is OUT of aoe range from " .. target_mob.name)
+                                            if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
                                         end
                                     else
-                                        debug(member.name .. " data unavailable (Too far away).")
+                                        if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
                                     end
                                 end
                             end
                             if count > 0 then target_name = table.concat(NEARBY_MEMBERS_BUFFER, ",") end
                         end
                     end
-                    debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
-                        spell.id, get_time()))
+                    if settings.debug then debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
+                        spell.id, get_time())) end
                     send_ipc(string.format("MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name, spell.id,
                         get_time()))
                 end
@@ -1003,9 +999,9 @@ do
                 local target_name = spell.target.name
                 outgoing_cast_active = true
 
-                debug(player.name ..
+                if settings.debug then debug(player.name ..
                     ' is using tracked spell measured at pretarget: ' ..
-                    spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                    spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
 
                 local accession_active = active_buffs[366] or active_buffs['Accession']
                 local majesty_active = active_buffs[621] or active_buffs['Majesty']
@@ -1013,10 +1009,10 @@ do
 
                 --AoE checks
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
-                if is_target_in_party(target_name) and (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
-                    debug("AoE Spell Cast Detected. Calculating targets.")
+                if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
+                    if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
                     local party = get_party()
-                    if party then
+                    if party and is_target_in_party(target_name, party) then
                         local count = 0
                         for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
 
@@ -1028,14 +1024,14 @@ do
                                     local dy = m_mob.y - target_mob.y
                                     local dz = m_mob.z - target_mob.z
                                     if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                        debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name)
+                                        if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
                                         count = count + 1
                                         NEARBY_MEMBERS_BUFFER[count] = member.name
                                     else
-                                        debug(member.name .. " is OUT of aoe range from " .. target_mob.name)
+                                        if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
                                     end
                                 else
-                                    debug(member.name .. " data unavailable (Too far away).")
+                                    if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
                                 end
                             end
                         end
@@ -1045,8 +1041,8 @@ do
                         end
                     end
                 end
-                debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id,
-                    get_time()))
+                if settings.debug then debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id,
+                    get_time())) end
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
             end
         elseif s_type == TYPE_SCH then
@@ -1056,7 +1052,7 @@ do
                 info("Unable to use strategems. Available charges = 0")
             elseif spell.name == "Accession" then
                 accession_predicted = true
-                debug("Accession detected while tracking. Accession_Predicted = True")
+                if settings.debug then debug("Accession detected while tracking. Accession_Predicted = True") end
             end
         end
     end
@@ -1067,10 +1063,10 @@ do
 
     function precastequip(spell)
         log('precastequip Called')
-        debug("spell.type = " ..
+        if settings.debug then debug("spell.type = " ..
             spell.type ..
             " , spell.action_type = " ..
-            spell.action_type .. " , spell.english = " .. spell.english .. " , spell.name = " .. spell.name)
+            spell.action_type .. " , spell.english = " .. spell.english .. " , spell.name = " .. spell.name) end
         --Cancel for SMN if Avatar is mid action
         if pet.isvalid and pet_midaction() then return end
         --Default gearset
@@ -1308,7 +1304,7 @@ do
             end
             if spell.name == "Divine Seal" and not divine_seal_predicted then
                 divine_seal_predicted = true
-                debug("Divine Seal detected while tracking. Divine_Seal_Predicted = True")
+                if settings.debug then debug("Divine Seal detected while tracking. Divine_Seal_Predicted = True") end
             end
             -- Items
         elseif spell.action_type == 'Item' or spell.prefix == '/item' then
@@ -1335,7 +1331,7 @@ do
         elseif spell.type == 'Scholar' then
             if spell.name == "Accession" and not accession_predicted then
                 accession_predicted = true
-                debug("Accession detected while tracking. Accession_Predicted = True")
+                if settings.debug then debug("Accession detected while tracking. Accession_Predicted = True") end
             end
             if sets.JA then
                 built_set = set_combine(built_set, sets.JA)
@@ -1438,14 +1434,14 @@ do
 
                     local target_name = spell.target.name
                     outgoing_cast_active = true
-                    debug(player.name .. ' is using tracked ability measured at precast: ' ..
-                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                    if settings.debug then debug(player.name .. ' is using tracked ability measured at precast: ' ..
+                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
 
                     --AoE Checks
-                    if a_info.aoe and is_target_in_party(target_name) then
-                        debug("AoE Ability Cast Detected.  Calculating targets.")
+                    if a_info.aoe then
+                        if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
                         local party = get_party()
-                        if party then
+                        if party and is_target_in_party(target_name, party) then
                             local count = 0
                             for k, v in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
 
@@ -1456,22 +1452,22 @@ do
                                         local dx, dy, dz = m_mob.x - target_mob.x, m_mob.y - target_mob.y,
                                             m_mob.z - target_mob.z
                                         if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                            debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name)
+                                            if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
                                             count = count + 1
                                             NEARBY_MEMBERS_BUFFER[count] = member.name
                                         else
-                                            debug(member.name .. " is OUT of aoe range from " .. target_mob.name)
+                                            if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
                                         end
                                     else
-                                        debug(member.name .. " data unavailable (Too far away).")
+                                        if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
                                     end
                                 end
                             end
                             if count > 0 then target_name = table.concat(NEARBY_MEMBERS_BUFFER, ",") end
                         end
                     end
-                    debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
-                        spell.id, get_time()))
+                    if settings.debug then debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
+                        spell.id, get_time())) end
                     send_ipc(string.format("MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name, spell.id,
                         get_time()))
                 end
@@ -1645,9 +1641,9 @@ do
                 local target_name = spell.target.name
                 outgoing_cast_active = true
 
-                debug(player.name ..
+                if settings.debug then debug(player.name ..
                     ' is using tracked spell measured at precast: ' ..
-                    spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                    spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
                 local active_buffs = buffactive
                 local accession_active = active_buffs[366] or active_buffs['Accession']
                 local majesty_active = active_buffs[621] or active_buffs['Majesty']
@@ -1655,10 +1651,10 @@ do
 
                 --AoE Checks
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
-                if is_target_in_party(target_name) and (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or (divine_veil_active and s_info.divine) or has_yagrush) then
-                    debug("AoE Spell Cast Detected. Calculating targets.")
+                if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
+                    if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
                     local party = get_party()
-                    if party then
+                    if party and is_target_in_party(target_name, party) then
                         local count = 0
                         for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
 
@@ -1670,14 +1666,14 @@ do
                                     local dy = m_mob.y - target_mob.y
                                     local dz = m_mob.z - target_mob.z
                                     if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                        debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name)
+                                        if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
                                         count = count + 1
                                         NEARBY_MEMBERS_BUFFER[count] = member.name
                                     else
-                                        debug(member.name .. " is OUT of aoe range from " .. target_mob.name)
+                                        if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
                                     end
                                 else
-                                    debug(member.name .. " data unavailable (Too far away).")
+                                    if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
                                 end
                             end
                         end
@@ -1687,8 +1683,7 @@ do
                         end
                     end
                 end
-                debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, player.name,
-                    target_name, spell.id, get_time()))
+                if settings.debug then debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time())) end
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
             end
         end
@@ -2685,15 +2680,15 @@ do
         --Reset state for spell-received gear tracking
         if state.SpellReceived.value ~= 'OFF' and outgoing_cast_active then
             outgoing_cast_active = false
-            debug(string.format("IPC message sent: MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
+            if settings.debug then debug(string.format("IPC message sent: MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time())) end
             send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
             if accession_predicted and not spell.interrupted and spell.type == "WhiteMagic" then
                 accession_predicted = false
-                debug("Accessioned spell probably used while tracking. Accession_Predicted = False")
+                if settings.debug then debug("Accessioned spell probably used while tracking. Accession_Predicted = False") end
             end
             if divine_seal_predicted and not spell.interrupted and spell.type == "WhiteMagic" and spell.skill == "Healing Magic" then
                 divine_seal_predicted = false
-                debug("Divine Sealed spell probably used while tracking. Divine_Seal_Predicted = False")
+                if settings.debug then debug("Divine Sealed spell probably used while tracking. Divine_Seal_Predicted = False") end
             end
         end
         --Generate the correct set from the include file and custom function
@@ -4148,7 +4143,7 @@ do
             Location.z = position.z
         end
 
-        if Require_Update and not is_busy then
+        if Require_Update and not is_Busy then
             equip_set_command()
             Require_Update = false
         end
@@ -4161,7 +4156,7 @@ do
         end
 
         -- function used for periodic updates - feature
-        if Cycle_Timer and now - UpdateTime2 > 2 and not is_busy then
+        if Cycle_Timer and now - UpdateTime2 > 2 and not is_Busy then
             Cycle_Timer()
             UpdateTime2 = now
         end
@@ -4205,8 +4200,8 @@ do
                 local spell_id = split_msg[5] or "Missing Spell ID"
                 local time_sent = tonumber(split_msg[6]) or 9999999999999
                 local time_received = get_time()
-                debug("Targeted IPC Message Received: " ..
-                    msg .. " after " .. (time_received - time_sent) .. " ms")
+                if settings.debug then debug("Targeted IPC Message Received: " ..
+                    msg .. " after " .. (time_received - time_sent) .. " ms") end
 
                 if next(active_incoming_casters) == nil then
                     cast_start_time = time_sent
@@ -4215,10 +4210,10 @@ do
 
                 -- Add caster to active pool and refresh failsafe timer
                 active_incoming_casters[caster_name] = true
-                debug(caster_name .. " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")")
+                if settings.debug then debug(caster_name .. " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")") end
                 failsafe_active = true
                 failsafe_trigger_time = os.clock() + settings.delay
-                debug(player.name .. " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.")
+                if settings.debug then debug(player.name .. " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.") end
             end
         elseif msg:startswith('MIRDAIN|ABILITY|') then
             local split_msg = msg:split("|")
@@ -4228,8 +4223,8 @@ do
                 local spell_id = split_msg[5] or "Missing Spell ID"
                 local time_sent = tonumber(split_msg[6]) or 9999999999999
                 local time_received = get_time()
-                debug("Targeted IPC Message Received: " ..
-                    msg .. " after " .. (time_received - time_sent) .. " ms")
+                if settings.debug then debug("Targeted IPC Message Received: " ..
+                    msg .. " after " .. (time_received - time_sent) .. " ms") end
 
                 if next(active_incoming_casters) == nil then
                     cast_start_time = time_sent
@@ -4238,29 +4233,29 @@ do
 
                 -- Add caster to active pool and refresh failsafe timer
                 active_incoming_casters[caster_name] = true
-                debug(caster_name .. " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")")
+                if settings.debug then debug(caster_name .. " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")") end
                 failsafe_active = true
                 failsafe_trigger_time = os.clock() + settings.delay
-                debug(player.name .. " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.")
+                if settings.debug then debug(player.name .. " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.") end
             end
         elseif msg:startswith('MIRDAIN|COMPLETE|') then
             if next(active_incoming_casters) ~= nil then
-                debug("Targeted IPC Message Received: " .. msg)
+                if settings.debug then debug("Targeted IPC Message Received: " .. msg) end
                 local split_msg = msg:split("|")
                 local caster_name = split_msg[3]
                 local time_sent = tonumber(split_msg[4])
                 if active_incoming_casters[caster_name] then
                     active_incoming_casters[caster_name] = nil
-                    debug(caster_name ..
+                    if settings.debug then debug(caster_name ..
                         " finished casting after " ..
                         (time_sent - cast_start_time) ..
-                        " ms and is removed from Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")")
+                        " ms and is removed from Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")") end
                     if next(active_incoming_casters) == nil then
-                        debug("No active incoming casts remain. Resetting gear.")
+                        if settings.debug then debug("No active incoming casts remain. Resetting gear.") end
                         if state.SpellReceived.value == 'ON-Locked' then
                             for slot, _ in pairs(active_external_locks) do
                                 enable(slot)
-                                debug("Unlocking " .. tostring(slot))
+                                if settings.debug then debug("Unlocking " .. tostring(slot)) end
                             end
                             active_external_locks = {}
                         end
@@ -4279,18 +4274,12 @@ do
             failsafe_active = false
             failsafe_trigger_time = 0
             active_incoming_casters = {}
-            debug("Failsafe triggered! Sending equipment reset command.")
+            if settings.debug then debug("Failsafe triggered! Sending equipment reset command.") end
             for slot, _ in pairs(active_external_locks) do
                 enable(slot)
             end
             active_external_locks = {}
-
-            local built_set = choose_set()
-            if type(choose_set_custom) == 'function' then
-                built_set = set_combine(built_set, choose_set_custom())
-            else
-                warn('[Mirdain Spell-Rec]: choose_set_custom() not found!')
-            end
+            equip_set_command()
         end
     end)
 
