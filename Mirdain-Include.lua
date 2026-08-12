@@ -764,11 +764,15 @@ do
 
     local function equip_spell_received_gear(spell_id, spell_type)
         if settings.debug then debug("Equip gear function triggered: " .. spell_id .. ", " .. spell_type) end
-        local s_info = {}
+        local s_info
         if spell_type == "spell" then
             s_info = spell_info[spell_id]
         elseif spell_type == "ability" then
             s_info = ability_info[spell_id]
+        end
+        if not s_info then
+            warn("Unknown Spell for Spell Received Gear")
+            return
         end
 
         --Calculate delta since cast start time in milliseconds
@@ -825,7 +829,7 @@ do
                 warn("sets.Waltz_Received not found!")
             end
         else
-            warn("Unknown Spell for Spell Received Gear")
+            warn("Unknown Equip Set for Spell Received Gear")
         end
 
         if type(spell_received_set) == 'table' then
@@ -2569,7 +2573,7 @@ do
             Spellstart = os.clock()
             is_Busy = true
         else
-            log('Player is Busy [' .. spell.english .. ']')
+            log('Player is Busy [', spell.english, ']')
             cancel_spell()
             return
         end
@@ -2582,7 +2586,8 @@ do
             warn('precast_custom() not found!')
         end
         -- Check the gear
-        built_set = set_combine(built_set, check_equipment_spells(spell))
+        local equipment_spell_set = check_equipment_spells(spell)
+        if equipment_spell_set then built_set = set_combine(built_set, equipment_spell_set) end
         -- Here is where gear is actually equipped
         equip(built_set)
     end
@@ -2601,7 +2606,8 @@ do
             warn('midcast_custom() not found!')
         end
         -- Check the gear
-        built_set = set_combine(built_set, check_equipment_spells(spell))
+        local equipment_spell_set = check_equipment_spells(spell)
+        if equipment_spell_set then built_set = set_combine(built_set, equipment_spell_set) end
         -- Here is where gear is actually equipped
         equip(built_set)
     end
@@ -2795,7 +2801,7 @@ do
         if spell and built_set then
             local bullet_name = built_set.ammo
             if bullet_name == 'empty' or not bullet_name then return end
-            log('Ammo name is: ' .. bullet_name)
+            log('Ammo name is: ', bullet_name)
 
             local bullet_min_count = 1
             if spell.action_type == 'Ranged Attack' then
@@ -2847,7 +2853,7 @@ do
                     player.wardrobe8[bullet_name].count
             end
 
-            log('Bullet Count [' .. available_bullets .. ']')
+            log('Bullet Count [', available_bullets, ']')
 
             if available_bullets == 0 then
                 -- If no ammo is available, give appropriate warning and end.
@@ -2933,7 +2939,7 @@ do
     -------------------------------------------------------------------------------------------------------------------
 
     function check_equipment_spells(spell)
-        local built_set = {}
+        local built_set
         --Equip weapon for Dispelga
         if spell.name == "Dispelga" then
             built_set = { main = "Daybreak" }
@@ -2971,13 +2977,12 @@ do
     end
 
     --Helper function for checking if player has an item available to equip.
+    -- 0 = Main Inventory
+    -- 8, 9, 10, 11 = Wardrobes 1-4
+    -- 12, 13, 14, 15 = Wardrobes 5-8
+    local ITEM_SEARCH_BAGS = { 0, 8, 9, 10, 11, 12, 13, 14, 15 }
     local function has_item(item_id)
-        -- 0 = Main Inventory
-        -- 8, 9, 10, 11 = Wardrobes 1-4
-        -- 12, 13, 14, 15 = Wardrobes 5-8
-        local target_bags = { 0, 8, 9, 10, 11, 12, 13, 14, 15 }
-
-        for _, bag_id in ipairs(target_bags) do
+       for _, bag_id in ipairs(ITEM_SEARCH_BAGS) do
             local bag = windower.ffxi.get_items(bag_id)
             if bag then
                 for _, item in ipairs(bag) do
@@ -3020,8 +3025,7 @@ do
                 info('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
                 display_box_update()
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 state.TreasureMode:set(mode[2])
                 info('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
                 display_box_update()
@@ -3034,8 +3038,7 @@ do
                 info('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
                 display_box_update()
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 if mode[2]:contains("on-locked") then
                     state.SpellReceived:set("ON-Locked")
                 elseif mode[2]:contains("on-unlocked") then
@@ -3056,8 +3059,7 @@ do
                 info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
                 display_box_update()
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 if mode[2]:contains("on") then
                     state.Hoxne:set("ON")
                 elseif mode[2]:contains("off") then
@@ -3092,8 +3094,7 @@ do
                 state.AutoBuff:cycle()
                 info('Auto Buff is [' .. state.AutoBuff.value .. ']')
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 state.AutoBuff:set(mode[2])
                 info('Auto Buff is [' .. state.AutoBuff.value .. ']')
             end
@@ -3185,8 +3186,7 @@ do
                     end
                 end
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 state.OffenseMode:set(mode[2])
                 info('Offense Mode: [' .. state.OffenseMode.value .. ']')
                 display_box_update()
@@ -3211,8 +3211,7 @@ do
                     end
                 end
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 state.WeaponMode:set(mode[2])
                 info('Weapon Mode: [' .. state.WeaponMode.value .. ']')
                 display_box_update()
@@ -3238,8 +3237,7 @@ do
                     end
                 end
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 state.JobMode2:set(mode[2])
                 info(UI_Name2 .. ': [' .. state.JobMode2.value .. ']')
                 display_box_update()
@@ -3265,8 +3263,7 @@ do
                     end
                 end
             else
-                local mode = {}
-                mode = string.split(cmd, " ", 2)
+                local mode = string.split(cmd, " ", 2)
                 state.JobMode:set(mode[2])
                 info(UI_Name .. ': [' .. state.JobMode.value .. ']')
                 display_box_update()
@@ -3518,7 +3515,7 @@ do
     end
 
     function Use_Item()
-        log('/item "' .. Use_Item_Command .. '" ' .. player.id)
+        log('/item "', Use_Item_Command, '" ', player.id)
         windower.chat.input('/item "' .. Use_Item_Command .. '" <me>')
     end
 
@@ -3838,8 +3835,23 @@ do
         add_to_chat("Settings Saved")
     end
 
+    local debug_box_state = {}
     -- Used to help debug issues
     function debug_box_update()
+        if debug_box_state.busy == is_Busy
+            and debug_box_state.moving == is_moving
+            and debug_box_state.dual_wield == DualWield
+            and debug_box_state.two_hand == TwoHand
+            and debug_box_state.casting == outgoing_cast_active
+            and debug_box_state.failsafe == failsafe_active then
+            return
+        end
+        debug_box_state.busy = is_Busy
+        debug_box_state.moving = is_moving
+        debug_box_state.dual_wield = DualWield
+        debug_box_state.two_hand = TwoHand
+        debug_box_state.casting = outgoing_cast_active
+        debug_box_state.failsafe = failsafe_active
         local lines = T {}
         lines:insert('is_Busy' .. string.format('[%s]', tostring(is_Busy)):lpad(' ', 12))
         lines:insert('is_Moving' .. string.format('[%s]', tostring(is_moving)):lpad(' ', 10))
@@ -3852,16 +3864,23 @@ do
         gs_debug:text(lines:concat('\n'))
     end
 
-    function log(msg)
-        if settings.debug then print(80, msg) end
+    local function join(...)
+        if select('#', ...) < 2 then return (...) end
+        local parts = {}
+        for i = 1, select('#', ...) do parts[i] = tostring((select(i, ...))) end
+        return table.concat(parts)
     end
 
-    function info(msg)
-        if settings.info then print(8, msg) end
+    function log(...)
+        if settings.debug then print(80, join(...)) end
     end
 
-    function warn(msg)
-        if settings.warn then print(12, msg) end
+    function info(...)
+        if settings.info then print(8, join(...)) end
+    end
+
+    function warn(...)
+        if settings.warn then print(12, join(...)) end
     end
 
     function print(mode, msg)
@@ -4032,7 +4051,7 @@ do
         elseif data.category == 3 and data.param ~= 0 then
             local t = windower.ffxi.get_mob_by_id(data.targets[1].id)
             if t and t.id == last_skillchain_id then
-                log('Skillchain is closed for [' .. last_skillchain_id .. ']')
+                log('Skillchain is closed for [', last_skillchain_id, ']')
                 last_skillchain_elements = {}
                 last_skillchain_id = 0
                 last_skillchain_time = 0
@@ -4051,18 +4070,24 @@ do
         if now - main_engine_time < .1 then return end
         -- Update the debug UI if visible
         if settings.debug then debug_box_update() end
+        -- Hoist the buff table and status out of the repeated lookups below
+        local active_buffs = buffactive
+        local player_status = player and player.status
         -- Go no farther as you are dead
-        if not player or player.status == "Dead" or player.status == "Engaged dead" or buffactive['Charm'] or buffactive['Sleep'] then return end
+        if not player or player_status == "Dead" or player_status == "Engaged dead" or active_buffs['Charm'] or active_buffs['Sleep'] then return end
         -- Status Ailment Check
-        if not buffactive['Paralysis'] and not buffactive['Silence'] and not buffactive['Muddle'] then
+        if not active_buffs['Paralysis'] and not active_buffs['Silence'] and not active_buffs['Muddle'] then
             check_buff()
         end
-        local position = windower.ffxi.get_mob_by_id(player.id)
-        if position and not buffactive['Mounted'] and not is_Busy then
-            local movement = math.sqrt((position.x - Location.x) ^ 2 + (position.y - Location.y) ^ 2 +
-                (position.z - Location.z) ^ 2) > 0.5
+        local position = get_mob_by_id(player.id)
+        if position and not active_buffs['Mounted'] and not is_Busy then
+            -- Compare squared distance: saves a sqrt and three pow calls per poll.
+            local dx = position.x - Location.x
+            local dy = position.y - Location.y
+            local dz = position.z - Location.z
+            local movement = (dx * dx + dy * dy + dz * dz) > 0.25 -- 0.5 yalms, squared
             if movement and not is_moving then
-                if player.status ~= "Engaged" then
+                if player_status ~= "Engaged" then
                     is_moving = true
                     Require_Update = true
                     --windower.chat.input('/echo Moving! Status: '..player.status..'')
@@ -4095,7 +4120,7 @@ do
             UpdateTime2 = now
         end
 
-        main_engine_time = os.clock()
+        main_engine_time = now
     end
 
     -- Register event section
@@ -4202,7 +4227,7 @@ do
     end)
 
     windower.register_event('prerender', function()
-        if state.SpellReceived.value == "OFF" or not failsafe_active then return end
+        if not failsafe_active or state.SpellReceived.value == "OFF" then return end
 
         if os.clock() >= failsafe_trigger_time then
             failsafe_active = false
@@ -4396,7 +4421,7 @@ do
                     -- Ranged attack start
                 elseif data.category == 12 then
                     if data.param == 24931 then
-                        log('' .. player.name .. ' is Shooting')
+                        log(player.name, ' is Shooting')
                     elseif data.param == 28787 then
                         log('Shooting is interrupted')
                     end
