@@ -2192,7 +2192,7 @@ do
                             built_set = set_combine(built_set, sets.Midcast.Nuke)
                             info('Nuke Set')
                         else
-                            warnd('sets.Midcast.Nuke not found!')
+                            warn('sets.Midcast.Nuke not found!')
                         end
                     end
                     -- Check for Helix
