@@ -13,7 +13,7 @@ Original credit to Mirdain.  Pull request to be submitted after beta testing.
 ]]
 
 -- Global Variables
-Mirdain_GS = '1.6.0'
+Mirdain_GS = '1.6.1'
 
 -- Modes is the include file for a mode-tracking variable class.  Used for state vars, below.
 include('Modes')
@@ -676,6 +676,44 @@ do
         return false
     end
 
+    --Given the mob being targeted and the name currently addressed on the outgoing IPC message,
+    --expand target_name to a comma-separated list of party members within AoE range (10 yalms),
+    --or return it unchanged if the target isn't a valid AoE candidate.
+    local function resolve_aoe_target_name(target_mob, target_name)
+        local party = get_party()
+        if not (party and is_target_in_party(target_name, party)) then
+            return target_name
+        end
+    
+        local count = 0
+        for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
+    
+        for slot, member in pairs(party) do
+            if type(member) == 'table' and member.name then
+                local m_mob = get_mob_by_name(member.name)
+                if m_mob then
+                    local dx = m_mob.x - target_mob.x
+                    local dy = m_mob.y - target_mob.y
+                    local dz = m_mob.z - target_mob.z
+                    if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
+                        if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
+                        count = count + 1
+                        NEARBY_MEMBERS_BUFFER[count] = member.name
+                    else
+                        if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
+                    end
+                else
+                    if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
+                end
+            end
+        end
+    
+        if count > 0 then
+            return table.concat(NEARBY_MEMBERS_BUFFER, ",")
+        end
+        return target_name
+    end
+    
     --Calculate and return how many strategems are off cooldown.
     local function get_current_stratagem_count()
         local charge_cooldown = windower.ffxi.get_ability_recasts()[231] or 0
@@ -898,31 +936,7 @@ do
                     --AoE Checks
                     if a_info.aoe then
                         if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
-                        local party = get_party()
-                        if party and is_target_in_party(target_name, party) then
-                            local count = 0
-                            for k, v in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
-
-                            for slot, member in pairs(party) do
-                                if type(member) == 'table' and member.name then
-                                    local m_mob = get_mob_by_name(member.name)
-                                    if m_mob then
-                                        local dx, dy, dz = m_mob.x - target_mob.x, m_mob.y - target_mob.y,
-                                            m_mob.z - target_mob.z
-                                        if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                            if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
-                                            count = count + 1
-                                            NEARBY_MEMBERS_BUFFER[count] = member.name
-                                        else
-                                            if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
-                                        end
-                                    else
-                                        if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
-                                    end
-                                end
-                            end
-                            if count > 0 then target_name = table.concat(NEARBY_MEMBERS_BUFFER, ",") end
-                        end
+                        target_name = resolve_aoe_target_name(target_mob, target_name)
                     end
                     if settings.debug then debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
                         spell.id, get_time())) end
@@ -1011,35 +1025,7 @@ do
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
                 if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
                     if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
-                    local party = get_party()
-                    if party and is_target_in_party(target_name, party) then
-                        local count = 0
-                        for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
-
-                        for slot, member in pairs(party) do
-                            if type(member) == 'table' and member.name then
-                                local m_mob = get_mob_by_name(member.name)
-                                if m_mob then
-                                    local dx = m_mob.x - target_mob.x
-                                    local dy = m_mob.y - target_mob.y
-                                    local dz = m_mob.z - target_mob.z
-                                    if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                        if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
-                                        count = count + 1
-                                        NEARBY_MEMBERS_BUFFER[count] = member.name
-                                    else
-                                        if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
-                                    end
-                                else
-                                    if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
-                                end
-                            end
-                        end
-
-                        if count > 0 then
-                            target_name = table.concat(NEARBY_MEMBERS_BUFFER, ",")
-                        end
-                    end
+                    target_name = resolve_aoe_target_name(target_mob, target_name)
                 end
                 if settings.debug then debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id,
                     get_time())) end
@@ -1440,31 +1426,7 @@ do
                     --AoE Checks
                     if a_info.aoe then
                         if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
-                        local party = get_party()
-                        if party and is_target_in_party(target_name, party) then
-                            local count = 0
-                            for k, v in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
-
-                            for slot, member in pairs(party) do
-                                if type(member) == 'table' and member.name then
-                                    local m_mob = get_mob_by_name(member.name)
-                                    if m_mob then
-                                        local dx, dy, dz = m_mob.x - target_mob.x, m_mob.y - target_mob.y,
-                                            m_mob.z - target_mob.z
-                                        if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                            if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
-                                            count = count + 1
-                                            NEARBY_MEMBERS_BUFFER[count] = member.name
-                                        else
-                                            if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
-                                        end
-                                    else
-                                        if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
-                                    end
-                                end
-                            end
-                            if count > 0 then target_name = table.concat(NEARBY_MEMBERS_BUFFER, ",") end
-                        end
+                        target_name = resolve_aoe_target_name(target_mob, target_name)
                     end
                     if settings.debug then debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
                         spell.id, get_time())) end
@@ -1653,35 +1615,7 @@ do
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
                 if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
                     if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
-                    local party = get_party()
-                    if party and is_target_in_party(target_name, party) then
-                        local count = 0
-                        for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
-
-                        for slot, member in pairs(party) do
-                            if type(member) == 'table' and member.name then
-                                local m_mob = get_mob_by_name(member.name)
-                                if m_mob then
-                                    local dx = m_mob.x - target_mob.x
-                                    local dy = m_mob.y - target_mob.y
-                                    local dz = m_mob.z - target_mob.z
-                                    if ((dx * dx) + (dy * dy) + (dz * dz)) <= 100 then
-                                        if settings.debug then debug(member.name .. " is WITHIN 10 yalms of " .. target_mob.name) end
-                                        count = count + 1
-                                        NEARBY_MEMBERS_BUFFER[count] = member.name
-                                    else
-                                        if settings.debug then debug(member.name .. " is OUT of aoe range from " .. target_mob.name) end
-                                    end
-                                else
-                                    if settings.debug then debug(member.name .. " data unavailable (Too far away).") end
-                                end
-                            end
-                        end
-
-                        if count > 0 then
-                            target_name = table.concat(NEARBY_MEMBERS_BUFFER, ",")
-                        end
-                    end
+                    target_name = resolve_aoe_target_name(target_mob, target_name)
                 end
                 if settings.debug then debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time())) end
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
