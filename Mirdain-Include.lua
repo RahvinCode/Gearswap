@@ -4129,22 +4129,28 @@ do
     windower.raw_register_event('outgoing chunk', main_engine)
     windower.raw_register_event('zone change', on_zone_change_for_th)
 
-    -- Auto save function for dragging and dropping status and debug boxes
     local is_dragging = false
-    windower.register_event('mouse', function(type, x, y, delta, blocked)
-        -- Windower Type 1 = Left Click Down - sets dragging state
-        if type == 1 and (gs_status:hover(x, y) or gs_debug:hover(x, y)) then
-            is_dragging = true
-            -- Windower Type 2 = Left Click Up / Drag Release triggers saving and resets state
-        elseif type == 2 and is_dragging then
-            is_dragging = false
-            settings.Display_Box.pos.x = gs_status:settings().pos.x
-            settings.Display_Box.pos.y = gs_status:settings().pos.y
-            settings.Debug_Box.pos.x = gs_debug:settings().pos.x
-            settings.Debug_Box.pos.y = gs_debug:settings().pos.y
+    windower.raw_register_event('mouse', function(type, x, y, delta, blocked)
+        -- Mouse move is type 0.  Reject anything other than left click up (2) and down (1).
+        if type ~= 1 and type ~= 2 then return end
 
-            config.save(settings)
-            windower.add_to_chat(80, "Settings saved")
+        if type == 1 then
+            is_dragging = gs_status:hover(x, y) or gs_debug:hover(x, y)
+        elseif is_dragging then
+            is_dragging = false
+            local status_pos = gs_status:settings().pos
+            local debug_pos = gs_debug:settings().pos
+
+            if settings.Display_Box.pos.x ~= status_pos.x or settings.Display_Box.pos.y ~= status_pos.y
+                or settings.Debug_Box.pos.x ~= debug_pos.x or settings.Debug_Box.pos.y ~= debug_pos.y then
+                settings.Display_Box.pos.x = status_pos.x
+                settings.Display_Box.pos.y = status_pos.y
+                settings.Debug_Box.pos.x = debug_pos.x
+                settings.Debug_Box.pos.y = debug_pos.y
+
+                config.save(settings)
+                windower.add_to_chat(80, "Settings saved")
+            end
         end
     end)
 
@@ -4226,7 +4232,7 @@ do
         end
     end)
 
-    windower.register_event('prerender', function()
+    windower.raw_register_event('prerender', function()
         if not failsafe_active or state.SpellReceived.value == "OFF" then return end
 
         if os.clock() >= failsafe_trigger_time then
