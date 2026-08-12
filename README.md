@@ -323,6 +323,7 @@ sets.OffenseMode.AM2 = {}
 sets.OffenseMode.AM3 = {}
 ```
 ## Spell Received Sets
+These must be defined per character in each job.lua
 
 ```lua
 sets.Cure_Received = {}
