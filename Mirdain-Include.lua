@@ -3311,7 +3311,27 @@ do
                 feet = empty
             })
             Lock()
-
+            --Perform instant unequip that will be immediately undone through equip_set_command on the next action or timing
+            --Use for cure cheating, sortie objective, etc
+        elseif command == 'nakedunlocked' then
+            equip({
+                main = empty,
+                sub = empty,
+                range = empty,
+                ammo = empty,
+                head = empty,
+                neck = empty,
+                ear1 = empty,
+                ear2 = empty,
+                body = empty,
+                hands = empty,
+                ring1 = empty,
+                ring2 = empty,
+                back = empty,
+                waist = empty,
+                legs = empty,
+                feet = empty
+            })
             --Disable all slots but weapons, range and ammo
         elseif command == 'weaponsonly' then
             equip({
@@ -3340,10 +3360,12 @@ do
             })
             --disable('head', 'neck', 'ear1', 'ear2', 'body', 'hands', 'ring1', 'ring2', 'back', 'waist', 'legs', 'feet')
             disable('head', 'hands', 'legs', 'feet')
-
             --Enable All Slots
         elseif command == 'enableall' then
             Unlock()
+            --Enable slots that aren't locked by the current mode or zone
+        elseif command == 'enablebymode' then
+            UnlockByMode()
         end
 
         --use below for custom Job commands
@@ -4008,7 +4030,7 @@ do
                 built_set = set_combine(built_set, { waist = "Orpheus's Sash" })
                 info('Distance is [' .. round(spell.target.distance, 2) .. '] using Orpheus Sash')
                 -- Match day or weather.
-            elseif spell.element == world.day_element or spell.element == world.weather_element and Obi then
+            elseif (spell.element == world.day_element or spell.element == world.weather_element) and Obi then
                 built_set = set_combine(built_set, { waist = "Hachirin-no-Obi" })
                 info('[' ..
                     world.day_element .. '] day and weather is [' .. world.weather_element .. '] - using Hachirin-no-Obi')
@@ -4025,7 +4047,9 @@ do
     end
 
     function run_burst(data)
-        local action = data.targets[1].actions[1]
+        local target = data.targets[1]
+        local action = target and target.actions[1]
+        if not action then return end
         if (action.add_effect_message > 287 and action.add_effect_message < 302)     -- Normal SC DMG
             or (action.add_effect_message > 384 and action.add_effect_message < 399) -- SC Heals
             or (action.add_effect_message > 766 and action.add_effect_message < 771) -- Umbra/Radiance
@@ -4360,12 +4384,13 @@ do
         end
     end)
 
+    --[[
     windower.register_event('chat message', function(message, sender, mode, gm)
         --Future Hooks for PT chat or tells
         -- Mode 3 is tell
         -- Mode 4 is party
         --Ignore it if it's not party chat or a tell
-        if mode ~= 3 or mode ~= 4 then
+        if mode ~= 3 and mode ~= 4 then
             return
         end
         message = message:lower()
@@ -4374,6 +4399,7 @@ do
             windower.send_command('sm on')
         end
     end)
+    ]]--
 
     -- Section used to determine if player is performing an action
     windower.register_event('action', function(data)
@@ -4395,32 +4421,20 @@ do
                     elseif data.param == 28787 then
                         log('Item Use Interupted')
                         UnlockByMode()
-                        if choose_set_custom then
-                            equip(set_combine(choose_set(), choose_set_custom()))
-                        else
-                            equip(set_combine(choose_set()))
-                        end
+                        equip_set_command()
                     end
                     -- Item use Finished
                 elseif data.category == 5 then
                     if data.param == 4154 then
                         log('Item Use Finished')
                         UnlockByMode()
-                        if choose_set_custom then
-                            equip(set_combine(choose_set(), choose_set_custom()))
-                        else
-                            equip(set_combine(choose_set()))
-                        end
+                        equip_set_command()
                     end
                     -- Casting Start
                 elseif data.category == 8 then
                     if data.param == 28787 then
                         log('Spell Interupt')
-                        if choose_set_custom then
-                            equip(set_combine(choose_set(), choose_set_custom()))
-                        else
-                            equip(set_combine(choose_set()))
-                        end
+                        equip_set_command()
                     elseif data.param == 24931 then
                         log('Casting Spell')
                     end
@@ -4434,25 +4448,21 @@ do
                 end
                 -- If player takes action, adjust TH tagging information
                 if state.TreasureMode.value ~= 'None' and TaggingCategories:contains(data.category) then
-                    if windower.ffxi.get_mob_by_id(data.targets[1].id).is_npc then
-                        th_info.tagged_mobs[data.targets[1].id] = os.clock()
+                    local target = data.targets[1]
+                    local target_mob = target and windower.ffxi.get_mob_by_id(target.id)
+                    if target_mob and target_mob.is_npc then
+                        th_info.tagged_mobs[target.id] = os.clock()
                         if state.TreasureMode.value ~= 'Full Time' then
-                            if choose_set_custom then
-                                equip(set_combine(choose_set(), choose_set_custom()))
-                            else
-                                equip(set_combine(choose_set()))
-                            end
+                            equip_set_command()
                         end
                     elseif th_info.tagged_mobs[data.actor_id] then
                         th_info.tagged_mobs[data.actor_id] = os.clock()
-                    else
-                        if th_info.tagged_mobs[data.targets[1].id] then
-                            th_info.tagged_mobs[data.targets[1].id] = os.clock()
-                        end
+                    elseif target and th_info.tagged_mobs[target.id] then
+                        th_info.tagged_mobs[target.id] = os.clock()
                     end
                 end
             end
-            -- Casting Spell
+            --[[ Casting Spell
             if data.category == 8 then
                 if data.param == 24931 then
                     if data.targets[1].actions[1].param ~= 0 then
@@ -4463,7 +4473,8 @@ do
                 elseif data.param == 28787 then
                 end
                 -- Weaponskill Finished
-            elseif data.category == 3 and data.param ~= 0 then
+            else]]
+            if data.category == 3 and data.param ~= 0 then
                 run_burst(data)
                 -- Casting finish
             elseif data.category == 4 then
