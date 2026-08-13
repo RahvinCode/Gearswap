@@ -186,7 +186,7 @@ Defaults to `Full Time` on THF and `None` on every other job. Tagged monsters ar
 
 ### AutoBuff — self-buffing
 
-When on, the engine checks roughly ten times a second whether you are missing a buff it can reapply, and uses it. Disabled in towns, and while asleep, stunned, terrorized, paralyzed, silenced or muddled.
+When on, the engine checks roughly ten times a second whether you are missing a buff it can reapply, and uses it. Disabled in towns, and while asleep, stunned, terrorized, paralyzed, silenced or muddled.  This is leftover from development prior to the use of other automation tools.  Usable if manually single boxing.  Leave off if using other automation software.
 
 - **Options:** `OFF` `ON`
 - **Command:** `//gs c AutoBuff ON`
