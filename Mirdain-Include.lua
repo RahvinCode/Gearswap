@@ -279,7 +279,6 @@ Ammo_Warning_Limit = 99
 -- User Defined
 
 is_Busy = false
-is_Dragging = false
 AutoItem = false
 Random_Lockstyle = false
 Lockstyle_List = {}
@@ -1132,7 +1131,7 @@ do
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
             end
         elseif s_type == TYPE_SCH then
-            available_charges = get_current_stratagem_count()
+            local available_charges = get_current_stratagem_count()
             if available_charges == 0 then
                 cancel_spell()
                 info("Unable to use strategems. Available charges = 0")
