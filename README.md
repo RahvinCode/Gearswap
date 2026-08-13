@@ -1,6 +1,6 @@
 # Mirdain-Include Enhanced
 
-**Version 1.6.4** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 1.6.5** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
 Enhanced version of Mirdain-Include, created by Rahvin. Check your running version in game with `//gs c version`.
 
@@ -94,11 +94,38 @@ Separately, a background loop (the "engine") runs about ten times a second to ha
 
 The suite draws two boxes on screen.
 
-**Status box** — always available, shows your current modes:
+**Status box** — always available, shows your current modes. Two layouts, toggled with `//gs c displaymode`.
+
+Stacked:
 
 ```
-TH:[None] Spell-Rec:[ON-Locked] Hoxne:[OFF] Stance:[DT] DPS:[Chango]
+TH .  SR .  HOX o
+STN <    DT     >
+DPS <Black Halo >
+MDE <   Melee   >
 ```
+
+One-line:
+
+```
+TH .  SR .  HOX o  STN <DT>  DPS <Black Halo>  MDE <Melee>
+```
+
+*(The box draws filled/hollow circles and solid triangles. They are transcribed above as `.`, `o`, `<` and `>` so this file stays readable in a plain-text editor.)*
+
+**Reading the indicators**
+
+| Indicator | Meaning |
+|---|---|
+| Filled circle, green | Mode is fully on |
+| Filled circle, amber | Partially on — currently only TH `Tag` |
+| Filled circle, cyan | THF-only TH `SATA` |
+| Hollow circle, grey | Mode is off (`None` / `OFF`) |
+| Value between triangles | A cycling mode — press its key, or `//gs c <mode> <value>` |
+
+TH, SR (SpellReceived) and HOX (Hoxne) are drawn as a circle only. Their whole state fits in one colour, which is what keeps the box narrow. Every other mode keeps its **full text**, so the weapon or job function currently selected is always readable.
+
+**Sizing.** Column widths come from each mode's complete list of options rather than its current value, so cycling a mode never resizes the stacked box — it stays a fixed width for as long as a job is loaded. The glyph header sets a 17-cell floor that most jobs never exceed, which also keeps the box near-identical across job changes. The one-line layout deliberately flexes with the current values to stay as short as possible.
 
 **Debug box** — hidden by default, shows internal engine state. Useful when something is not swapping as expected:
 
@@ -113,9 +140,13 @@ TH:[None] Spell-Rec:[ON-Locked] Hoxne:[OFF] Stance:[DT] DPS:[Chango]
 
 ### Moving and saving the boxes
 
-Drag either box with the left mouse button. The position saves to disk automatically when you release. You can also save manually with `//gs c save`, reset a lost box to the top-left corner with `//gs c zero`, hide the status box with `//gs c display`, and switch between one-line and stacked layouts with `//gs c displaymode`.
+Drag either box with the left mouse button. The position is written to disk automatically when you release, and the save is **silent** — there is no chat confirmation. This is handled by Windower's own text library rather than by a mouse hook in the include, so moving the cursor costs nothing extra.
 
-> Saving is skipped while you are zoning. If you see *"Cannot save while zoning"*, wait a moment and try again.
+You can also save manually with `//gs c save`, reset a lost box to the top-left corner with `//gs c zero`, hide the status box with `//gs c display`, and switch between one-line and stacked layouts with `//gs c displaymode`.
+
+Positions are stored **per character** in `Windower4/addons/GearSwap/data/settings.xml`.
+
+> Saving is skipped while you are zoning. A drag released mid-zone is not persisted — drop the box again once you have finished loading. `//gs c save` will tell you outright if it cannot save yet.
 
 ---
 
@@ -199,11 +230,12 @@ For players running more than one character. When another of your characters cas
 
 | Mode | Behavior |
 |---|---|
-| `ON-Locked` | Equip received gear and lock those slots until the spell resolves *(recommended)* |
-| `ON-Unlocked` | Equip received gear but allow other actions to overwrite it |
+| `ON` | Equip received gear and lock those slots until the spell resolves |
 | `OFF` | Disabled |
 
-**Command:** `//gs c SpellReceived ON-Locked`
+**Command:** `//gs c SpellReceived ON`
+
+> **Changed.** The former `ON-Locked` and `ON-Unlocked` values were collapsed into a single `ON`. `ON-Locked` is now just `ON` and behaves identically; `ON-Unlocked` has been removed as unnecessary. Any macro or script still passing an old value is rejected with a suggestion rather than silently doing the wrong thing — update it to `ON`.
 
 Requires the corresponding `*_Received` sets. See [Spell-Received Tracking](#spell-received-tracking-multibox).
 
@@ -220,16 +252,37 @@ Locks Hoxne Ampulla into your ammo slot and stops the engine from unlocking it. 
 Two free-form modes for anything a job needs. The engine only tracks the value; what it means is up to your job file.
 
 ```lua
-UI_Name  = 'Tank'          -- label shown in the status box
+UI_Name  = 'Auto Tank'     -- name used in chat messages
 state.JobMode:options('OFF','Auto Tank')
 
-UI_Name2 = 'Rune'
+UI_Name2 = 'Runes'
 state.JobMode2:options('Ignis','Gelus','Flabra')
 ```
 
 **Commands:** `//gs c JobMode "Auto Tank"` · `//gs c JobMode2 Ignis`
 
 If `UI_Name` is left empty the mode is hidden from the status box.
+
+#### Status box labels
+
+The status box needs a short label, and the include derives one from `UI_Name` automatically — **existing job files need no changes**. A table of known names is checked first, then a general rule: a single word takes its first three letters, several words take two letters of the first plus the initial of the last.
+
+| `UI_Name` | Derived label |
+|---|---|
+| `Mode` | `MDE` |
+| `Pet` | `PET` |
+| `TP Mode` | `TPM` |
+| `Auto Tank` | `TNK` |
+| `Runes` | `RUN` |
+| `Blood Pact` | `BLP` |
+| `Skillchain` | `SKI` |
+
+If you dislike what it picks, set `UI_Short` (and `UI_Short2`) in your job file to override it. An explicit value is used verbatim, and the label column widens to fit if it is longer than three characters:
+
+```lua
+UI_Name  = 'Auto Tank'
+UI_Short = 'ATK'           -- optional; overrides the derived TNK
+```
 
 ### RAMode — ranged ammunition type
 
@@ -249,12 +302,26 @@ All commands are typed as `//gs c <command>` and are **case-insensitive**.
 | `gs c WeaponMode [mode]` | Cycle, or jump to a specific weapon set |
 | `gs c TreasureHunter [mode]` | Cycle, or jump to a TH mode |
 | `gs c AutoBuff [mode]` | Cycle, or set auto-buffing |
-| `gs c SpellReceived [mode]` | Cycle, or set spell-received tracking |
-| `gs c hoxne [on\|off]` | Toggle or set Hoxne Ampulla lock |
+| `gs c SpellReceived [ON\|OFF]` | Cycle, or set spell-received tracking |
+| `gs c hoxne [ON\|OFF]` | Toggle or set Hoxne Ampulla lock |
 | `gs c JobMode [mode]` | Cycle, or jump to a job-specific mode |
 | `gs c JobMode2 [mode]` | Cycle, or jump to a second job-specific mode |
 
-Quote any value containing a space: `//gs c WeaponMode "Savage Blade"`
+Values containing a space work either way: `//gs c WeaponMode "Savage Blade"` and `//gs c WeaponMode Savage Blade` are equivalent.
+
+#### Argument validation
+
+**With no argument, every mode command cycles forward one step**, exactly as it always has — `//gs c TreasureHunter` steps `None` to `Tag` to `Full Time` and wraps. A stray trailing space still counts as no argument.
+
+**With an argument**, the value must be one of that mode's options, matched case-insensitively. Anything else changes nothing and reports why:
+
+```
+//gs c SpellReceived on-locked
+Spell Received: "on-locked" is not a valid mode. Did you mean [ON]?
+Usage: //gs c SpellReceived [OFF|ON]
+```
+
+Partial values are offered as a suggestion but never accepted, so `//gs c TreasureHunter full` is rejected in favour of `Full Time`. Previously an unrecognised value raised a raw Lua error, or — for `SpellReceived` and `hoxne` — was matched loosely enough that a wrong value could set the wrong mode.
 
 ### Display
 
@@ -330,8 +397,10 @@ Plain variables you set near the top of your job file.
 | `Ammo_Warning_Limit` | number | `99` | Warn on precast when ranged ammo falls below this count |
 | `Buff_Delay` | number | — | Minimum seconds between AutoBuff attempts |
 | `Tank_Delay` | number | — | Minimum seconds between auto-tank ability attempts |
-| `UI_Name` | string | `''` | Status box label for JobMode; empty hides it |
-| `UI_Name2` | string | `''` | Status box label for JobMode2; empty hides it |
+| `UI_Name` | string | `''` | Name used for JobMode in chat; empty hides the mode entirely |
+| `UI_Name2` | string | `''` | Name used for JobMode2 in chat; empty hides the mode entirely |
+| `UI_Short` | string | `''` | Optional status box label for JobMode; derived from `UI_Name` when empty |
+| `UI_Short2` | string | `''` | Optional status box label for JobMode2 |
 
 > **Performance tip:** `Buff_Delay` matters. Without it, AutoBuff queries every ability and spell recast about ten times a second for the whole session. One check per second is plenty — job ability recasts are minutes long. The PLD and RUN sample files show the pattern.
 
@@ -698,7 +767,7 @@ Silence these with `//gs c warn` once your file is finished.
 
 ### A slot is stuck
 
-Some features deliberately lock slots — Sleep locks main and ranged, Doom locks your Cursna set, `SpellReceived ON-Locked` locks the received set, Hoxne mode locks ammo. Use `//gs c enablebymode` to release what the current mode allows, or `//gs c enableall` to release everything.
+Some features deliberately lock slots — Sleep locks main and ranged, Doom locks your Cursna set, `SpellReceived ON` locks the received set, Hoxne mode locks ammo. Use `//gs c enablebymode` to release what the current mode allows, or `//gs c enableall` to release everything.
 
 ### An item is not equipping
 
@@ -710,7 +779,13 @@ The engine can only equip items you own. Check spelling exactly as the item appe
 
 ### Settings are not saving
 
-Saving is skipped while zoning. Wait until you are fully loaded, then `//gs c save`. Settings live in `Windower4/addons/GearSwap/data/settings.xml`.
+Saving is skipped while zoning. Wait until you are fully loaded, then `//gs c save`. Settings live in `Windower4/addons/GearSwap/data/settings.xml`, under a node named for your character.
+
+Dragging a box saves silently, so no chat message on release is normal — confirm by checking the `pos` values in `settings.xml`, or reload GearSwap and see whether the box returns to where you dropped it.
+
+### The status box shows blank squares or the columns are ragged
+
+The box uses circle and triangle characters that exist in Consolas, Lucida Console and Courier New. If you have changed `font` in `settings.xml` to a font lacking them, Windows substitutes a glyph from another font at a different width, which knocks the columns out of alignment. Switch back to a monospaced font that covers them.
 
 ### Auto-buff is not working
 
