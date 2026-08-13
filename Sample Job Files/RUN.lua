@@ -518,7 +518,7 @@ end
 
 --Function used to automate Job Ability use - Checked first
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	if os.clock() - buff_time > Buff_Delay then
 		local ja_recasts = windower.ffxi.get_ability_recasts()
 		local delay = os.clock() - JA_Delay
@@ -567,7 +567,7 @@ end
 
 --Function used to automate Spell use
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	if os.clock() - buff_time > Buff_Delay then
 		local sp_recasts = windower.ffxi.get_spell_recasts()
 
@@ -600,7 +600,7 @@ end
 
 
 function check_tank()
-	buff = 'None'
+	local buff = 'None'
 	if os.clock() - tank_time > Tank_Delay then
 				log('tank check')
 		if (player.status == "Engaged" or windower.ffxi.get_player().target_locked) and state.JobMode2.value == "ON" then
