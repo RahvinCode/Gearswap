@@ -144,7 +144,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -223,7 +223,7 @@ function get_sets()
 		legs="Chas. Culottes +3",
 		neck="Null Loop",
 		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={ name="Chirich Ring +1", bag="wardrobe1", priority=2},
+		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=2},
 		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=1},
 	})
 
@@ -326,7 +326,7 @@ function get_sets()
 		-- 10 II from gleti's Knife
 		head={ name="Ikenga's Hat", augments={'Path: A',}}, -- 5 II
 		hands={ name="Ikenga's Gloves", augments={'Path: A',}}, -- 15
-		left_ring={ name="Chirich Ring +1",  bag="wardrobe1"}, -- 10
+		left_ring={ name="Chirich Ring +1",  bag="wardrobe"}, -- 10
 		right_ring={ name="Chirich Ring +1",  bag="wardrobe2"}, -- 10
     })
 
