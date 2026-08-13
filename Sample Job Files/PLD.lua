@@ -128,7 +128,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}}, -- 3
 		right_ear="Sanare Earring",
-		left_ring={ name="Moonlight Ring", bag="wardrobe1", priority=2},
+		left_ring={ name="Moonlight Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Moonlight Ring", bag="wardrobe2", priority=3},
 		back={ name="Rudianos's Mantle", augments={'HP+60','Eva.+20 /Mag. Eva.+20','HP+20','Enmity+10','Mag. Evasion+15',}, priority=4},
 	}
@@ -178,7 +178,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -202,7 +202,7 @@ function get_sets()
 		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
 		left_ear="Telos Earring",
 		right_ear="Crep. Earring",
-		left_ring={ name="Moonlight Ring", bag="wardrobe1", priority=2},
+		left_ring={ name="Moonlight Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Moonlight Ring", bag="wardrobe2", priority=3},
 		back={ name="Rudianos's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
 	})
@@ -312,7 +312,7 @@ function get_sets()
 		waist={ name="Plat. Mog. Belt", priority=2}, -- 3 DT
 		left_ear={ name="Nourish. Earring +1", augments={'Path: A',}}, -- 5 SIRD / 6 Cure
 		right_ear="Chev. Earring +1", -- 3 DT / 11 Cure
-		left_ring={ name="Moonlight Ring", bag="wardrobe1", priority=1}, -- 5 DT
+		left_ring={ name="Moonlight Ring", bag="wardrobe", priority=1}, -- 5 DT
 		right_ring="Defending Ring", -- 10 DT
 		back={ name="Rudianos's Mantle", augments={'HP+60','Eva.+20 /Mag. Eva.+20','HP+20','"Cure" potency +10%','Spell interruption rate down-10%',}}, -- 10 SIRD / 10 Cure
 	} -- 91 + 10 Merits = 101 SIRD / 49 DT / 56 Cure
@@ -329,7 +329,7 @@ function get_sets()
 		waist="Audumbla Sash",
 		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
 		right_ear="Chev. Earring +1",
-		left_ring={ name="Moonlight Ring", bag="wardrobe1", priority=2},
+		left_ring={ name="Moonlight Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Moonlight Ring", bag="wardrobe2", priority=3},
 		back={ name="Rudianos's Mantle", augments={'HP+60','Eva.+20 /Mag. Eva.+20','HP+20','"Cure" potency +10%','Spell interruption rate down-10%',}},
 	}
@@ -464,13 +464,13 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 		if buffactive['Rampart'] and (spell.type == 'WhiteMagic' or spell.type == 'BlueMagic') then
 			equipSet = sets.Midcast.Rampart
 		end
@@ -481,13 +481,13 @@ function midcast_custom(spell)
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	if buffactive['Cover'] and gain then
 		equipSet = sets.Cover
@@ -505,7 +505,7 @@ function buff_change_custom(name,gain)
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 	 if buffactive['Cover'] then
 		equipSet = sets.Cover
 	 end
@@ -513,7 +513,7 @@ function choose_set_custom()
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
@@ -625,19 +625,19 @@ function user_file_unload()
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
