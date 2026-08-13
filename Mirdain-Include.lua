@@ -3298,10 +3298,12 @@ do
             if settings.visible == true then
                 settings.visible = false
                 gs_status:hide()
+                gs_status:draggable(false)
                 add_to_chat(80, 'The UI is now hidden')
             else
-                gs_status:show()
                 settings.visible = true
+                gs_status:draggable(true)
+                gs_status:show()
                 display_box_update()
                 add_to_chat(80, 'The UI is now shown')
             end
@@ -4148,12 +4150,14 @@ do
         end
     end
 
-    -- Zero the display window
+    -- Zero the display and debug windows
     function display_zero_command()
         gs_status:pos_x(0)
-        gs_status:pos_y(0)
+        gs_status:pos_y(0)        
+        gs_debug:pos_x(0)
+        gs_debug:pos_y(100)
         config.save(settings)
-        add_to_chat("Settings Saved")
+        add_to_chat("Displays reset and positions saved")
     end
 
     local debug_box_state = {}
