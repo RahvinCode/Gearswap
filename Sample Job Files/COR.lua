@@ -693,7 +693,7 @@ function user_file_unload()
 end
 
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 	if player.sub_job == 'WAR' then
 		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
@@ -708,7 +708,7 @@ function check_buff_JA()
 end
 
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	return buff
 end
 
