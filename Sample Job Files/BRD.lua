@@ -135,7 +135,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -195,7 +195,7 @@ function get_sets()
 
 	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode, {
-		left_ring={ name="Chirich Ring +1", bag="wardrobe1", priority=1},
+		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=1},
 		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=2},
 	})
 
@@ -452,7 +452,7 @@ function get_sets()
 	})
 
 	sets.WS.SB = {
-		left_ring={ name="Chirich Ring +1", bag="wardrobe1", priority=1},
+		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=1},
 		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=2},
 	}
 
