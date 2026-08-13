@@ -111,7 +111,7 @@ function get_sets()
 		waist="Plat. Mog. Belt",
 		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}, priority=1}, -- 3/5
 		right_ear="Sanare Earring", -- Upgrade to +1/+2 Earring
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 		back={ name="Ogma's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Enmity+10','Damage taken-5%',}}, -- 5/5
     } -- 75 PDT / 58 MDT		3571 HP/ 1149 MP
@@ -138,7 +138,7 @@ function get_sets()
 		head="Erilaz Galea +3",
 		waist={ name="Plat. Mog. Belt", priority=2},
 		left_ear={ name="Tuisto Earring", priority=3},
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 	})
 
@@ -151,7 +151,7 @@ function get_sets()
 		legs="Eri. Leg Guards +3", -- 13/13
 		feet="Erilaz Greaves +3", -- 11/11
 		waist="Plat. Mog. Belt",
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}, priority=1}, -- 3/5
 	}
@@ -163,7 +163,7 @@ function get_sets()
 
 	-- This gear will be equiped when the player is moving and not engaged
 	sets.Movement = {
-		left_ring={name="Moonlight Ring", bag="wardrobe1"},
+		left_ring={name="Moonlight Ring", bag="wardrobe"},
 		right_ring={name="Moonlight Ring", bag="wardrobe2"},
 		legs={ name="Carmine Cuisses +1", augments={'HP+80','STR+12','INT+12',}, priority=1},
     } -- 73 PDT / 33 MDT		3028 HP / 963 MP
@@ -172,7 +172,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -307,7 +307,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear="Tuisto Earring",
 		right_ear="Mimir Earring",
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 		back={ name="Ogma's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Enmity+10','Damage taken-5%',}}, -- 5/5
 	}
@@ -358,7 +358,7 @@ function get_sets()
 		left_ear="Tuisto Earring",
 		right_ear={ name="Etiolation Earring", priority=1},
 		body="Runeist Coat +3",
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 	})
 
@@ -369,7 +369,7 @@ function get_sets()
 		hands="Erilaz Gauntlets +3",
 		body="Runeist Coat +3",
 		right_ear={ name="Etiolation Earring", priority=1},
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 	})
 
@@ -380,7 +380,7 @@ function get_sets()
 		hands="Erilaz Gauntlets +3",
 		body="Runeist Coat +3",
 		right_ear={ name="Etiolation Earring", priority=1},
-		left_ring={name="Moonlight Ring", bag="wardrobe1", priority=4},
+		left_ring={name="Moonlight Ring", bag="wardrobe", priority=4},
 		right_ring={name="Moonlight Ring", bag="wardrobe2", priority=5},
 	})
 
@@ -472,13 +472,13 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = set_combine(equipSet, Embolden_Check(spell))
 
 	if state.OffenseMode.value == 'MEVA' then
@@ -489,25 +489,25 @@ function midcast_custom(spell)
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
@@ -627,7 +627,7 @@ end
 
 -- Swaps back when embolden buff is active to extend duration
 function Embolden_Check(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.target.id == player.id then
 		if buffactive['Embolden'] then
 			equipSet = sets.Embolden
@@ -638,19 +638,19 @@ function Embolden_Check(spell)
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
