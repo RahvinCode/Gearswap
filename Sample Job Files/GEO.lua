@@ -76,7 +76,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear="Sanare Earring",
 		right_ear="Lugalbanda Earring",
-		left_ring={ name="Stikini Ring +1",  bag="wardrobe1"},
+		left_ring={ name="Stikini Ring +1",  bag="wardrobe"},
 		right_ring={ name="Stikini Ring +1",  bag="wardrobe2"},
 		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
     } -- 50 PDT / 52 MDT (including shield)
@@ -109,7 +109,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -291,7 +291,7 @@ function get_sets()
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		left_ring={ name="Stikini Ring +1",  bag="wardrobe1"},
+		left_ring={ name="Stikini Ring +1",  bag="wardrobe"},
 		right_ring={ name="Stikini Ring +1",  bag="wardrobe3"},
 		waist="Siegel Sash",
 	})
