@@ -647,7 +647,7 @@ end
 
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.english == 'Fold' and buffactive['Bust'] == 2 then
 		equipSet = set_combine(equipSet, sets.Fold)
     end
@@ -656,7 +656,7 @@ function precast_custom(spell)
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.english == 'Fold' and buffactive['Bust'] == 2 then
 		equipSet = set_combine(equipSet, sets.Fold)
     end
@@ -665,22 +665,22 @@ function midcast_custom(spell)
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 
@@ -729,16 +729,16 @@ function Job_Mode_Check(equipSet)
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
