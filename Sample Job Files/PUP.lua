@@ -319,7 +319,7 @@ function choose_gear()
 end
 
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 
 	-- Sub job has least priority
@@ -337,7 +337,7 @@ function check_buff_JA()
 end
 
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	--local sp_recasts = windower.ffxi.get_spell_recasts()
 	return buff
 end
