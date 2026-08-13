@@ -793,19 +793,19 @@ function Job_Mode_Check(equipSet)
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
