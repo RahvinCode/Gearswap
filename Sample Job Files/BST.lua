@@ -339,7 +339,7 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.name:contains('Maneuver') then
 		equipSet = sets.JA.Maneuver
 	elseif spell.type == 'WeaponSkill' then
@@ -351,27 +351,27 @@ function precast_custom(spell)
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
 
 -- Called when the pet dies or is summoned
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 -- Called during a pet midcast
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 		local message = 'Pet Not Set'
 		if Ready_Standard[spell.name] then
 			equipSet = set_combine(equipSet, sets.Pet_Midcast)
@@ -399,27 +399,27 @@ end
 
 -- Called after the performs an action
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
 
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
@@ -429,7 +429,7 @@ function self_command_custom(command)
 end
 --Custom Function
 function choose_gear()
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
