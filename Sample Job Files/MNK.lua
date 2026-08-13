@@ -169,7 +169,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
