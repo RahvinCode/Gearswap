@@ -13,7 +13,7 @@ Original credit to Mirdain.  Pull request to be submitted after beta testing.
 ]]
 
 -- Global Variables
-Mirdain_GS = '1.6.3'
+Mirdain_GS = '1.6.4'
 
 -- Modes is the include file for a mode-tracking variable class.  Used for state vars, below.
 include('Modes')
@@ -282,7 +282,6 @@ is_Busy = false
 is_Dragging = false
 AutoItem = false
 Random_Lockstyle = false
-Target_Assist = true
 Lockstyle_List = {}
 
 Elemental_WS = S {
@@ -331,11 +330,62 @@ Dark_Enhancing = S { 'Dread Spikes', 'Endark', 'Endark II', 'Klimaform', 'Tracto
 Enhancing_Skill = S { 'Temper', 'Temper II', 'Enaero', 'Enstone', 'Enthunder', 'Enwater', 'Enfire', 'Enblizzard', 'Boost-STR', 'Boost-DEX', 'Boost-VIT', 'Boost-AGI', 'Boost-INT', 'Boost-MND', 'Boost-CHR' }
 Divine_Skill = S { 'Enlight', 'Enlight II', 'Flash', 'Repose', 'Holy', 'Holy II', 'Banish', 'Banish II', 'Banish III', 'Banishga', 'Banishga II', }
 
-BlueNuke = S { 'Spectral Floe', 'Entomb', 'Magic Hammer', 'Tenebral Crush' }
-BlueACC = S { 'Cruel Joke', 'Dream Flower', 'Reaving Wind' }
-BlueHealing = S { 'Magic Fruit', 'Healing Breeze', 'Wild Carrot', 'Plenilune Embrace', 'Restoral' }
-BlueSkill = S { 'Occultation', 'Erratic Flutter', 'Nature\'s Meditation', 'Cocoon', 'Barrier Tusk', 'Metallic Body', 'Mighty Guard' }
-BlueTank = S { 'Jettatura', 'Geist Wall', 'Blank Gaze', 'Sheep Song', 'Sandspin', 'Healing Breeze' }
+-- BluePhysical - weapon accuracy + stat mod + physical Attack.  MAB does nothing.
+-- White Wind is deliberately absent: floor(MaxHP/7)*2 scaled by Cure Potency and
+-- unaffected by Blue Magic Skill or MND, so it uses sets.Midcast['White Wind'].
+BluePhysical = S { 'Amorphic Spikes', 'Asuran Claws', 'Barbed Crescent', 'Battle Dance',
+    'Benthic Typhoon', 'Bilgestorm', 'Bloodrake', 'Bludgeon', 'Body Slam', 'Cannonball',
+    'Claw Cyclone', 'Death Scissors', 'Delta Thrust', 'Dimensional Death', 'Disseverment',
+    'Empty Thrash', 'Feather Storm', 'Final Sting', 'Foot Kick', 'Frenetic Rip', 'Frypan',
+    'Glutinous Dart', 'Goblin Rush', 'Grand Slam', 'Head Butt', 'Heavy Strike', 'Helldive',
+    'Hydro Shot', 'Hysteric Barrage', 'Jet Stream', 'Mandibular Bite', 'Paralyzing Triad',
+    'Pinecone Bomb', 'Power Attack', 'Quad. Continuum', 'Quadrastrike', 'Queasyshroom',
+    'Ram Charge', 'Saurian Slide', 'Screwdriver', 'Seedspray', 'Sickle Slash', 'Sinker Drill',
+    'Smite of Rage', 'Spinal Cleave', 'Spiral Spin', 'Sprout Smack', 'Sub-zero Smash',
+    'Sudden Lunge', 'Sweeping Gouge', 'Tail Slap', 'Terror Touch', 'Thrashing Assault',
+    'Tourbillion', 'Uppercut', 'Vanity Dive', 'Vertical Cleave', 'Whirl of Rage', 'Wild Oats' }
+-- BlueBreath   - HP and level only (Hecatomb Wave = CurrentHP/4 + Level/1.5).
+-- INT, MAB and Blue Magic Skill do nothing.
+BlueBreath = S { 'Bad Breath', 'Flying Hip Press', 'Frost Breath', 'Heat Breath',
+    'Hecatomb Wave', 'Magnetite Cloud', 'Poison Breath', 'Radiant Breath', 'Self-Destruct',
+    'Thunder Breath', 'Vapor Spray', 'Wind Breath' }
+-- BlueNuke     - magical damage (MAB, INT/MND/CHR/VIT/DEX/AGI per spell).
+BlueNuke = S { 'Acrid Stream', 'Anvil Lightning', 'Blastbomb', 'Blazing Bound',
+    'Blinding Fulgor', 'Blitzstrahl', 'Bomb Toss', 'Cesspool', 'Charged Whisker',
+    'Crashing Thunder', 'Cursed Sphere', 'Dark Orb', 'Death Ray', 'Diffusion Ray',
+    'Droning Whirlwind', 'Embalming Earth', 'Entomb', 'Evryone. Grudge', 'Eyes On Me',
+    'Firespit', 'Foul Waters', 'Gates of Hades', 'Ice Break', 'Leafstorm', 'Maelstrom',
+    'Magic Hammer', 'Mind Blast', 'Molting Plumage', 'Mysterious Light', 'Nectarous Deluge',
+    'Palling Salvo', 'Polar Roar', 'Rail Cannon', 'Regurgitation', 'Rending Deluge',
+    'Retinal Glare', 'Scouring Spate', 'Searing Tempest', 'Silent Storm', 'Spectral Floe',
+    'Subduction', 'Tearing Gust', 'Tem. Upheaval', 'Temporal Shift', 'Tenebral Crush',
+    'Thermal Pulse', 'Thunderbolt', 'Uproot', 'Water Bomb' }
+-- BlueSkill - potency scales with Blue Magic Skill (Occultation shadows =
+-- floor(skill/50); Atra. Libations drain = skill*.11*9).
+BlueSkill = S { 'Atra. Libations', 'Barrier Tusk', 'Diamondhide', 'Magic Barrier',
+    'Metallic Body', 'Occultation', 'Plasma Charge', 'Pyric Bulwark', 'Reactor Cool' }
+--   BlueBuff - fixed potency; only duration responds to gear.
+BlueBuff = S { 'Amplification', 'Animating Wail', 'Battery Charge', 'Carcharian Verve',
+    'Cocoon', 'Erratic Flutter', 'Exuviation', 'Fantod', 'Feather Barrier', 'Harden Shell',
+    'Memento Mori', 'Mighty Guard', 'Nat. Meditation', 'O. Counterstance', 'Refueling',
+    'Regeneration', 'Saline Coat', 'Triumphant Roar', 'Warm-Up', 'Winds of Promy.',
+    'Zephyr Mantle' }
+-- BlueHealing - Cure Potency, MND, Blue Magic Skill
+-- White Wind is deliberately absent: it heals floor(MaxHP/7)*2 scaled by Cure
+-- Potency and is unaffected by Blue Magic Skill or MND, so it uses its own named
+-- set (sets.Midcast["White Wind"]) rather than the healing bucket.
+BlueHealing = S { 'Healing Breeze', 'Magic Fruit', 'Plenilune Embrace', 'Pollen', 'Restoral',
+    'Wild Carrot' }
+-- BlueTank - enmity-generating enfeebles.
+BlueTank = S { 'Actinic Burst', 'Blank Gaze', 'Demoralizing Roar', 'Frightful Roar',
+    'Geist Wall', 'Jettatura', 'Sheep Song', 'Soporific', 'Stinking Gas' }
+-- BlueACC - enfeebles/debuffs wanting magic accuracy.
+BlueACC = S { '1000 Needles', 'Absolute Terror', 'Auroral Drape', 'Awful Eye',
+    'Blistering Roar', 'Blood Drain', 'Blood Saber', 'Chaotic Eye', 'Cimicine Discharge',
+    'Cold Wave', 'Corrosive Ooze', 'Cruel Joke', 'Digest', 'Dream Flower', 'Enervation',
+    'Feather Tickle', 'Filamented Hold', 'Infrasonics', 'Light of Penance', 'Lowing',
+    'MP Drainkiss', 'Mortal Ray', 'Osmosis', 'Reaving Wind', 'Sandspin', 'Sandspray',
+    'Sound Blast', 'Venom Shell', 'Voracious Trunk', 'Yawn' }
 
 Elemental_Enfeeble = S { 'Burn', 'Frost', 'Choke', 'Rasp', 'Shock', 'Drown' }
 
@@ -439,12 +489,26 @@ do
         "Aurorastorm II", "Voidstorm II", "Firestorm II", "Sandstorm II", "Rainstorm II", "Windstorm II", "Hailstorm II", "Thunderstorm II" }
 
     local UtsusemiSpell = S { 'Utsusemi: Ichi', 'Utsusemi: Ni', 'Utsusemi: San' }
+
+    -- Used only for the get_spell_recasts() pre-check in pretargetcheck().
+    local HasRecastTimer = {
+        ['WhiteMagic']   = true,
+        ['BlackMagic']   = true,
+        ['BlueMagic']    = true,
+        ['Ninjutsu']     = true,
+        ['BardSong']     = true,
+        ['Geomancy']     = true,
+        ['SummonerPact'] = true,
+        ['Trust']        = true,
+    }
+
+    -- Types that additionally arm the post-cast busy window in precast()/aftercast().
     local RecastTimers = {
         ['WhiteMagic'] = true,
         ['BlackMagic'] = true,
-        ['Ninjutsu'] = true,
-        ['BardSong'] = true,
-        ['Geomancy'] = true
+        ['Ninjutsu']   = true,
+        ['BardSong']   = true,
+        ['Geomancy']   = true,
     }
     local SleepSongs = S { 'Foe Lullaby', 'Foe Lullaby II', 'Horde Lullaby', 'Horde Lullaby II', }
 
@@ -501,9 +565,6 @@ do
     local BUFF_SLEEP, BUFF_STUN, BUFF_KO = 'Sleep', 'Stun', 'KO'
     local BUFF_PETRI, BUFF_CHARM, BUFF_TERROR = 'Petrification', 'Charm', 'Terror'
     local TYPE_JA, TYPE_WS, TYPE_MS, TYPE_SCH = 'JobAbility', 'WeaponSkill', 'Magic', 'Scholar'
-    local TARGET_SELF, TARGET_ENEMY = '{Self}', '{Enemy}'
-    local TARGET_PARTY1 = '{Self, Party}'
-    local TARGET_PARTY2 = '{Self, Party, Ally, NPC}'
 
     -- Tracking vars for TH
     local th_info = {}
@@ -676,6 +737,48 @@ do
         return false
     end
 
+    -- Canonical slot names, mirroring GearSwap's default_slot_map (statics.lua:148).
+    local CANON_SLOT = {
+        main = 'main',
+        sub = 'sub',
+        range = 'range',
+        ranged = 'range',
+        ammo = 'ammo',
+        head = 'head',
+        body = 'body',
+        hands = 'hands',
+        legs = 'legs',
+        feet = 'feet',
+        neck = 'neck',
+        waist = 'waist',
+        back = 'back',
+        ear1 = 'left_ear',
+        ear2 = 'right_ear',
+        lear = 'left_ear',
+        rear = 'right_ear',
+        learring = 'left_ear',
+        rearring = 'right_ear',
+        left_ear = 'left_ear',
+        right_ear = 'right_ear',
+        ring1 = 'left_ring',
+        ring2 = 'right_ring',
+        lring = 'left_ring',
+        rring = 'right_ring',
+        left_ring = 'left_ring',
+        right_ring = 'right_ring',
+    }
+
+    -- In-place equivalent of: built_set = set_combine(built_set, layer)
+    -- Reduces table creation and GC from set_combine
+    local function merge_into(base, layer)
+        if type(layer) ~= 'table' then return base end
+        for slot, item in pairs(layer) do
+            local canon = CANON_SLOT[slot] or (type(slot) == 'string' and CANON_SLOT[slot:lower()])
+            if canon then base[canon] = item end
+        end
+        return base
+    end
+
     --Given the mob being targeted and the name currently addressed on the outgoing IPC message,
     --expand target_name to a comma-separated list of party members within AoE range (10 yalms),
     --or return it unchanged if the target isn't a valid AoE candidate.
@@ -684,10 +787,10 @@ do
         if not (party and is_target_in_party(target_name, party)) then
             return target_name
         end
-    
+
         local count = 0
         for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
-    
+
         for slot, member in pairs(party) do
             if type(member) == 'table' and member.name then
                 local m_mob = get_mob_by_name(member.name)
@@ -707,13 +810,13 @@ do
                 end
             end
         end
-    
+
         if count > 0 then
             return table.concat(NEARBY_MEMBERS_BUFFER, ",")
         end
         return target_name
     end
-    
+
     --Calculate and return how many strategems are off cooldown.
     local function get_current_stratagem_count()
         local charge_cooldown = windower.ffxi.get_ability_recasts()[231] or 0
@@ -934,21 +1037,25 @@ do
 
                     local target_name = spell.target.name
                     outgoing_cast_active = true
-                    if settings.debug then debug(player.name .. ' is using tracked ability measured at pretarget: ' ..
-                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
+                    if settings.debug then
+                        debug(player.name .. ' is using tracked ability measured at pretarget: ' ..
+                            spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                    end
 
                     --AoE Checks
                     if a_info.aoe then
                         if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
                         target_name = resolve_aoe_target_name(target_mob, target_name)
                     end
-                    if settings.debug then debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
-                        spell.id, get_time())) end
+                    if settings.debug then
+                        debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
+                            spell.id, get_time()))
+                    end
                     send_ipc(string.format("MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name, spell.id,
                         get_time()))
                 end
             end
-        elseif RecastTimers[s_type] then
+        elseif HasRecastTimer[s_type] then
             local recast_time = get_spell_recasts()[spell.recast_id]
             if recast_time and recast_time > 0 then
                 local total_sec = recast_time / 60
@@ -956,55 +1063,6 @@ do
                     ' [' .. math.floor(total_sec / 60) .. ':' .. string.format("%02d", total_sec % 60) .. ']')
                 cancel_spell()
                 return
-            end
-            if target_assist then
-                local t_type = spell.target.type
-
-                if not t_type and s_type == 'BardSong' then
-                    if active_buffs['Pianissimo'] then
-                        cancel_spell()
-                        windower.chat.input('/ma "' .. spell.name .. '" ' .. (not is_Pianissimo and '<stpc>' or '<me>'))
-                        is_Pianissimo = not is_Pianissimo
-                    else
-                        change_target('<me>')
-                    end
-                elseif t_type then
-                    local cast_spell = res.spells[spell.id]
-                    if not cast_spell or not cast_spell.targets then
-                        info('Unable to find spell [' .. spell.name .. ']')
-                    else
-                        local s_targets = cast_spell.targets
-
-                        if s_targets[TARGET_SELF] and t_type ~= 'SELF' then
-                            change_target('<me>')
-                        elseif s_targets[TARGET_ENEMY] then
-                            if t_type ~= 'MONSTER' and not spell.name:contains('Lullaby') and not spell.name:contains('Sleep') then
-                                cancel_spell()
-                                return
-                            end
-                        elseif s_targets[TARGET_PARTY1] or s_targets[TARGET_PARTY2] then
-                            if t_type == 'MONSTER' then
-                                if s_type == 'BardSong' then
-                                    if active_buffs['Pianissimo'] then
-                                        cancel_spell()
-                                        windower.chat.input('/ma "' ..
-                                            spell.name .. '" ' .. (not is_Pianissimo and '<stpc>' or '<me>'))
-                                        is_Pianissimo = not is_Pianissimo
-                                    else
-                                        change_target('<me>')
-                                    end
-                                else
-                                    cancel_spell()
-                                    return
-                                end
-                            elseif s_type == 'BardSong' and t_type == 'SELF' and active_buffs['Pianissimo'] then
-                                cancel_spell()
-                                windower.chat.input('/ma "' .. spell.name .. '" <stpc>')
-                                return
-                            end
-                        end
-                    end
-                end
             end
 
             --Check for spell casts that are tracked for spell-received gear swapping
@@ -1017,9 +1075,11 @@ do
                 local target_name = spell.target.name
                 outgoing_cast_active = true
 
-                if settings.debug then debug(player.name ..
-                    ' is using tracked spell measured at pretarget: ' ..
-                    spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
+                if settings.debug then
+                    debug(player.name ..
+                        ' is using tracked spell measured at pretarget: ' ..
+                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                end
 
                 local accession_active = active_buffs[366] or active_buffs['Accession']
                 local majesty_active = active_buffs[621] or active_buffs['Majesty']
@@ -1031,8 +1091,11 @@ do
                     if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
                     target_name = resolve_aoe_target_name(target_mob, target_name)
                 end
-                if settings.debug then debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id,
-                    get_time())) end
+                if settings.debug then
+                    debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name,
+                        spell.id,
+                        get_time()))
+                end
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
             end
         elseif s_type == TYPE_SCH then
@@ -1053,39 +1116,41 @@ do
 
     function precastequip(spell)
         log('precastequip Called')
-        if settings.debug then debug("spell.type = " ..
-            spell.type ..
-            " , spell.action_type = " ..
-            spell.action_type .. " , spell.english = " .. spell.english .. " , spell.name = " .. spell.name) end
+        if settings.debug then
+            debug("spell.type = " ..
+                spell.type ..
+                " , spell.action_type = " ..
+                spell.action_type .. " , spell.english = " .. spell.english .. " , spell.name = " .. spell.name)
+        end
         --Cancel for SMN if Avatar is mid action
         if pet.isvalid and pet_midaction() then return end
         --Default gearset
         local built_set = {}
         -- Merge the Idle incase a midcast is not set
-        if sets.Idle then built_set = set_combine(built_set, sets.Idle) end
+        if sets.Idle then merge_into(built_set, sets.Idle) end
         -- WeaponSkill
         if spell.type == 'WeaponSkill' then
             if sets.WS then
-                built_set = set_combine(built_set, sets.WS)
+                merge_into(built_set, sets.WS)
                 local message = ''
                 if spell.skill == "Marksmanship" or spell.skill == "Archery" then
                     -- Try to equip a generic ranged WS set
                     if sets.WS.RA then
-                        built_set = set_combine(built_set, sets.WS.RA)
+                        merge_into(built_set, sets.WS.RA)
                     else
                         warn('sets.WS.RA not found!')
                     end
 
                     -- Set is defined
                     if sets.WS[spell.english] then
-                        built_set = set_combine(built_set, sets.WS[spell.english])
+                        merge_into(built_set, sets.WS[spell.english])
                         -- Example would be WS[Savage Blade]['PDL']
                         if sets.WS[spell.english][state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.WS[spell.english][state.OffenseMode.value])
+                            merge_into(built_set, sets.WS[spell.english][state.OffenseMode.value])
                             message = '[' .. spell.english .. '] Set (Augmented)'
                             -- Example would be WS.RA.ACC
                         elseif state.OffenseMode.value ~= 'TP' and sets.WS.RA and sets.WS.RA[state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.WS.RA[state.OffenseMode.value])
+                            merge_into(built_set, sets.WS.RA[state.OffenseMode.value])
                             -- Augment the specified WS
                             if state.OffenseMode.value == 'ACC' then
                                 message = '[' .. spell.english .. '] Set with Accuracy'
@@ -1105,7 +1170,7 @@ do
                         -- Generic
                     else
                         if state.OffenseMode.value ~= 'TP' and sets.WS.RA and sets.WS.RA[state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.WS.RA[state.OffenseMode.value])
+                            merge_into(built_set, sets.WS.RA[state.OffenseMode.value])
                             if state.OffenseMode.value == 'ACC' then
                                 message = 'Using Default WS Set with Accuracy'
                             elseif state.OffenseMode.value == 'PDL' then
@@ -1125,16 +1190,16 @@ do
                     -- Check if Aftermath is active
                     if sets.WS.RA then
                         if buffactive['Aftermath: Lv.3'] and sets.WS.RA.AM3 and sets.WS.RA.AM3[state.WeaponMode.value] then
-                            built_set = set_combine(built_set, sets.WS.RA.AM3[state.WeaponMode.value])
+                            merge_into(built_set, sets.WS.RA.AM3[state.WeaponMode.value])
                             message = message .. ' and Level 3 Aftermath [' .. state.WeaponMode.value .. ']'
                         elseif buffactive['Aftermath: Lv.2'] and sets.WS.RA.AM2 and sets.WS.RA.AM2[state.WeaponMode.value] then
-                            built_set = set_combine(built_set, sets.WS.RA.AM2[state.WeaponMode.value])
+                            merge_into(built_set, sets.WS.RA.AM2[state.WeaponMode.value])
                             message = message .. ' and Level 2 Aftermath [' .. state.WeaponMode.value .. ']'
                         elseif buffactive['Aftermath: Lv.1'] and sets.WS.RA.AM1 and sets.WS.RA.AM1[state.WeaponMode.value] then
-                            built_set = set_combine(built_set, sets.WS.RA.AM1[state.WeaponMode.value])
+                            merge_into(built_set, sets.WS.RA.AM1[state.WeaponMode.value])
                             message = message .. ' and Level 1 Aftermath [' .. state.WeaponMode.value .. ']'
                         elseif buffactive['Aftermath'] and sets.WS.RA.AM and sets.WS.RA.AM[state.WeaponMode.value] then
-                            built_set = set_combine(built_set, sets.WS.RA.AM[state.WeaponMode.value])
+                            merge_into(built_set, sets.WS.RA.AM[state.WeaponMode.value])
                             message = message .. ' and Aftermath [' .. state.WeaponMode.value .. ']'
                         end
                     end
@@ -1144,7 +1209,7 @@ do
 
                     -- Variable Ammo
                     if Ammo and Ammo[state.OffenseMode.value] then
-                        built_set = set_combine(built_set,
+                        merge_into(built_set,
                             { ammo = Ammo[state.OffenseMode.value] })
                     end
 
@@ -1152,14 +1217,14 @@ do
                 else
                     -- Set is defined
                     if sets.WS[spell.english] then
-                        built_set = set_combine(built_set, sets.WS[spell.english])
+                        merge_into(built_set, sets.WS[spell.english])
                         -- Example would be WS[Savage Blade]['PDL']
                         if sets.WS[spell.english][state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.WS[spell.english][state.OffenseMode.value])
+                            merge_into(built_set, sets.WS[spell.english][state.OffenseMode.value])
                             message = '[' .. spell.english .. '] Set (Augmented)'
                             -- Example would be WS.ACC
                         elseif state.OffenseMode.value ~= 'TP' and sets.WS[state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.WS[state.OffenseMode.value])
+                            merge_into(built_set, sets.WS[state.OffenseMode.value])
                             -- Augment the specified WS
                             if state.OffenseMode.value == 'ACC' then
                                 message = '[' .. spell.english .. '] Set with Accuracy'
@@ -1179,7 +1244,7 @@ do
                         -- Generic
                     else
                         if state.OffenseMode.value ~= 'TP' and sets.WS[state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.WS[state.OffenseMode.value])
+                            merge_into(built_set, sets.WS[state.OffenseMode.value])
                             -- Augment the specified WS
                             if state.OffenseMode.value == 'ACC' then
                                 message = 'Using Default WS Set with Accuracy'
@@ -1199,16 +1264,16 @@ do
 
                     -- Check if Aftermath is active
                     if buffactive['Aftermath: Lv.3'] and sets.WS.AM3 and sets.WS.AM3[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.WS.AM3[state.WeaponMode.value])
+                        merge_into(built_set, sets.WS.AM3[state.WeaponMode.value])
                         message = message .. ' and Level 3 Aftermath'
                     elseif buffactive['Aftermath: Lv.2'] and sets.WS.AM2 and sets.WS.AM2[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.WS.AM2[state.WeaponMode.value])
+                        merge_into(built_set, sets.WS.AM2[state.WeaponMode.value])
                         message = message .. ' and Level 2 Aftermath'
                     elseif buffactive['Aftermath: Lv.1'] and sets.WS.AM1 and sets.WS.AM1[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.WS.AM1[state.WeaponMode.value])
+                        merge_into(built_set, sets.WS.AM1[state.WeaponMode.value])
                         message = message .. ' and Level 1 Aftermath'
                     elseif buffactive['Aftermath'] and sets.WS.AM and sets.WS.AM[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.WS.AM[state.WeaponMode.value])
+                        merge_into(built_set, sets.WS.AM[state.WeaponMode.value])
                         message = message .. ' and Aftermath'
                     end
                 end
@@ -1223,24 +1288,24 @@ do
             -- Ranged attack
         elseif spell.action_type == 'Ranged Attack' then
             if sets.Precast then
-                built_set = set_combine(built_set, sets.Precast)
+                merge_into(built_set, sets.Precast)
                 if sets.Precast.RA then
-                    built_set = set_combine(built_set, sets.Precast.RA)
+                    merge_into(built_set, sets.Precast.RA)
                     if buffactive[265] then -- Flurry
                         if sets.Precast.RA.Flurry then
-                            built_set = set_combine(built_set, sets.Precast.RA.Flurry)
+                            merge_into(built_set, sets.Precast.RA.Flurry)
                         else
                             warn('sets.Precast.RA.Flurry not found!')
                         end
                     elseif buffactive[581] then -- Flurry II
                         if sets.Precast.RA.Flurry_II then
-                            built_set = set_combine(built_set, sets.Precast.RA.Flurry_II)
+                            merge_into(built_set, sets.Precast.RA.Flurry_II)
                         else
                             warn('sets.Precast.RA.Flurry_II not found!')
                         end
                     elseif buffactive[228] then -- Embrava
                         if sets.Precast.RA.Flurry_II then
-                            built_set = set_combine(built_set, sets.Precast.RA.Flurry_II)
+                            merge_into(built_set, sets.Precast.RA.Flurry_II)
                         else
                             warn('sets.Precast.RA.Flurry_II not found!')
                         end
@@ -1248,7 +1313,7 @@ do
 
                     -- Variable Ammo
                     if Ammo and Ammo[state.OffenseMode.value] then
-                        built_set = set_combine(built_set,
+                        merge_into(built_set,
                             { ammo = Ammo[state.OffenseMode.value] })
                     end
                 else
@@ -1263,20 +1328,20 @@ do
             -- JobAbility
         elseif spell.type == 'JobAbility' then
             if sets.JA then
-                built_set = set_combine(built_set, sets.JA)
+                merge_into(built_set, sets.JA)
                 if spell.name == 'Double-Up' then -- Double Up for distance
                     if sets.PhantomRoll then
-                        built_set = set_combine(built_set, sets.PhantomRoll)
+                        merge_into(built_set, sets.PhantomRoll)
                         info('[' .. spell.english .. '] Set')
                     else
                         warn('sets.PhantomRoll not found!')
                     end
                 elseif sets.JA[spell.english] then
-                    built_set = set_combine(built_set, sets.JA[spell.english])
+                    merge_into(built_set, sets.JA[spell.english])
                     --Summon the correct jug pet
                     if spell.name == 'Bestial Loyalty' or spell.name == 'Call Beast' then
                         if sets.Jugs[state.JobMode.value] then
-                            built_set = set_combine(built_set, sets.Jugs[state.JobMode.value])
+                            merge_into(built_set, sets.Jugs[state.JobMode.value])
                         else
                             warn('sets.Jugs.' .. state.JobMode.value .. ' not found!')
                         end
@@ -1303,7 +1368,7 @@ do
                 info("Holy Water set")
                 if sets.Holy_Water then
                     if sets.Idle then
-                        built_set = set_combine(sets.Idle, sets.Holy_Water)
+                        merge_into(built_set, sets.Holy_Water)
                     else
                         warn('sets.Idle not found!')
                     end
@@ -1312,7 +1377,7 @@ do
                 end
             else
                 if sets.Idle then
-                    built_set = sets.Idle
+                    merge_into(built_set, sets.Idle)
                 else
                     warn('sets.Idle not found!')
                 end
@@ -1324,9 +1389,9 @@ do
                 if settings.debug then debug("Accession detected while tracking. Accession_Predicted = True") end
             end
             if sets.JA then
-                built_set = set_combine(built_set, sets.JA)
+                merge_into(built_set, sets.JA)
                 if sets.JA[spell.english] then
-                    built_set = set_combine(built_set, sets.JA[spell.english])
+                    merge_into(built_set, sets.JA[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Scholar Set')
@@ -1337,9 +1402,9 @@ do
             -- Ward
         elseif spell.type == 'Ward' then
             if sets.JA then
-                built_set = set_combine(built_set, sets.JA)
+                merge_into(built_set, sets.JA)
                 if sets.JA[spell.english] then
-                    built_set = set_combine(built_set, sets.JA[spell.english])
+                    merge_into(built_set, sets.JA[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Ward Set')
@@ -1350,9 +1415,9 @@ do
             -- Rune
         elseif spell.type == 'Rune' then
             if sets.JA then
-                built_set = set_combine(built_set, sets.JA)
+                merge_into(built_set, sets.JA)
                 if sets.JA[spell.english] then
-                    built_set = set_combine(built_set, sets.JA[spell.english])
+                    merge_into(built_set, sets.JA[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Rune Set')
@@ -1363,9 +1428,9 @@ do
             -- Effusion
         elseif spell.type == 'Effusion' then
             if sets.JA then
-                built_set = set_combine(built_set, sets.JA)
+                merge_into(built_set, sets.JA)
                 if sets.JA[spell.english] then
-                    built_set = set_combine(built_set, sets.JA[spell.english])
+                    merge_into(built_set, sets.JA[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Effusion Set')
@@ -1377,9 +1442,9 @@ do
         elseif spell.type == 'CorsairRoll' then
             log('CorsairRoll')
             if sets.PhantomRoll then
-                built_set = set_combine(built_set, sets.PhantomRoll)
+                merge_into(built_set, sets.PhantomRoll)
                 if sets.PhantomRoll[spell.english] then
-                    built_set = set_combine(built_set, sets.PhantomRoll[spell.english])
+                    merge_into(built_set, sets.PhantomRoll[spell.english])
                     info('[' .. spell.english .. '] Set ')
                 else
                     info('Roll not set')
@@ -1390,9 +1455,9 @@ do
             -- CorsairShot
         elseif spell.type == 'CorsairShot' then
             if sets.QuickDraw then
-                built_set = set_combine(built_set, sets.QuickDraw)
+                merge_into(built_set, sets.QuickDraw)
                 if sets.QuickDraw[spell.english] then
-                    built_set = set_combine(built_set, sets.QuickDraw[spell.english])
+                    merge_into(built_set, sets.QuickDraw[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Quick Draw Set')
@@ -1403,9 +1468,9 @@ do
             -- Waltz
         elseif spell.type == 'Waltz' then
             if sets.Waltz then
-                built_set = set_combine(built_set, sets.Waltz)
+                merge_into(built_set, sets.Waltz)
                 if sets.Waltz[spell.english] then
-                    built_set = set_combine(built_set, sets.Waltz[spell.english])
+                    merge_into(built_set, sets.Waltz[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Waltz Set')
@@ -1413,9 +1478,9 @@ do
             else
                 warn('sets.Waltz not found!')
             end
+
             --Check for ability casts that are tracked for spell-received gear swapping
             --Notify eligible targets via IPC that a tracked spell is incoming
-
             if state.SpellReceived.value ~= "OFF" then
                 local a_info = ability_info[spell.id]
                 if a_info and not outgoing_cast_active then
@@ -1424,16 +1489,20 @@ do
 
                     local target_name = spell.target.name
                     outgoing_cast_active = true
-                    if settings.debug then debug(player.name .. ' is using tracked ability measured at precast: ' ..
-                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
+                    if settings.debug then
+                        debug(player.name .. ' is using tracked ability measured at precast: ' ..
+                            spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                    end
 
                     --AoE Checks
                     if a_info.aoe then
                         if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
                         target_name = resolve_aoe_target_name(target_mob, target_name)
                     end
-                    if settings.debug then debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
-                        spell.id, get_time())) end
+                    if settings.debug then
+                        debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
+                            spell.id, get_time()))
+                    end
                     send_ipc(string.format("MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name, spell.id,
                         get_time()))
                 end
@@ -1441,9 +1510,9 @@ do
             -- Jig
         elseif spell.type == 'Jig' then
             if sets.Jig then
-                built_set = set_combine(built_set, sets.Jig)
+                merge_into(built_set, sets.Jig)
                 if sets.Jig[spell.english] then
-                    built_set = set_combine(built_set, sets.Jig[spell.english])
+                    merge_into(built_set, sets.Jig[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Jig Set')
@@ -1454,9 +1523,9 @@ do
             -- Samba
         elseif spell.type == 'Samba' then
             if sets.Samba then
-                built_set = set_combine(built_set, sets.Samba)
+                merge_into(built_set, sets.Samba)
                 if sets.Samba[spell.english] then
-                    built_set = set_combine(built_set, sets.Samba[spell.english])
+                    merge_into(built_set, sets.Samba[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Samba Set')
@@ -1467,9 +1536,9 @@ do
             -- Step
         elseif spell.type == 'Step' then
             if sets.Step then
-                built_set = set_combine(built_set, sets.Step)
+                merge_into(built_set, sets.Step)
                 if sets.Step[spell.english] then
-                    built_set = set_combine(built_set, sets.Step[spell.english])
+                    merge_into(built_set, sets.Step[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Step Set')
@@ -1480,9 +1549,9 @@ do
             -- Flourishes
         elseif spell.type == 'Flourish1' or spell.type == 'Flourish2' or spell.type == 'Flourish3' then
             if sets.Flourish then
-                built_set = set_combine(built_set, sets.Flourish)
+                merge_into(built_set, sets.Flourish)
                 if sets.Flourish[spell.english] then
-                    built_set = set_combine(built_set, sets.Flourish[spell.english])
+                    merge_into(built_set, sets.Flourish[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     info('Using Default Flourish Set')
@@ -1494,32 +1563,32 @@ do
         else
             -- Precast
             if sets.Precast then
-                built_set = set_combine(built_set, sets.Precast)
+                merge_into(built_set, sets.Precast)
                 -- FastCast
                 if sets.Precast.FastCast then
-                    built_set = set_combine(built_set, sets.Precast.FastCast)
+                    merge_into(built_set, sets.Precast.FastCast)
                     -- Augment with Enhancing set
                     if spell.skill == 'Enhancing Magic' then
                         if sets.Precast.Enhancing then
-                            built_set = set_combine(built_set, sets.Precast.Enhancing)
+                            merge_into(built_set, sets.Precast.Enhancing)
                         else
                             warn('sets.Precast.Enhancing not found!')
                         end
                     end
                     -- Specified Sets
                     if sets.Precast[spell.english] then
-                        built_set = set_combine(built_set, sets.Precast[spell.english])
+                        merge_into(built_set, sets.Precast[spell.english])
                         -- Augment with Cure Casting set
                     elseif spell.name:contains('Cure') or spell.name:contains('Cura') then
                         if sets.Precast.Cure then
-                            built_set = set_combine(built_set, sets.Precast.Cure)
+                            merge_into(built_set, sets.Precast.Cure)
                         else
                             warn('sets.Precast.Cure not found!')
                         end
                         -- Augment with Healing Magic set
                     elseif Healing_Magic:contains(spell.name) then
                         if sets.Precast.Healing then
-                            built_set = set_combine(built_set, sets.Precast.Healing)
+                            merge_into(built_set, sets.Precast.Healing)
                         else
                             warn('sets.Precast.Healing not found!')
                         end
@@ -1527,14 +1596,14 @@ do
                     elseif spell.type == 'Ninjutsu' and UtsusemiSpell:contains(spell.name) then
                         do_Utsu_checks(spell)
                         if sets.Precast.Utsusemi then
-                            built_set = set_combine(built_set, sets.Precast.Utsusemi)
+                            merge_into(built_set, sets.Precast.Utsusemi)
                         else
                             warn('sets.Precast.Utsusemi not found!')
                         end
                         -- Blue Magic
                     elseif spell.type == 'BlueMagic' then
                         if sets.Precast.BlueMagic then
-                            built_set = set_combine(built_set, sets.Precast.BlueMagic)
+                            merge_into(built_set, sets.Precast.BlueMagic)
                         else
                             warn('sets.Precast.BlueMagic not found!')
                         end
@@ -1543,49 +1612,49 @@ do
                         if buffactive['Nightingale'] then
                             -- Default BRD song gear is in Midcast
                             if sets.Midcast then
-                                built_set = set_combine(built_set, sets.Midcast)
+                                merge_into(built_set, sets.Midcast)
                             else
                                 warn('sets.Midcast not found!')
                             end
                             -- Song Count for Dummy Songs
                             if SongCount:contains(spell.name) then
                                 if sets.Midcast.DummySongs then
-                                    built_set = set_combine(built_set, sets.Midcast.DummySongs)
+                                    merge_into(built_set, sets.Midcast.DummySongs)
                                 else
                                     warn('sets.Midcast.DummySongs not found!')
                                 end
-                                built_set = set_combine(built_set, { range = Instrument.Count })
+                                merge_into(built_set, { range = Instrument.Count })
                                 -- Potency / Instruments
                             else
                                 -- Defined Gear Set
                                 if sets.Midcast[spell.english] then
-                                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                                    merge_into(built_set, sets.Midcast[spell.english])
                                     -- Equip Harp
                                 elseif spell.name:contains('Horde') then
                                     if sets.Midcast.Enfeebling then
-                                        built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                                        merge_into(built_set, sets.Midcast.Enfeebling)
                                     else
                                         warn('sets.Midcast.Enfeebling not found!')
                                     end
-                                    built_set = set_combine(built_set, { range = Instrument.AOE_Sleep })
+                                    merge_into(built_set, { range = Instrument.AOE_Sleep })
                                     -- Normal Enfeebles
                                 elseif Enfeebling_Song:contains(spell.english) then
                                     if sets.Midcast.Enfeebling then
-                                        built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                                        merge_into(built_set, sets.Midcast.Enfeebling)
                                     else
                                         warn('sets.Midcast.Enfeebling not found!')
                                     end
-                                    built_set = set_combine(built_set, { range = Instrument.Potency })
+                                    merge_into(built_set, { range = Instrument.Potency })
                                     -- Augment the buff songs
                                 else
-                                    built_set = set_combine(built_set, { range = Instrument.Potency })
+                                    merge_into(built_set, { range = Instrument.Potency })
                                 end
                                 -- Augment the specific Song if set
-                                built_set = set_combine(built_set, equip_song_gear(spell, built_set['range']))
+                                merge_into(built_set, equip_song_gear(spell, built_set['range']))
                             end
                         else
                             if sets.Precast.Songs then
-                                built_set = set_combine(built_set, sets.Precast.Songs)
+                                merge_into(built_set, sets.Precast.Songs)
                             else
                                 warn('sets.Precast.Songs not found!')
                             end
@@ -1607,9 +1676,11 @@ do
                 local target_name = spell.target.name
                 outgoing_cast_active = true
 
-                if settings.debug then debug(player.name ..
-                    ' is using tracked spell measured at precast: ' ..
-                    spell.name .. ' on ' .. target_name .. ' at ' .. get_time()) end
+                if settings.debug then
+                    debug(player.name ..
+                        ' is using tracked spell measured at precast: ' ..
+                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+                end
                 local active_buffs = buffactive
                 local accession_active = active_buffs[366] or active_buffs['Accession']
                 local majesty_active = active_buffs[621] or active_buffs['Majesty']
@@ -1621,7 +1692,10 @@ do
                     if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
                     target_name = resolve_aoe_target_name(target_mob, target_name)
                 end
-                if settings.debug then debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time())) end
+                if settings.debug then
+                    debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name,
+                        target_name, spell.id, get_time()))
+                end
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
             end
         end
@@ -1631,15 +1705,15 @@ do
         if state.WeaponMode.value ~= "Unlocked" and spell.type ~= 'CorsairRoll' and spell.name ~= 'Double-Up' then
             log('Update Weapons - Precast')
             if state.WeaponMode.value == "Locked" then
-                built_set = set_combine(built_set,
+                merge_into(built_set,
                     { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
             else
                 if sets.Weapons then
                     if sets.Weapons[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Weapons[state.WeaponMode.value])
+                        merge_into(built_set, sets.Weapons[state.WeaponMode.value])
                         if not TwoHand and not DualWield then
                             if sets.Weapons.Shield then
-                                built_set = set_combine(built_set, sets.Weapons.Shield)
+                                merge_into(built_set, sets.Weapons.Shield)
                             else
                                 warn('sets.Weapons.Shield not found!')
                             end
@@ -1657,16 +1731,16 @@ do
         if spell.type == 'BardSong' then --and spell.target.type ~= 'MONSTER' then
             if sets.Weapons then
                 if sets.Weapons.Songs then
-                    built_set = set_combine(built_set, sets.Weapons.Songs)
+                    merge_into(built_set, sets.Weapons.Songs)
                     if sets.Weapons.Songs.Midcast then
                         if not DualWield and not TwoHand then
                             if sets.Weapons.Shield then
-                                built_set = set_combine(built_set, sets.Weapons.Shield)
+                                merge_into(built_set, sets.Weapons.Shield)
                             else
                                 warn('sets.Weapons.Shield not found!')
                             end
                         end
-                        built_set = set_combine(built_set, sets.Weapons.Songs.Midcast)
+                        merge_into(built_set, sets.Weapons.Songs.Midcast)
                     else
                         warn('sets.Weapons.Songs.Midcast not found!')
                     end
@@ -1681,7 +1755,7 @@ do
         --[[ If TH mode is on - check if new mob and then equip TH gear
         if state.TreasureMode.value ~= 'None' and spell.target.type == 'MONSTER' and not th_info.tagged_mobs[spell.target.id] then
             if sets.TreasureHunter then
-                built_set = set_combine(built_set, sets.TreasureHunter)
+                merge_into(built_set, sets.TreasureHunter)
                 info('[' .. spell.english .. '] Set with Treasure Hunter')
             else
                 warn('sets.TreasureHunter not found!')
@@ -1758,13 +1832,13 @@ do
         --Default gearset
         local built_set = {}
         -- Merge the Idle incase a midcast is not set
-        if sets.Idle then built_set = set_combine(built_set, sets.Idle) end
+        if sets.Idle then merge_into(built_set, sets.Idle) end
         -- Merget the Midcast Set
         if sets.Midcast then
-            built_set = set_combine(built_set, sets.Midcast)
+            merge_into(built_set, sets.Midcast)
             -- Spell interruption Down for the rest of the actions
             if sets.Midcast.SIRD and spell.action_type ~= 'Ranged Attack' then
-                built_set = set_combine(built_set,
+                merge_into(built_set,
                     sets.Midcast.SIRD)
             end
 
@@ -1772,11 +1846,11 @@ do
             if spell.action_type == 'Ranged Attack' then
                 if sets.Midcast.RA then
                     local message = ''
-                    built_set = set_combine(built_set, sets.Midcast.RA)
+                    merge_into(built_set, sets.Midcast.RA)
 
                     -- Augment based off Mode
                     if state.OffenseMode.value ~= 'TP' and sets.Midcast.RA[state.OffenseMode.value] then
-                        built_set = set_combine(built_set, sets.Midcast.RA[state.OffenseMode.value])
+                        merge_into(built_set, sets.Midcast.RA[state.OffenseMode.value])
                         if state.OffenseMode.value == 'ACC' then
                             message = 'Ranged Attack with Accuracy'
                         elseif state.OffenseMode.value == 'PDL' then
@@ -1800,34 +1874,34 @@ do
 
                     -- Check if Aftermath is active
                     if buffactive['Aftermath: Lv.3'] and sets.Midcast.RA.AM3 and sets.Midcast.RA.AM3[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Midcast.RA.AM3[state.WeaponMode.value])
+                        merge_into(built_set, sets.Midcast.RA.AM3[state.WeaponMode.value])
                         message = message .. ' and with Aftermath 3 [' .. state.WeaponMode.value .. ']'
                     elseif buffactive['Aftermath: Lv.2'] and sets.Midcast.RA.AM2 and sets.Midcast.RA.AM2[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Midcast.RA.AM2[state.WeaponMode.value])
+                        merge_into(built_set, sets.Midcast.RA.AM2[state.WeaponMode.value])
                         message = message .. ' and with Aftermath 2 [' .. state.WeaponMode.value .. ']'
                     elseif buffactive['Aftermath: Lv.1'] and sets.Midcast.RA.AM1 and sets.Midcast.RA.AM1[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Midcast.RA.AM1[state.WeaponMode.value])
+                        merge_into(built_set, sets.Midcast.RA.AM1[state.WeaponMode.value])
                         message = message .. ' and with Aftermath 1 [' .. state.WeaponMode.value .. ']'
                     elseif buffactive['Aftermath'] and sets.Midcast.RA.AM and sets.Midcast.RA.AM[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Midcast.RA.AM[state.WeaponMode.value])
+                        merge_into(built_set, sets.Midcast.RA.AM[state.WeaponMode.value])
                         message = message .. ' and with Aftermath [' .. state.WeaponMode.value .. ']'
                     end
 
                     -- Buffs
                     if buffactive['Triple Shot'] and sets.Midcast.RA.TripleShot then
-                        built_set = set_combine(built_set, sets.Midcast.RA.TripleShot)
+                        merge_into(built_set, sets.Midcast.RA.TripleShot)
                         message = 'Using Triple Shot Set'
                     elseif buffactive['Double Shot'] and sets.Midcast.RA.DoubleShot then
-                        built_set = set_combine(built_set, sets.Midcast.RA.DoubleShot)
+                        merge_into(built_set, sets.Midcast.RA.DoubleShot)
                         message = 'Using Double Shot Set'
                     elseif buffactive['Barrage'] and sets.Midcast.RA.Barrage then
-                        built_set = set_combine(built_set, sets.Midcast.RA.Barrage)
+                        merge_into(built_set, sets.Midcast.RA.Barrage)
                         message = 'Using Barrage Set'
                     end
 
                     -- Variable Ammo
                     if Ammo[state.OffenseMode.value] then
-                        built_set = set_combine(built_set,
+                        merge_into(built_set,
                             { ammo = Ammo[state.OffenseMode.value] })
                     end
 
@@ -1840,12 +1914,12 @@ do
             elseif spell.type == 'Ninjutsu' then
                 -- Defined Gear Set
                 if sets.Midcast[spell.english] then
-                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                    merge_into(built_set, sets.Midcast[spell.english])
                     info('[' .. spell.english .. '] Set')
                     -- Utsusemi Spells
                 elseif UtsusemiSpell:contains(spell.name) then
                     if sets.Midcast.Utsusemi then
-                        built_set = set_combine(built_set, sets.Midcast.Utsusemi)
+                        merge_into(built_set, sets.Midcast.Utsusemi)
                         info('[' .. spell.english .. '] Utsusemi Set')
                     else
                         warn('sets.Midcast.Utsusemi not found!')
@@ -1853,7 +1927,7 @@ do
                     -- Enhancing Magic
                 elseif spell.target.type == 'SELF' then
                     if sets.Midcast.Enhancing then
-                        built_set = set_combine(built_set, sets.Midcast.Enhancing)
+                        merge_into(built_set, sets.Midcast.Enhancing)
                         info('Enhancing set')
                     else
                         warn('sets.Midcast.Enhancing not found!')
@@ -1861,7 +1935,7 @@ do
                     -- Enfeebling
                 elseif Enfeebling_Ninjitsu:contains(spell.english) then
                     if sets.Midcast.Enfeebling then
-                        built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                        merge_into(built_set, sets.Midcast.Enfeebling)
                         info('Enfeebling set')
                     else
                         warn('sets.Midcast.Enfeebling not found!')
@@ -1869,7 +1943,7 @@ do
                     -- Defaults to Nukes if not the above
                 else
                     if sets.Midcast.Nuke then
-                        built_set = set_combine(built_set, sets.Midcast.Nuke)
+                        merge_into(built_set, sets.Midcast.Nuke)
                         info('Nuke set')
                     else
                         warn('sets.Midcast.Nuke not found!')
@@ -1882,7 +1956,7 @@ do
                 -- Cure
                 if spell.name:contains('Cure') then
                     if sets.Midcast.Cure then
-                        built_set = set_combine(built_set, sets.Midcast.Cure)
+                        merge_into(built_set, sets.Midcast.Cure)
                         info('Cure Set')
                     else
                         warn('sets.Midcast.Cure not found!')
@@ -1892,7 +1966,7 @@ do
                     -- Curaga
                 elseif spell.name:contains('Curaga') then
                     if sets.Midcast.Curaga then
-                        built_set = set_combine(built_set, sets.Midcast.Curaga)
+                        merge_into(built_set, sets.Midcast.Curaga)
                         info('Curaga Set')
                     else
                         warn('sets.Midcast.Curaga not found!')
@@ -1902,7 +1976,7 @@ do
                     -- Cura
                 elseif spell.name:contains('Cura') then
                     if sets.Midcast.Cura then
-                        built_set = set_combine(built_set, sets.Midcast.Cura)
+                        merge_into(built_set, sets.Midcast.Cura)
                         info('Cura Set')
                     else
                         warn('sets.Midcast.Cura not found!')
@@ -1911,7 +1985,7 @@ do
                     built_set = elemental_check(spell, built_set)
                     -- Defined Gear Set
                 elseif sets.Midcast[spell.english] then
-                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                    merge_into(built_set, sets.Midcast[spell.english])
                     info('[' .. spell.english .. '] Set')
                     -- Healing Magic
                 elseif spell.name:contains('Raise') or spell.name == "Arise" or spell.name:contains('Reraise') then
@@ -1919,11 +1993,11 @@ do
                     -- Enhancing
                 elseif spell.skill == 'Enhancing Magic' then
                     if sets.Midcast.Enhancing then
-                        built_set = set_combine(built_set, sets.Midcast.Enhancing)
+                        merge_into(built_set, sets.Midcast.Enhancing)
                         -- Augment the set for Others if defined
                         if spell.target.type ~= 'SELF' or (spell.target.type == 'SELF' and buffactive['Accession']) then
                             if sets.Midcast.Enhancing.Others then
-                                built_set = set_combine(built_set, sets.Midcast.Enhancing.Others)
+                                merge_into(built_set, sets.Midcast.Enhancing.Others)
                             else
                                 warn('sets.Midcast.Enhancing.Others not found!')
                             end
@@ -1931,7 +2005,7 @@ do
                         -- Refresh
                         if spell.name:contains('Refresh') then
                             if sets.Midcast.Refresh then
-                                built_set = set_combine(built_set, sets.Midcast.Refresh)
+                                merge_into(built_set, sets.Midcast.Refresh)
                                 info('Refresh Set')
                             else
                                 warn('sets.Midcast.Refresh not found!')
@@ -1939,14 +2013,14 @@ do
                             -- Regen
                         elseif spell.name:contains('Regen') then
                             if sets.Midcast.Regen then
-                                built_set = set_combine(built_set, sets.Midcast.Regen)
+                                merge_into(built_set, sets.Midcast.Regen)
                                 info('Regen Set')
                             else
                                 warn('sets.Midcast.Regen not found!')
                             end
                         elseif Storms:contains(spell.name) then
                             if sets.Storms then
-                                built_set = set_combine(built_set, sets.Storms)
+                                merge_into(built_set, sets.Storms)
                                 info('Storms Set')
                             else
                                 warn('sets.Storms not found!')
@@ -1954,7 +2028,7 @@ do
                             -- Gain Spells
                         elseif spell.name:contains('Gain') then
                             if sets.Midcast.Enhancing.Gain then
-                                built_set = set_combine(built_set, sets.Midcast.Enhancing.Gain)
+                                merge_into(built_set, sets.Midcast.Enhancing.Gain)
                                 info('Gain Set')
                             else
                                 warn('sets.Midcast.Enhancing.Gain not found!')
@@ -1962,7 +2036,7 @@ do
                             -- Phalanx
                         elseif spell.name:contains('Phalanx') then
                             if sets.Midcast.Phalanx then
-                                built_set = set_combine(built_set, sets.Midcast.Phalanx)
+                                merge_into(built_set, sets.Midcast.Phalanx)
                                 info('Phalanx Set')
                             else
                                 warn('sets.Midcast.Phalanx not found!')
@@ -1970,7 +2044,7 @@ do
                             -- Bar Spells
                         elseif Elemental_Bar:contains(spell.name) then
                             if sets.Midcast.Enhancing.Elemental then
-                                built_set = set_combine(built_set, sets.Midcast.Enhancing.Elemental)
+                                merge_into(built_set, sets.Midcast.Enhancing.Elemental)
                                 info('Elemental Bar Element Set')
                             else
                                 warn('sets.Midcast.Enhancing.Elemental not found!')
@@ -1978,7 +2052,7 @@ do
                             -- Bar Status
                         elseif Status_Bar:contains(spell.name) then
                             if sets.Midcast.Enhancing.Status then
-                                built_set = set_combine(built_set, sets.Midcast.Enhancing.Status)
+                                merge_into(built_set, sets.Midcast.Enhancing.Status)
                                 info('Status Bar Status Set')
                             else
                                 warn('sets.Midcast.Enhancing.Status not found!')
@@ -1986,7 +2060,7 @@ do
                             -- Enhancing SKill
                         elseif Enhancing_Skill:contains(spell.name) then
                             if sets.Midcast.Enhancing.Skill then
-                                built_set = set_combine(built_set, sets.Midcast.Enhancing.Skill)
+                                merge_into(built_set, sets.Midcast.Enhancing.Skill)
                                 info('Enhancing Skill Set')
                             else
                                 warn('sets.Midcast.Enhancing.Skill not found!')
@@ -2001,7 +2075,7 @@ do
                     -- Divine Spells
                 elseif Divine_Skill:contains(spell.name) then
                     if sets.Midcast.Divine then
-                        built_set = set_combine(built_set, sets.Midcast.Divine)
+                        merge_into(built_set, sets.Midcast.Divine)
                         info('Divine Skill Set')
                     else
                         warn('sets.Midcast.Divine not found!')
@@ -2009,11 +2083,11 @@ do
                     -- Enfeebling Magic
                 elseif spell.skill == 'Enfeebling Magic' then
                     if sets.Midcast.Enfeebling then
-                        built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                        merge_into(built_set, sets.Midcast.Enfeebling)
                         -- Accuracy
                         if Enfeeble_Acc:contains(spell.name) then
                             if sets.Midcast.Enfeebling.MACC then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.MACC)
+                                merge_into(built_set, sets.Midcast.Enfeebling.MACC)
                                 info('Enfeebling Magic Set - Magic Accuracy')
                             else
                                 warn('sets.Midcast.Enfeebling.MACC not found!')
@@ -2021,7 +2095,7 @@ do
                             -- Potency
                         elseif Enfeeble_Potency:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Potency then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.Potency)
+                                merge_into(built_set, sets.Midcast.Enfeebling.Potency)
                                 info('Enfeebling Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Enfeebling.Potency not found!')
@@ -2029,7 +2103,7 @@ do
                             -- Duration
                         elseif Enfeeble_Duration:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Duration then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.Duration)
+                                merge_into(built_set, sets.Midcast.Enfeebling.Duration)
                                 info('Enfeebling Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Enfeebling.Duration not found!')
@@ -2046,7 +2120,7 @@ do
             elseif spell.type == 'BlackMagic' then
                 -- Defined Gear Set
                 if sets.Midcast[spell.english] then
-                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                    merge_into(built_set, sets.Midcast[spell.english])
                     -- Check for an elemental set
                     if spell.skill == 'Elemental Magic' and not spell.name:contains('helix') then
                         built_set =
@@ -2056,7 +2130,7 @@ do
                     -- Aspir Gear
                 elseif spell.name:contains('Aspir') then
                     if sets.Midcast.Aspir then
-                        built_set = set_combine(built_set, sets.Midcast.Aspir)
+                        merge_into(built_set, sets.Midcast.Aspir)
                         info('Aspir Set')
                     else
                         warn('sets.Midcast.Aspir not found!')
@@ -2064,7 +2138,7 @@ do
                     -- Drain Gear
                 elseif spell.name:contains('Drain') then
                     if sets.Midcast.Drain then
-                        built_set = set_combine(built_set, sets.Midcast.Drain)
+                        merge_into(built_set, sets.Midcast.Drain)
                         info('Drain Set')
                     else
                         warn('sets.Midcast.Drain not found!')
@@ -2072,11 +2146,11 @@ do
                     -- Enfeebling Magic
                 elseif spell.skill == 'Enfeebling Magic' then
                     if sets.Midcast.Enfeebling then
-                        built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                        merge_into(built_set, sets.Midcast.Enfeebling)
                         -- Accuracy
                         if Enfeeble_Acc:contains(spell.name) then
                             if sets.Midcast.Enfeebling.MACC then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.MACC)
+                                merge_into(built_set, sets.Midcast.Enfeebling.MACC)
                                 info('Enfeebling Magic Set - Magic Accuracy')
                             else
                                 warn('sets.Midcast.Enfeebling.MACC not found!')
@@ -2084,7 +2158,7 @@ do
                             -- Potency
                         elseif Enfeeble_Potency:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Potency then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.Potency)
+                                merge_into(built_set, sets.Midcast.Enfeebling.Potency)
                                 info('Enfeebling Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Enfeebling.Potency not found!')
@@ -2092,7 +2166,7 @@ do
                             -- Duration
                         elseif Enfeeble_Duration:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Duration then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.Duration)
+                                merge_into(built_set, sets.Midcast.Enfeebling.Duration)
                                 info('Enfeebling Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Enfeebling.Duration not found!')
@@ -2107,11 +2181,11 @@ do
                     -- Dark Magic
                 elseif spell.skill == 'Dark Magic' then
                     if sets.Midcast.Dark then
-                        built_set = set_combine(built_set, sets.Midcast.Dark)
+                        merge_into(built_set, sets.Midcast.Dark)
                         -- Accuracy
                         if Dark_Acc:contains(spell.name) then
                             if sets.Midcast.Dark.MACC then
-                                built_set = set_combine(built_set, sets.Midcast.Dark.MACC)
+                                merge_into(built_set, sets.Midcast.Dark.MACC)
                                 info('Dark Magic Set - Magic Accuracy')
                             else
                                 warn('sets.Midcast.Dark.MACC not found!')
@@ -2119,7 +2193,7 @@ do
                             -- Absorb
                         elseif Dark_Absorb:contains(spell.name) then
                             if sets.Midcast.Dark.Absorb then
-                                built_set = set_combine(built_set, sets.Midcast.Dark.Absorb)
+                                merge_into(built_set, sets.Midcast.Dark.Absorb)
                                 info('Absorb Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Dark.Absorb not found!')
@@ -2127,7 +2201,7 @@ do
                             -- Enhancing
                         elseif Dark_Enhancing:contains(spell.name) then
                             if sets.Midcast.Dark.Enhancing then
-                                built_set = set_combine(built_set, sets.Midcast.Dark.Enhancing)
+                                merge_into(built_set, sets.Midcast.Dark.Enhancing)
                                 info('Dark Enhancing Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Dark.Enhancing not found!')
@@ -2135,7 +2209,7 @@ do
                             -- Potency
                         elseif Enfeeble_Potency:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Potency then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.Potency)
+                                merge_into(built_set, sets.Midcast.Enfeebling.Potency)
                                 info('Enfeebling Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Enfeebling.Potency not found!')
@@ -2143,7 +2217,7 @@ do
                             -- Duration
                         elseif Enfeeble_Duration:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Duration then
-                                built_set = set_combine(built_set, sets.Midcast.Enfeebling.Duration)
+                                merge_into(built_set, sets.Midcast.Enfeebling.Duration)
                                 info('Enfeebling Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Enfeebling.Duration not found!')
@@ -2158,7 +2232,7 @@ do
                     -- Enhancing Magic
                 elseif spell.skill == 'Enhancing Magic' then
                     if sets.Midcast.Enhancing then
-                        built_set = set_combine(built_set, sets.Midcast.Enhancing)
+                        merge_into(built_set, sets.Midcast.Enhancing)
                         info('Enhancing Magic Set')
                     else
                         warn('sets.Midcast.Enhancing not found!')
@@ -2166,9 +2240,9 @@ do
                     -- Enfeebling Elemental Magic
                 elseif Elemental_Enfeeble:contains(spell.name) then
                     if sets.Midcast.Enfeebling then
-                        built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                        merge_into(built_set, sets.Midcast.Enfeebling)
                         if sets.Midcast.Enfeebling.MACC then
-                            built_set = set_combine(built_set, sets.Midcast.Enfeebling.MACC)
+                            merge_into(built_set, sets.Midcast.Enfeebling.MACC)
                             info('Enfeebling Magic Set - Magic Accuracy')
                         else
                             warn('sets.Midcast.Enfeebling.MACC not found!')
@@ -2183,13 +2257,13 @@ do
                     if spell.target.id == last_skillchain_id and os.clock() - last_skillchain_time < 8 and last_skillchain_elements[element_name] then
                         info("Burst Detected!")
                         if sets.Midcast.Burst then
-                            built_set = set_combine(built_set, sets.Midcast.Burst)
+                            merge_into(built_set, sets.Midcast.Burst)
                         else
                             warn('sets.Midcast.Burst not found!')
                         end
                     else
                         if sets.Midcast.Nuke then
-                            built_set = set_combine(built_set, sets.Midcast.Nuke)
+                            merge_into(built_set, sets.Midcast.Nuke)
                             info('Nuke Set')
                         else
                             warn('sets.Midcast.Nuke not found!')
@@ -2198,16 +2272,16 @@ do
                     -- Check for Helix
                     if spell.name:contains('helix') then
                         if sets.Helix then
-                            built_set = set_combine(built_set, sets.Helix)
+                            merge_into(built_set, sets.Helix)
                             if spell.element == 'Dark' then
                                 if sets.Helix.Dark then
-                                    built_set = set_combine(built_set, sets.Helix.Dark)
+                                    merge_into(built_set, sets.Helix.Dark)
                                 else
                                     warn('sets.Helix.Dark not found!')
                                 end
                             elseif spell.element == 'Light' then
                                 if sets.Helix.Light then
-                                    built_set = set_combine(built_set, sets.Helix.Light)
+                                    merge_into(built_set, sets.Helix.Light)
                                 else
                                     warn('sets.Helix.Light not found!')
                                 end
@@ -2217,7 +2291,7 @@ do
                         end
                     else
                         if spell.element == "Earth" and sets.Midcast.Nuke.Earth then
-                            built_set = set_combine(built_set, sets.Midcast.Nuke.Earth)
+                            merge_into(built_set, sets.Midcast.Nuke.Earth)
                             windower.add_to_chat(8, 'Earth Element Detected!')
                         end
                         -- Check for an elemental set
@@ -2229,58 +2303,78 @@ do
                 -- Song Count for Dummy Songs
                 if SongCount:contains(spell.name) then
                     if sets.Midcast.DummySongs then
-                        built_set = set_combine(built_set, sets.Midcast.DummySongs)
+                        merge_into(built_set, sets.Midcast.DummySongs)
                         info('[' .. spell.english .. '] Set (Song Count)')
                     else
                         warn('sets.Midcast.DummySongs not found!')
                     end
-                    built_set = set_combine(built_set, { range = Instrument.Count })
+                    merge_into(built_set, { range = Instrument.Count })
                     -- Potency / Instruments
                 else
                     -- Defined Gear Set
                     if sets.Midcast[spell.english] then
-                        built_set = set_combine(built_set, sets.Midcast[spell.english])
+                        merge_into(built_set, sets.Midcast[spell.english])
                         info('[' .. spell.english .. '] Set')
                         -- Equip Harp
                     elseif spell.name:contains('Horde') then
                         if sets.Midcast.Enfeebling then
-                            built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                            merge_into(built_set, sets.Midcast.Enfeebling)
                         else
                             warn('sets.Midcast.Enfeebling not found!')
                         end
-                        built_set = set_combine(built_set, { range = Instrument.AOE_Sleep })
+                        merge_into(built_set, { range = Instrument.AOE_Sleep })
                         info('[' .. spell.english .. '] Set (AOE Sleep)')
                         -- Normal Enfeebles
                     elseif Enfeebling_Song:contains(spell.english) then
                         if sets.Midcast.Enfeebling then
-                            built_set = set_combine(built_set, sets.Midcast.Enfeebling)
+                            merge_into(built_set, sets.Midcast.Enfeebling)
                         else
                             warn('sets.Midcast.Enfeebling not found!')
                         end
-                        built_set = set_combine(built_set, { range = Instrument.Enfeebling })
+                        merge_into(built_set, { range = Instrument.Enfeebling })
                         info('[' .. spell.english .. '] Set (Enfeebling)')
                         -- Augment the buff songs
                     else
                         info('[' .. spell.english .. '] Set (Potency)')
-                        built_set = set_combine(built_set, { range = Instrument.Potency })
+                        merge_into(built_set, { range = Instrument.Potency })
                     end
                     -- Augment the specific Song if set
-                    built_set = set_combine(built_set, equip_song_gear(spell, built_set['range']))
+                    merge_into(built_set, equip_song_gear(spell, built_set['range']))
                 end
                 -- BlueMagic
             elseif spell.type == 'BlueMagic' then
                 -- Defined Set
                 if sets.Midcast[spell.english] then
-                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                    merge_into(built_set, sets.Midcast[spell.english])
                     -- Check for an elemental set
                     if BlueNuke:contains(spell.english) then built_set = elemental_check(spell, built_set) end
                     info('[' .. spell.english .. '] Set')
                 else
                     if sets.Midcast.BlueMagic then
-                        -- Defined Blue Nukes
-                        if BlueNuke:contains(spell.english) then
+                        -- Physical blue magic: damage comes from mainhand weapon
+                        -- accuracy, DEX/Accuracy and physical Attack.  Deliberately skips
+                        -- elemental_check -- obi and Orpheus scale magic damage only.
+                        if BluePhysical:contains(spell.english) then
+                            if sets.Midcast.BlueMagic.Physical then
+                                merge_into(built_set, sets.Midcast.BlueMagic.Physical)
+                                info('Blue Physical set')
+                            else
+                                warn('sets.Midcast.BlueMagic.Physical not found!')
+                            end
+                            -- Breath damage scales off the caster's HP and level only.
+                            -- MAB, INT and Blue Magic Skill contribute nothing, so this
+                            -- also skips elemental_check.
+                        elseif BlueBreath:contains(spell.english) then
+                            if sets.Midcast.BlueMagic.Breath then
+                                merge_into(built_set, sets.Midcast.BlueMagic.Breath)
+                                info('Blue Breath set')
+                            else
+                                warn('sets.Midcast.BlueMagic.Breath not found!')
+                            end
+                            -- Defined Blue Nukes
+                        elseif BlueNuke:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Nuke then
-                                built_set = set_combine(built_set, sets.Midcast.BlueMagic.Nuke)
+                                merge_into(built_set, sets.Midcast.BlueMagic.Nuke)
                                 info('Blue Nuke set')
                             else
                                 warn('sets.Midcast.BlueMagic.Nuke not found!')
@@ -2289,28 +2383,37 @@ do
                             -- Spells that benifit from Blue Magic Skill
                         elseif BlueSkill:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Skill then
-                                built_set = set_combine(built_set, sets.Midcast.BlueMagic.Skill)
+                                merge_into(built_set, sets.Midcast.BlueMagic.Skill)
                                 info('Blue Skill set')
                             else
                                 warn('sets.Midcast.BlueMagic.Skill not found!')
                             end
+                            -- Fixed-potency buffs: only duration is influenced by gear,
+                            -- so these must not borrow the skill set.
+                        elseif BlueBuff:contains(spell.english) then
+                            if sets.Midcast.BlueMagic.Buff then
+                                merge_into(built_set, sets.Midcast.BlueMagic.Buff)
+                                info('Blue Buff set')
+                            else
+                                warn('sets.Midcast.BlueMagic.Buff not found!')
+                            end
                         elseif BlueTank:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Enmity then
-                                built_set = set_combine(built_set, sets.Midcast.BlueMagic.Enmity)
+                                merge_into(built_set, sets.Midcast.BlueMagic.Enmity)
                                 info('Blue Enmity set')
                             else
                                 warn('sets.Midcast.BlueMagic.Enmity not found!')
                             end
                         elseif BlueHealing:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Healing then
-                                built_set = set_combine(built_set, sets.Midcast.BlueMagic.Healing)
+                                merge_into(built_set, sets.Midcast.BlueMagic.Healing)
                                 info('Blue Cure set')
                             else
                                 warn('sets.Midcast.BlueMagic.Healing not found!')
                             end
                         elseif BlueACC:contains(spell.english) then
                             if sets.Midcast.BlueMagic.ACC then
-                                built_set = set_combine(built_set, sets.Midcast.BlueMagic.ACC)
+                                merge_into(built_set, sets.Midcast.BlueMagic.ACC)
                                 info('Blue Magic Accuracy set')
                             else
                                 warn('sets.Midcast.BlueMagic.ACC not found!')
@@ -2321,7 +2424,7 @@ do
                         end
                         if buffactive["Diffusion"] then
                             if sets.Diffusion then
-                                built_set = set_combine(built_set, sets.Diffusion)
+                                merge_into(built_set, sets.Diffusion)
                                 info('Diffusion Augment')
                             else
                                 warn('sets.Diffusion not found!')
@@ -2336,15 +2439,15 @@ do
                 if sets.Geomancy then
                     -- Defined Set
                     if sets.Geomancy[spell.english] then
-                        built_set = set_combine(built_set, sets.Geomancy[spell.english])
+                        merge_into(built_set, sets.Geomancy[spell.english])
                         info('[' .. spell.english .. '] Set')
                         -- Indi Equipment
                     elseif Indicolure_List:contains(spell.english) then
                         if sets.Geomancy.Indi then
-                            built_set = set_combine(built_set, sets.Geomancy.Indi)
+                            merge_into(built_set, sets.Geomancy.Indi)
                             if spell.target.type ~= "SELF" then
                                 if sets.Geomancy.Indi.Entrust then
-                                    built_set = set_combine(built_set, sets.Geomancy.Indi.Entrust)
+                                    merge_into(built_set, sets.Geomancy.Indi.Entrust)
                                     info('Indicolure set - Entrust')
                                 else
                                     warn('sets.Geomancy.Indi.Entrust not found!')
@@ -2358,7 +2461,7 @@ do
                         -- Bubble Equipment
                     elseif Geomancy_List:contains(spell.english) then
                         if sets.Geomancy.Geo then
-                            built_set = set_combine(built_set, sets.Geomancy.Geo)
+                            merge_into(built_set, sets.Geomancy.Geo)
                             info('Geomancy set')
                         else
                             warn('sets.Geomancy.Geo not found!')
@@ -2378,10 +2481,10 @@ do
                 -- BP Timer gear needs to swap here if not under Astral Conduit
                 if not buffactive["Astral Conduit"] then
                     if sets.Midcast[spell.english] then
-                        built_set = set_combine(built_set, sets.Midcast[spell.english])
+                        merge_into(built_set, sets.Midcast[spell.english])
                         info('[' .. spell.english .. '] Set')
                     elseif sets.Midcast.BP then
-                        built_set = set_combine(built_set, sets.Midcast.BP)
+                        merge_into(built_set, sets.Midcast.BP)
                         info('Blood Pact Set')
                     else
                         warn('sets.Midcast.BP not found!')
@@ -2393,7 +2496,7 @@ do
                 -- Monster
             elseif spell.type == 'Monster' then
                 if sets.Ready then
-                    built_set = set_combine(built_set, sets.Ready)
+                    merge_into(built_set, sets.Ready)
                     info('[Ready] Set')
                 else
                     warn('sets.Ready not found!')
@@ -2401,11 +2504,11 @@ do
                 -- Elemental Siphon
             elseif spell.name == "Elemental Siphon" then
                 if sets.Midcast[spell.english] then
-                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                    merge_into(built_set, sets.Midcast[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     if sets.Midcast.SummoningMagic then
-                        built_set = set_combine(built_set, sets.Midcast.SummoningMagic)
+                        merge_into(built_set, sets.Midcast.SummoningMagic)
                         info('Summoning Magic Set')
                     else
                         warn('sets.Midcast.SummoningMagic not found!')
@@ -2414,11 +2517,11 @@ do
                 -- Summon Avatar
             elseif spell.type == "SummonerPact" then
                 if sets.Midcast[spell.english] then
-                    built_set = set_combine(built_set, sets.Midcast[spell.english])
+                    merge_into(built_set, sets.Midcast[spell.english])
                     info('[' .. spell.english .. '] Set')
                 else
                     if sets.Midcast.Summon then
-                        built_set = set_combine(built_set, sets.Midcast.Summon)
+                        merge_into(built_set, sets.Midcast.Summon)
                         info('Summon Magic Set')
                     else
                         warn('sets.Midcast.Summon not found!')
@@ -2444,19 +2547,19 @@ do
             if spell.type == 'Geomancy' then
                 log('Swap Weapon due to Geomancy')
             elseif state.WeaponMode.value == "Locked" then
-                built_set = set_combine(built_set,
+                merge_into(built_set,
                     { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
                 log(built_set)
             else
                 if sets.Weapons then
                     if sets.Weapons[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Weapons[state.WeaponMode.value])
+                        merge_into(built_set, sets.Weapons[state.WeaponMode.value])
                     else
                         warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
                     end
                     if not TwoHand and not DualWield then
                         if sets.Weapons.Shield then
-                            built_set = set_combine(built_set, sets.Weapons.Shield)
+                            merge_into(built_set, sets.Weapons.Shield)
                         else
                             warn('sets.Weapons.Shield not found!')
                         end
@@ -2471,12 +2574,12 @@ do
         if spell.type == 'BardSong' then --and spell.target.type ~= 'MONSTER' then
             -- Weapons
             if sets.Weapons.Songs then
-                built_set = set_combine(built_set, sets.Weapons.Songs)
+                merge_into(built_set, sets.Weapons.Songs)
                 if sets.Weapons.Songs.Midcast then
-                    built_set = set_combine(built_set, sets.Weapons.Songs.Midcast)
+                    merge_into(built_set, sets.Weapons.Songs.Midcast)
                     if not DualWield and not TwoHand then
                         if sets.Weapons.Shield then
-                            built_set = set_combine(built_set, sets.Weapons.Shield)
+                            merge_into(built_set, sets.Weapons.Shield)
                         else
                             warn('sets.Weapons.Shield not found!')
                         end
@@ -2494,7 +2597,7 @@ do
                 if Instrument then
                     --Check for pianissimo Weapons
                     if Instrument.Pianissimo then
-                        built_set = set_combine(built_set, { range = equip_pianissimo_gear(spell) })
+                        merge_into(built_set, { range = equip_pianissimo_gear(spell) })
                     else
                         warn('Instrument.Pianissimo not found!')
                     end
@@ -2505,7 +2608,7 @@ do
         end
         -- If TH mode is on - check if new mob and then equip TH gear
         if state.TreasureMode.value ~= 'None' and spell.target.type == 'MONSTER' and not th_info.tagged_mobs[spell.target.id] and sets.TreasureHunter then
-            built_set = set_combine(built_set, sets.TreasureHunter)
+            merge_into(built_set, sets.TreasureHunter)
             info('[' .. spell.english .. '] Set with Treasure Hunter')
         end
         -- Built built_set to return
@@ -2539,9 +2642,7 @@ do
         --Calls the function in the include file for basic checks
         pretargetcheck(spell, action)
         --Calls the job specific function
-        if pretarget_custom(spell, action) then
-            pretarget_custom(spell, action)
-        end
+        if pretarget_custom then pretarget_custom(spell, action) end
     end
 
     -------------------------------------------------------------------------------------------------------------------
@@ -2620,15 +2721,24 @@ do
         --Reset state for spell-received gear tracking
         if state.SpellReceived.value ~= 'OFF' and outgoing_cast_active then
             outgoing_cast_active = false
-            if settings.debug then debug(string.format("IPC message sent: MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time())) end
+            if settings.debug then
+                debug(string.format("IPC message sent: MIRDAIN|COMPLETE|%s|%.0f", player.name,
+                    get_time()))
+            end
             send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
             if accession_predicted and not spell.interrupted and spell.type == "WhiteMagic" then
                 accession_predicted = false
-                if settings.debug then debug("Accessioned spell probably used while tracking. Accession_Predicted = False") end
+                if settings.debug then
+                    debug(
+                        "Accessioned spell probably used while tracking. Accession_Predicted = False")
+                end
             end
             if divine_seal_predicted and not spell.interrupted and spell.type == "WhiteMagic" and spell.skill == "Healing Magic" then
                 divine_seal_predicted = false
-                if settings.debug then debug("Divine Sealed spell probably used while tracking. Divine_Seal_Predicted = False") end
+                if settings.debug then
+                    debug(
+                        "Divine Sealed spell probably used while tracking. Divine_Seal_Predicted = False")
+                end
             end
         end
         --Generate the correct set from the include file and custom function
@@ -2977,12 +3087,13 @@ do
     end
 
     --Helper function for checking if player has an item available to equip.
-    -- 0 = Main Inventory
-    -- 8, 9, 10, 11 = Wardrobes 1-4
-    -- 12, 13, 14, 15 = Wardrobes 5-8
-    local ITEM_SEARCH_BAGS = { 0, 8, 9, 10, 11, 12, 13, 14, 15 }
+    --Bag ids per res/bags.lua:
+    --   0 = Inventory, 8 = Wardrobe, 10-15 = Wardrobes 2-7, 16 = Wardrobe 8.
+    --Bag 9 is Safe 2 (equippable=false) and is deliberately excluded; an item there
+    --cannot be equipped, so reporting it as available would lock slots on nothing.
+    local ITEM_SEARCH_BAGS = { 0, 8, 10, 11, 12, 13, 14, 15, 16 }
     local function has_item(item_id)
-       for _, bag_id in ipairs(ITEM_SEARCH_BAGS) do
+        for _, bag_id in ipairs(ITEM_SEARCH_BAGS) do
             local bag = windower.ffxi.get_items(bag_id)
             if bag then
                 for _, item in ipairs(bag) do
@@ -3987,20 +4098,20 @@ do
 
                 -- Check for bonus
                 if spell.element == world.day_element then
-                    if Obi then built_set = set_combine(built_set, { waist = "Hachirin-no-Obi" }) end
+                    if Obi then merge_into(built_set, { waist = "Hachirin-no-Obi" }) end
                     if Staff then
-                        built_set = set_combine(built_set, sets.Weapons['Light Bonus'],
-                            { main = "Chatoyant Staff" })
+                        merge_into(built_set, sets.Weapons['Light Bonus'])
+                        merge_into(built_set, { main = "Chatoyant Staff" })
                     end
-                    if Cape then built_set = set_combine(built_set, { back = "Twilight Cape" }) end
+                    if Cape then merge_into(built_set, { back = "Twilight Cape" }) end
                     windower.add_to_chat(8, '[' .. world.day_element .. '] day - using Bonus Gear')
                 elseif world.weather_element == spell.element then
-                    if Obi then built_set = set_combine(built_set, { waist = "Hachirin-no-Obi" }) end
+                    if Obi then merge_into(built_set, { waist = "Hachirin-no-Obi" }) end
                     if Staff then
-                        built_set = set_combine(built_set, sets.Weapons['Light Bonus'],
-                            { main = "Chatoyant Staff" })
+                        merge_into(built_set, sets.Weapons['Light Bonus'])
+                        merge_into(built_set, { main = "Chatoyant Staff" })
                     end
-                    if Cape then built_set = set_combine(built_set, { back = "Twilight Cape" }) end
+                    if Cape then merge_into(built_set, { back = "Twilight Cape" }) end
                     windower.add_to_chat(8, 'Weather is [' .. world.weather_element .. '] - using Bonus Gear')
                 end
             end
@@ -4022,20 +4133,20 @@ do
 
             -- Matching double weather (w/o day conflict).
             if spell.element == world.weather_element and world.weather_intensity == 2 and Obi then
-                built_set = set_combine(built_set, { waist = "Hachirin-no-Obi" })
+                merge_into(built_set, { waist = "Hachirin-no-Obi" })
                 info('Weather is Double [' .. world.weather_element .. '] - using Hachirin-no-Obi')
                 -- Matching day and weather.
             elseif spell.element == world.day_element and spell.element == world.weather_element and Obi then
-                built_set = set_combine(built_set, { waist = "Hachirin-no-Obi" })
+                merge_into(built_set, { waist = "Hachirin-no-Obi" })
                 info('[' ..
                     world.day_element .. '] day and weather is [' .. world.weather_element .. '] - using Hachirin-no-Obi')
                 -- Target distance less than 6 yalms
             elseif spell.target.distance < (6 + spell.target.model_size) and Osash then
-                built_set = set_combine(built_set, { waist = "Orpheus's Sash" })
+                merge_into(built_set, { waist = "Orpheus's Sash" })
                 info('Distance is [' .. round(spell.target.distance, 2) .. '] using Orpheus Sash')
                 -- Match day or weather.
             elseif (spell.element == world.day_element or spell.element == world.weather_element) and Obi then
-                built_set = set_combine(built_set, { waist = "Hachirin-no-Obi" })
+                merge_into(built_set, { waist = "Hachirin-no-Obi" })
                 info('[' ..
                     world.day_element .. '] day and weather is [' .. world.weather_element .. '] - using Hachirin-no-Obi')
             end
@@ -4190,8 +4301,10 @@ do
                 local spell_id = split_msg[5] or "Missing Spell ID"
                 local time_sent = tonumber(split_msg[6]) or 9999999999999
                 local time_received = get_time()
-                if settings.debug then debug("Targeted IPC Message Received: " ..
-                    msg .. " after " .. (time_received - time_sent) .. " ms") end
+                if settings.debug then
+                    debug("Targeted IPC Message Received: " ..
+                        msg .. " after " .. (time_received - time_sent) .. " ms")
+                end
 
                 if next(active_incoming_casters) == nil then
                     cast_start_time = time_sent
@@ -4200,10 +4313,16 @@ do
 
                 -- Add caster to active pool and refresh failsafe timer
                 active_incoming_casters[caster_name] = true
-                if settings.debug then debug(caster_name .. " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")") end
+                if settings.debug then
+                    debug(caster_name ..
+                        " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")")
+                end
                 failsafe_active = true
                 failsafe_trigger_time = os.clock() + settings.delay
-                if settings.debug then debug(player.name .. " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.") end
+                if settings.debug then
+                    debug(player.name ..
+                        " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.")
+                end
             end
         elseif msg:startswith('MIRDAIN|ABILITY|') then
             local split_msg = msg:split("|")
@@ -4213,8 +4332,10 @@ do
                 local spell_id = split_msg[5] or "Missing Spell ID"
                 local time_sent = tonumber(split_msg[6]) or 9999999999999
                 local time_received = get_time()
-                if settings.debug then debug("Targeted IPC Message Received: " ..
-                    msg .. " after " .. (time_received - time_sent) .. " ms") end
+                if settings.debug then
+                    debug("Targeted IPC Message Received: " ..
+                        msg .. " after " .. (time_received - time_sent) .. " ms")
+                end
 
                 if next(active_incoming_casters) == nil then
                     cast_start_time = time_sent
@@ -4223,10 +4344,16 @@ do
 
                 -- Add caster to active pool and refresh failsafe timer
                 active_incoming_casters[caster_name] = true
-                if settings.debug then debug(caster_name .. " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")") end
+                if settings.debug then
+                    debug(caster_name ..
+                        " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")")
+                end
                 failsafe_active = true
                 failsafe_trigger_time = os.clock() + settings.delay
-                if settings.debug then debug(player.name .. " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.") end
+                if settings.debug then
+                    debug(player.name ..
+                        " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.")
+                end
             end
         elseif msg:startswith('MIRDAIN|COMPLETE|') then
             if next(active_incoming_casters) ~= nil then
@@ -4236,10 +4363,13 @@ do
                 local time_sent = tonumber(split_msg[4])
                 if active_incoming_casters[caster_name] then
                     active_incoming_casters[caster_name] = nil
-                    if settings.debug then debug(caster_name ..
-                        " finished casting after " ..
-                        (time_sent - cast_start_time) ..
-                        " ms and is removed from Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")") end
+                    if settings.debug then
+                        debug(caster_name ..
+                            " finished casting after " ..
+                            (time_sent - cast_start_time) ..
+                            " ms and is removed from Active Incoming Casters (" ..
+                            count_keys(active_incoming_casters) .. ")")
+                    end
                     if next(active_incoming_casters) == nil then
                         if settings.debug then debug("No active incoming casts remain. Resetting gear.") end
                         if state.SpellReceived.value == 'ON-Locked' then
@@ -4274,7 +4404,6 @@ do
     end)
 
     windower.register_event('gain buff', function(id)
-        local name = res.buffs[id].en
         if id == 6 and (Mage_Job:contains(player.main_job) or Mage_Job:contains(player.sub_job)) then
             if player.inventory['Remedy'] ~= nil then
                 if AutoItem == true then
@@ -4355,7 +4484,8 @@ do
     end)
 
     windower.register_event('lose buff', function(id)
-        local name = res.buffs[id].en
+        local buff = res.buffs[id]
+        local name = buff and buff.en or tostring(id)
         local gain = false
         --Unlock cursna received gear if not tracking party spellcasting through IPC
         if id == 15 and state.SpellReceived.value == "OFF" then -- Doom
@@ -4400,10 +4530,14 @@ do
             windower.send_command('sm on')
         end
     end)
-    ]]--
+    ]] --
 
-    -- Section used to determine if player is performing an action
-    windower.register_event('action', function(data)
+    -- Section used to determine if player is performing an action.
+    -- raw_register_event skips user_equip_sets, which otherwise runs refresh_globals()
+    -- plus a full equip_sets() pass for every action by every entity in range.  This
+    -- handler only reads state and issues send_commands (UnlockByMode, equip_set_command,
+    -- run_burst), so it needs neither.  See GearSwap user_functions.lua:265 vs :284.
+    windower.raw_register_event('action', function(data)
         if data ~= nil then
             --log('cat='..data.category..',param='..data.param)
             if data.actor_id == player.id then
@@ -4494,14 +4628,14 @@ do
         -- Combat Checks
         if player.status == "Engaged" then
             if sets.OffenseMode then
-                built_set = sets.OffenseMode
+                merge_into(built_set, sets.OffenseMode)
                 if sets.OffenseMode[state.OffenseMode.value] then
-                    built_set = set_combine(built_set, sets.OffenseMode[state.OffenseMode.value])
+                    merge_into(built_set, sets.OffenseMode[state.OffenseMode.value])
                     -- Check the weapons
                     if state.WeaponMode.value ~= "Locked" then
                         if sets.Weapons then
                             if sets.Weapons[state.WeaponMode.value] then
-                                built_set = set_combine(built_set, sets.Weapons[state.WeaponMode.value])
+                                merge_into(built_set, sets.Weapons[state.WeaponMode.value])
                             else
                                 warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
                             end
@@ -4511,13 +4645,13 @@ do
                         -- Equip sub weapon based off mode
                         if not DualWield and not TwoHand then
                             if sets.Weapons.Shield then
-                                built_set = set_combine(built_set, sets.Weapons.Shield)
+                                merge_into(built_set, sets.Weapons.Shield)
                             else
                                 warn('sets.Weapons.Shield not found!')
                             end
                         elseif DualWield then
                             if sets.DualWield then
-                                built_set = set_combine(built_set, sets.DualWield)
+                                merge_into(built_set, sets.DualWield)
                             else
                                 warn('sets.DualWield not found!')
                             end
@@ -4527,35 +4661,35 @@ do
                     if state.JobMode.value == "Ranged" then
                         log('Ranged Mode')
                         if sets.Idle and sets.Idle[state.OffenseMode.value] then
-                            built_set = set_combine(built_set, sets.Idle[state.OffenseMode.value])
+                            merge_into(built_set, sets.Idle[state.OffenseMode.value])
                         else
                             warn('sets.Idle.' .. state.OffenseMode.value .. ' not found!')
                         end
                     end
                     -- Check if AM3 is active
                     if buffactive['Aftermath: Lv.3'] and sets.OffenseMode.AM3 and sets.OffenseMode.AM3[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.OffenseMode.AM3[state.WeaponMode.value])
+                        merge_into(built_set, sets.OffenseMode.AM3[state.WeaponMode.value])
                     elseif buffactive['Aftermath: Lv.2'] and sets.OffenseMode.AM2 and sets.OffenseMode.AM2[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.OffenseMode.AM2[state.WeaponMode.value])
+                        merge_into(built_set, sets.OffenseMode.AM2[state.WeaponMode.value])
                     elseif buffactive['Aftermath: Lv.1'] and sets.OffenseMode.AM1 and sets.OffenseMode.AM1[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.OffenseMode.AM1[state.WeaponMode.value])
+                        merge_into(built_set, sets.OffenseMode.AM1[state.WeaponMode.value])
                     elseif buffactive['Aftermath'] and sets.OffenseMode.AM and sets.OffenseMode.AM[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.OffenseMode.AM[state.WeaponMode.value])
+                        merge_into(built_set, sets.OffenseMode.AM[state.WeaponMode.value])
                     end
                     -- Check if TreasureMode is activew
                     if state.TreasureMode.value ~= 'None' then
                         if sets.TreasureHunter then
                             -- Equip TH gear if mob is not marked as tagged
                             if not th_info.tagged_mobs[player.target.id] then
-                                built_set = set_combine(built_set, sets.TreasureHunter)
+                                merge_into(built_set, sets.TreasureHunter)
 
                                 -- Equip TH gear if TreasureMode is Full Time
                             elseif state.TreasureMode.value == 'Full Time' then
-                                built_set = set_combine(built_set, sets.TreasureHunter)
+                                merge_into(built_set, sets.TreasureHunter)
 
                                 -- Equip TH gear if TreasureMode is SATA and either SA, TA or Feint is active
                             elseif state.TreasureMode.value == 'SATA' and (buffactive['Sneak Attack'] or buffactive['Trick Attack'] or buffactive['Feint']) then
-                                built_set = set_combine(built_set, sets.TreasureHunter)
+                                merge_into(built_set, sets.TreasureHunter)
                             end
                         else
                             warn('sets.TreasureHunter not found!')
@@ -4570,11 +4704,11 @@ do
             -- Idle sets
         else
             if sets.Idle then
-                built_set = sets.Idle
+                merge_into(built_set, sets.Idle)
 
                 -- Idle state
                 if sets.Idle[state.OffenseMode.value] then
-                    built_set = set_combine(built_set, sets.Idle[state.OffenseMode.value])
+                    merge_into(built_set, sets.Idle[state.OffenseMode.value])
                 else
                     warn('sets.Idle.' .. state.OffenseMode.value .. ' not found!')
                 end
@@ -4582,7 +4716,7 @@ do
                 -- Resting condition
                 if player.status == "Resting" then
                     if sets.Idle.Resting then
-                        built_set = set_combine(built_set, sets.Idle.Resting)
+                        merge_into(built_set, sets.Idle.Resting)
                     else
                         warn('sets.Idle.Resting not found!')
                     end
@@ -4590,13 +4724,13 @@ do
 
                 -- Check the weapons
                 if state.WeaponMode.value == "Locked" then
-                    built_set = set_combine(built_set,
+                    merge_into(built_set,
                         { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
                     log(built_set)
                 else
                     if sets.Weapons then
                         if sets.Weapons[state.WeaponMode.value] then
-                            built_set = set_combine(built_set, sets.Weapons[state.WeaponMode.value])
+                            merge_into(built_set, sets.Weapons[state.WeaponMode.value])
                         else
                             warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
                         end
@@ -4607,7 +4741,7 @@ do
                     -- Check for sub weapon
                     if not TwoHand and not DualWield then
                         if sets.Weapons.Shield then
-                            built_set = set_combine(built_set, sets.Weapons.Shield)
+                            merge_into(built_set, sets.Weapons.Shield)
                         else
                             warn('sets.Weapons.Shield not found!')
                         end
@@ -4617,7 +4751,7 @@ do
                 --Pet specific checks
                 if pet.isvalid then
                     if sets.Idle.Pet then
-                        built_set = set_combine(built_set, sets.Idle.Pet)
+                        merge_into(built_set, sets.Idle.Pet)
                     else
                         warn('sets.Idle.Pet not found!')
                     end
@@ -4625,7 +4759,7 @@ do
                 -- Equip Sublimation gear
                 if buffactive[187] then
                     if sets.Idle.Sublimation then
-                        built_set = set_combine(built_set, sets.Idle.Sublimation)
+                        merge_into(built_set, sets.Idle.Sublimation)
                     else
                         warn('sets.Idle.Sublimation not found!')
                     end
@@ -4633,7 +4767,7 @@ do
                 -- Equip movement gear
                 if is_moving then
                     if sets.Movement then
-                        built_set = set_combine(built_set, sets.Movement)
+                        merge_into(built_set, sets.Movement)
                     else
                         warn('sets.Movement not found!')
                     end
@@ -4645,7 +4779,7 @@ do
 
         -- Variable Ammo
         if Ammo and Ammo[state.OffenseMode.value] then
-            built_set = set_combine(built_set,
+            merge_into(built_set,
                 { ammo = Ammo[state.OffenseMode.value] })
         end
 
