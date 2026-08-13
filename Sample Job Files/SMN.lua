@@ -104,7 +104,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -192,7 +192,7 @@ function get_sets()
 		left_ear="Digni. Earring",
 		right_ear="Hermetic Earring",
 		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		right_ring={name="Stikini Ring +1", bag="wardrobe"},
 		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
 	}
 
@@ -209,7 +209,7 @@ function get_sets()
 		left_ear="Digni. Earring",
 		right_ear="Hermetic Earring",
 		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		right_ring={name="Stikini Ring +1", bag="wardrobe"},
 		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
 	}
 
@@ -228,7 +228,7 @@ function get_sets()
 		left_ear="C. Palug Earring",
 		right_ear="Andoaa Earring",
 		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		right_ring={name="Stikini Ring +1", bag="wardrobe"},
 		back="Solemnity Cape",
 	}
 	sets.Midcast.Summon = set_combine(sets.Idle, {
@@ -248,7 +248,7 @@ function get_sets()
 		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
 		right_ear="Friomisi Earring",
 		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		right_ring={name="Stikini Ring +1", bag="wardrobe"},
 		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
 	}
 
@@ -321,7 +321,7 @@ function get_sets()
 		left_ear="Lugalbanda Earring",
 		right_ear="Beck. Earring +1",
 		left_ring={name="Varar Ring +1", bag="wardrobe2"},
-		right_ring={name="Varar Ring +1", bag="wardrobe1"},
+		right_ring={name="Varar Ring +1", bag="wardrobe"},
 		back={ name="Campestres's Cape", augments={'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20','Eva.+20 /Mag. Eva.+20','Pet: Attack+10 Pet: Rng.Atk.+10','Pet: "Regen"+10','Pet: Damage taken -5%',}},
 	}
 	-- Some magic pacts benefit more from TP than others.
@@ -392,19 +392,19 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if pet.isvalid and not buffactive["Avatar\'s Favor"] and spell.name ~= "Avatar\'s Favor" then
 		add_to_chat(8,'Avatar\'s Favor is Down')
 	end
@@ -412,24 +412,24 @@ function aftercast_custom(spell)
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	-- Select initial macro set and set lockstyle
 	-- This section likely requires changes or removal if you aren't Pergatory Macro layout
 	if pet and gain then
@@ -462,7 +462,7 @@ function pet_change_custom(pet,gain)
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 		-- This section is for SMN Blood Pact abilities
 		if player.main_job == "SMN" then
 			is_Busy = true
@@ -527,7 +527,7 @@ function pet_midcast_custom(spell)
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
