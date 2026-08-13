@@ -123,7 +123,7 @@ TH .  SR .  HOX o  STN <DT>  DPS <Black Halo>  MDE <Melee>
 | Hollow circle, grey | Mode is off (`None` / `OFF`) |
 | Value between triangles | A cycling mode — press its key, or `//gs c <mode> <value>` |
 
-TH, SR (SpellReceived) and HOX (Hoxne) are drawn as a circle only. Their whole state fits in one colour, which is what keeps the box narrow. Every other mode keeps its **full text**, so the weapon or job function currently selected is always readable.
+TH, SR (SpellReceived) and HOX (Hoxne) status is indicated by a colored circle. Every other mode shows **full text**, so the weapon or job function currently selected is always readable.
 
 **Sizing.** Column widths come from each mode's complete list of options rather than its current value, so cycling a mode never resizes the stacked box — it stays a fixed width for as long as a job is loaded. The glyph header sets a 17-cell floor that most jobs never exceed, which also keeps the box near-identical across job changes. The one-line layout deliberately flexes with the current values to stay as short as possible.
 
@@ -140,7 +140,7 @@ TH, SR (SpellReceived) and HOX (Hoxne) are drawn as a circle only. Their whole s
 
 ### Moving and saving the boxes
 
-Drag either box with the left mouse button. The position is written to disk automatically when you release, and the save is **silent** — there is no chat confirmation. This is handled by Windower's own text library rather than by a mouse hook in the include, so moving the cursor costs nothing extra.
+Drag either box with the left mouse button. The position is written to disk automatically when you release, and the save is **silent** — there is no chat confirmation. Display position saving is performed via Windower's text library and not by an explicit config.save.
 
 You can also save manually with `//gs c save`, reset a lost box to the top-left corner with `//gs c zero`, hide the status box with `//gs c display`, and switch between one-line and stacked layouts with `//gs c displaymode`.
 
@@ -217,7 +217,7 @@ Defaults to `Full Time` on THF and `None` on every other job. Tagged monsters ar
 
 ### AutoBuff — self-buffing
 
-When on, the engine checks roughly ten times a second whether you are missing a buff it can reapply, and uses it. Disabled in towns, and while asleep, stunned, terrorized, paralyzed, silenced or muddled.  This is leftover from development prior to the use of other automation tools.  Usable if manually single boxing.  Leave off if using other automation software.
+When on, the engine checks roughly ten times a second whether you are missing a buff it can reapply, and uses it. Disabled in towns, and while asleep, stunned, terrorized, paralyzed, silenced or muddled.  This is leftover from development prior to the use of other automation tools.  Usable if manually playing.  Leave this setting turned off if using other automation software.
 
 - **Options:** `OFF` `ON`
 - **Command:** `//gs c AutoBuff ON`
@@ -755,7 +755,7 @@ Exactly what it says — the engine wanted a set you have not defined. Add it to
 sets.Weapons.Sleep = {}
 ```
 
-Silence these with `//gs c warn` once your file is finished.
+Silence these with `//gs c warn` once your file is finished loading.
 
 ### Gear is not swapping
 
