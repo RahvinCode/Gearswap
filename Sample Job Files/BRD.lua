@@ -131,12 +131,21 @@ function get_sets()
 	--Used to swap into movement gear when the player is detected movement when not engaged
 	sets.Movement = { feet="Fili Cothurnes +3"}
 
-	-- Set to be used if you get cursna casted on you
+	--Spell Received Sets
+	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
 	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
+	}
+	sets.Phalanx_Received = {}
+	sets.Protect_Shell_Received = {}
+	sets.Regen_Received = {}
+	sets.Refresh_Received = {}
+	sets.Waltz_Received = {}
+	sets.Holy_Water = {
+	    neck="Nicander's Necklace",
 	}
 
 	--The following sets augment the base TP set 
