@@ -696,37 +696,37 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 	equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = Job_Mode_Check(equipSet)
 	return equipSet
 end
