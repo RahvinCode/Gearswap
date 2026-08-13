@@ -83,7 +83,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear="Etiolation Earring",
 		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={ name="Moonlight Ring", bag="wardrobe1", priority=2},
+		left_ring={ name="Moonlight Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Moonlight Ring", bag="wardrobe2", priority=1},
 		back={ name="Artio's Mantle", augments={'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20','Accuracy+20 Attack+20','Accuracy+10','"Store TP"+10','Damage taken-5%',}},
     }
@@ -113,7 +113,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -149,7 +149,7 @@ function get_sets()
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {
 		body="Malignance Tabard",
 		legs="Malignance Tights",
-		left_ring={ name="Moonlight Ring", bag="wardrobe1", priority=2},
+		left_ring={ name="Moonlight Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Moonlight Ring", bag="wardrobe2", priority=1},
 		back={ name="Artio's Mantle", augments={'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20','Accuracy+20 Attack+20','Accuracy+10','"Store TP"+10','Damage taken-5%',}},
 	})
