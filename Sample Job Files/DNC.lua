@@ -434,7 +434,7 @@ end
 
 --Function used to automate Job Ability use
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 
 	if player.sub_job == 'SAM' and player.sub_job_level > 8 then
@@ -459,7 +459,7 @@ function check_buff_JA()
 end
 
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	--local sp_recasts = windower.ffxi.get_spell_recasts()
 	return buff
 end
