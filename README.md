@@ -1,6 +1,6 @@
 # Mirdain-Include Enhanced
 
-**Version 1.6.3** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 1.6.4** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
 Enhanced version of Mirdain-Include, created by Rahvin. Check your running version in game with `//gs c version`.
 
