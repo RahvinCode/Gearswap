@@ -524,7 +524,7 @@ end
 
 --Function used to automate Job Ability use
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	if os.clock() - buff_time > Buff_Delay then
 		local ja_recasts = windower.ffxi.get_ability_recasts()
 
@@ -569,7 +569,7 @@ end
 
 --Function used to automate Spell use
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	if os.clock() - buff_time > Buff_Delay then
 		local sp_recasts = windower.ffxi.get_spell_recasts()
 		if not buffactive['Enmity Boost'] and sp_recasts[476] == 0 and player.mp > 18 and player.main_job_level > 87 then
@@ -596,7 +596,7 @@ function check_buff_SP()
 end
 
 function check_tank()
-	buff = 'None'
+	local buff = 'None'
 	if os.clock() - tank_time > Tank_Delay then
 		if (player.status == "Engaged" or windower.ffxi.get_player().target_locked) and state.JobMode.value == "ON" then
 			local sp_recasts = windower.ffxi.get_spell_recasts()
