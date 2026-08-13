@@ -168,12 +168,21 @@ function get_sets()
 		legs={ name="Carmine Cuisses +1", augments={'HP+80','STR+12','INT+12',}, priority=1},
     } -- 73 PDT / 33 MDT		3028 HP / 963 MP
 
-	-- Set to be used if you get 
+	--Spell Received Sets
+	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
 	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
+	}
+	sets.Phalanx_Received = {}
+	sets.Protect_Shell_Received = {}
+	sets.Regen_Received = {}
+	sets.Refresh_Received = {}
+	sets.Waltz_Received = {}
+	sets.Holy_Water = {
+	    neck="Nicander's Necklace",
 	}
 
 	sets.Embolden = { back={ name="Evasionist's Cape", augments={'Enmity+1','"Embolden"+15','"Dbl.Atk."+1',}},}
