@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------
--===          Mirdain Gearswap Enhanced by Rahvin                     ===-
+--===          Mirdain Gearswap Enhanced by Rahvin                   ===--
 --------------------------------------------------------------------------
 -- Revisions of Mirdain-Include and sample job files from 1.6.0 forward were conceived and programmed by Rahvin.
 -- README.md covers installation, features, commands and troubleshooting
