@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------
-===          Mirdain Gearswap Enhanced by Rahvin                       ===
+-===          Mirdain Gearswap Enhanced by Rahvin                     ===-
 --------------------------------------------------------------------------
 -- Revisions of Mirdain-Include and sample job files from 1.6.0 forward were conceived and programmed by Rahvin.
 -- Enhanced features:
@@ -4695,6 +4695,7 @@ do
                     or player.wardrobe6["Chatoyant Staff"] or player.wardrobe7["Chatoyant Staff"] or
                     player.wardrobe8["Chatoyant Staff"]
 
+                --Twilight Cape will only be used for Cura and Curaga.  Prefer Alaunus' cape for single target cures.
                 local Cape = player.inventory["Twilight Cape"] or player.wardrobe["Twilight Cape"] or
                     player.wardrobe2["Twilight Cape"]
                     or player.wardrobe3["Twilight Cape"] or player.wardrobe4["Twilight Cape"] or
@@ -4709,7 +4710,7 @@ do
                         merge_into(built_set, sets.Weapons['Light Bonus'])
                         merge_into(built_set, { main = "Chatoyant Staff" })
                     end
-                    if Cape then merge_into(built_set, { back = "Twilight Cape" }) end
+                    if Cape and spell.name:contains('Cura') then merge_into(built_set, { back = "Twilight Cape" }) end
                     windower.add_to_chat(8, '[' .. world.day_element .. '] day - using Bonus Gear')
                 elseif world.weather_element == spell.element then
                     if Obi then merge_into(built_set, { waist = "Hachirin-no-Obi" }) end
@@ -4717,7 +4718,7 @@ do
                         merge_into(built_set, sets.Weapons['Light Bonus'])
                         merge_into(built_set, { main = "Chatoyant Staff" })
                     end
-                    if Cape then merge_into(built_set, { back = "Twilight Cape" }) end
+                    if Cape and spell.name:contains('Cura') then merge_into(built_set, { back = "Twilight Cape" }) end
                     windower.add_to_chat(8, 'Weather is [' .. world.weather_element .. '] - using Bonus Gear')
                 end
             end
