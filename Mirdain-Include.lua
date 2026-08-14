@@ -2,16 +2,30 @@
 -===          Mirdain Gearswap Enhanced by Rahvin                     ===-
 --------------------------------------------------------------------------
 -- Revisions of Mirdain-Include and sample job files from 1.6.0 forward were conceived and programmed by Rahvin.
--- Enhanced features:
--- Hoxne Ampulla Mode with automatic equipping and item use
--- Multibox Spell-Received Gear Tracking with AoE prediction for -aga, -ra, Accession, Divine Veil and Majesty
--- Automated Holy Water gear equipping
--- Twilight Cape support
--- One-Line or Full display toggling with automated position saving
--- Added commands
--- Extensive optimization to all routines.  CPU performance improved by ~10% (2-3% less total cpu usage) on high end systems.
+-- README.md covers installation, features, commands and troubleshooting
 
--- See https://www.github.com/rahvincode for full details.  
+-- Enhanced features compared to Mirdain 1.5.X:
+-- Hoxne Ampulla Mode with automatic equipping and item use. 
+--     Specialized modes: (ON-Allow Critical) allow critical spells to equip ranged and ammo
+--                        (ON-Locked) disallow any ranged or ammo changes.
+-- Multibox Spell-Received Gear Tracking with AoE prediction for -aga, -ra, Accession, Divine Veil and Majesty.
+--     Automatically equips sets.XXXX_Received the instant a local multiboxed character starts casting on you.
+--     Locks spell received gear in place until the exact moment the spell lands.  Reverts to normal gear immediately.
+--     Set up your gear in job specific lua (BRD.lua, WAR.lua, etc).
+-- Automated Holy Water gear equipping when used from macro or through automation tools.
+-- Twilight Cape support. Now equips Twilight Cape automatically for Cura and Curaga during matching day/weather.
+-- One-Line or Full display toggling with automated position saving. Display redesigned for aesthetics and compactness.
+-- Added commands for better gear control and fixed equipment slot enabling/unlock routines to respect modes and zones
+--     Supports all usable items for gs c use xxxx . Type the name of the item out in all lower case, including spaces and +1 when applicable.
+--     Item equip delays and recast times are tracked now, with warnings when requested items are on cooldown.
+--     No longer silently fails to use warp rings due to unlock or equip overwrites from movement, incoming action packets, combat commands, etc.
+-- Extensive optimization to core code.  
+--     CPU performance improved by ~10%. 2-3% less total cpu usage for a 6 box on high end systems.
+--     Many functions and table calls optimized to use hash-mapped checks over iterative lookups.
+--     Event registers switched to raw register events for some routines to reduce background table allocations
+--     Guard clauses and fixes to conditional statements everywhere to prevent unnecessary computation
+
+-- See https://www.github.com/rahvincode for full details and latest version.
 -- README.md includes installation instructions and full feature explanations.
 -- Credit to Mirdain for the original concept and scaffolding.
 
