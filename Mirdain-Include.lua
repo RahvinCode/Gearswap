@@ -13,7 +13,7 @@ Original credit to Mirdain.  Pull request to be submitted after beta testing.
 ]]
 
 -- Global Variables
-Mirdain_GS = '1.6.4'
+Mirdain_GS = '1.6.5'
 
 -- Modes is the include file for a mode-tracking variable class.  Used for state vars, below.
 include('Modes')
@@ -214,12 +214,12 @@ state.OffenseMode = M { ['description'] = 'Melee Mode' }
 state.OffenseMode:options('TP', 'ACC', 'DT')
 state.OffenseMode:set('TP')
 
---Modes for Spell-Received Tracking via IPC. Locked will keep spell received gear
---slots locked while waiting for spell completion from the caster.
---Unlocks slots at spell completion and defined delay as failsafe.
+--Modes for Spell-Received Tracking via IPC. ON equips the received gear and keeps
+--those slots locked until the caster's spell completes, unlocking at completion
+--or after the configured delay as a failsafe.
 state.SpellReceived = M { ['description'] = "Spell-Received" }
-state.SpellReceived:options('OFF', 'ON-Locked', 'ON-Unlocked')
-state.SpellReceived:set('ON-LOCKED')
+state.SpellReceived:options('OFF', 'ON')
+state.SpellReceived:set('ON')
 
 --Modes for Hoxne Ampulla locking
 state.Hoxne = M { ['description'] = 'Hoxne' }
@@ -279,7 +279,6 @@ Ammo_Warning_Limit = 99
 -- User Defined
 
 is_Busy = false
-is_Dragging = false
 AutoItem = false
 Random_Lockstyle = false
 Lockstyle_List = {}
@@ -461,8 +460,14 @@ Ready_Debuff = S { 'Dust Cloud', 'Sheep Song', 'Scream', 'Dream Flower', 'Roar',
 -- Physical Ready moves that have Multi-Hit
 Ready_Multi = S { 'Sweeping Gouge', 'Tickling Tendrils', 'Chomp Rush', 'Pentapeck', 'Wing Slap', 'Pecking Flurry' }
 
+-- Long names, used in chat messages. Empty hides the mode entirely.
 UI_Name = ''
 UI_Name2 = ''
+
+-- Optional short labels for the status box. Leave empty and the include derives
+-- one from UI_Name, so existing job files need no changes.
+UI_Short = ''
+UI_Short2 = ''
 
 -- Keep local variables to the include
 do
@@ -478,8 +483,8 @@ do
         debug = false,
         info = true,
         warn = true,
-        Display_Box = { text = { size = 11, font = 'Consolas', red = 255, green = 255, blue = 255, alpha = 255 }, pos = { x = 0, y = 0 }, bg = { visible = true, red = 0, green = 0, blue = 0, alpha = 150 }, flags = { bold = true } },
-        Debug_Box = { text = { size = 11, font = 'Consolas', red = 255, green = 255, blue = 255, alpha = 255 }, pos = { x = 0, y = 50 }, bg = { visible = true, red = 0, green = 0, blue = 0, alpha = 150 }, flags = { bold = true } },
+        Display_Box = { text = { size = 11, font = 'Consolas', red = 255, green = 255, blue = 255, alpha = 255, stroke = { width = 2, alpha = 200, red = 0, green = 0, blue = 0 } }, pos = { x = 0, y = 0 }, bg = { visible = true, red = 0, green = 0, blue = 0, alpha = 190 }, flags = { bold = true }, padding = 3 },
+        Debug_Box = { text = { size = 11, font = 'Consolas', red = 255, green = 255, blue = 255, alpha = 255, stroke = { width = 2, alpha = 200, red = 0, green = 0, blue = 0 } }, pos = { x = 0, y = 50 }, bg = { visible = true, red = 0, green = 0, blue = 0, alpha = 190 }, flags = { bold = true }, padding = 3 },
         delay = 3,
     }
 
@@ -516,10 +521,37 @@ do
 
     local settings = config.load(default)
 
-    local gs_status = texts.new("", settings.Display_Box)
-    if settings.visible then gs_status:show() end
+    --Function to apply display box settings.  Used after display creation to ensure settings are tied to the newly created box for auto-saving.
+    local function apply_box_settings(box, cfg)
+        box:pos(cfg.pos.x, cfg.pos.y)
+        box:font(cfg.text.font, unpack(cfg.text.fonts))
+        box:size(cfg.text.size)
+        box:color(cfg.text.red, cfg.text.green, cfg.text.blue)
+        box:alpha(cfg.text.alpha)
+        box:stroke_width(cfg.text.stroke.width)
+        box:stroke_color(cfg.text.stroke.red, cfg.text.stroke.green, cfg.text.stroke.blue)
+        box:stroke_alpha(cfg.text.stroke.alpha)
+        box:bg_color(cfg.bg.red, cfg.bg.green, cfg.bg.blue)
+        box:bg_alpha(cfg.bg.alpha)
+        box:bg_visible(cfg.bg.visible)
+        box:bold(cfg.flags.bold)
+        box:italic(cfg.flags.italic)
+        box:right_justified(cfg.flags.right)
+        box:bottom_justified(cfg.flags.bottom)
+        box:pad(cfg.padding)
+    end
 
-    local gs_debug = texts.new("", settings.Debug_Box)
+    local gs_status = texts.new("", settings.Display_Box, settings)
+    local gs_debug = texts.new("", settings.Debug_Box, settings)
+
+    apply_box_settings(gs_status, settings.Display_Box)
+    apply_box_settings(gs_debug, settings.Debug_Box)
+
+    --Sets status and debug displays to draggable only when displayed
+    gs_status:draggable(settings.visible and true or false)
+    gs_debug:draggable(settings.debug and true or false)
+
+    if settings.visible then gs_status:show() end
     if settings.debug then gs_debug:show() end
 
     local DualWield = false
@@ -937,7 +969,7 @@ do
 
         if type(spell_received_set) == 'table' then
             equip(spell_received_set)
-            if state.SpellReceived.value == "ON-Locked" then
+            if state.SpellReceived.value == "ON" then
                 --Lock the slots of items from the spell received set to prevent other
                 --actions from overwriting until cast completion
                 for slot, item in pairs(spell_received_set) do
@@ -1099,7 +1131,7 @@ do
                 send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
             end
         elseif s_type == TYPE_SCH then
-            available_charges = get_current_stratagem_count()
+            local available_charges = get_current_stratagem_count()
             if available_charges == 0 then
                 cancel_spell()
                 info("Unable to use strategems. Available charges = 0")
@@ -3088,9 +3120,7 @@ do
 
     --Helper function for checking if player has an item available to equip.
     --Bag ids per res/bags.lua:
-    --   0 = Inventory, 8 = Wardrobe, 10-15 = Wardrobes 2-7, 16 = Wardrobe 8.
-    --Bag 9 is Safe 2 (equippable=false) and is deliberately excluded; an item there
-    --cannot be equipped, so reporting it as available would lock slots on nothing.
+    --0 = Inventory, 8 = Wardrobe, 10-15 = Wardrobes 2-7, 16 = Wardrobe 8.
     local ITEM_SEARCH_BAGS = { 0, 8, 10, 11, 12, 13, 14, 15, 16 }
     local function has_item(item_id)
         for _, bag_id in ipairs(ITEM_SEARCH_BAGS) do
@@ -3105,12 +3135,65 @@ do
         end
         return false
     end
+
+    --Command helper functions to validate user-typed arguments are acceptable options for each 'gs c xxxx arg'
+    local function command_arg(cmd)
+        local arg = cmd:match('^%s*%S+%s+(.-)%s*$')
+        if not arg or arg == '' then return nil end
+        return arg
+    end
+
+    local function mode_options(m)
+        local opts = T {}
+        if type(m) == 'table' and m._track and m._track._type == 'list' then
+            for _, v in ipairs(m) do opts:insert(tostring(v)) end
+        end
+        return opts
+    end
+
+    -- Returns the canonical option on an exact match, otherwise nil plus the
+    -- closest option as a suggestion only. Partial and legacy values are never
+    -- silently accepted.
+    local function match_mode_value(m, arg)
+        local opts = mode_options(m)
+        if not arg then return nil, nil, opts end
+        local want = arg:lower()
+        for _, v in ipairs(opts) do
+            if v:lower() == want then return v, nil, opts end
+        end
+        for _, v in ipairs(opts) do
+            local lv = v:lower()
+            if lv:startswith(want) or want:startswith(lv) then return nil, v, opts end
+        end
+        for _, v in ipairs(opts) do
+            local lv = v:lower()
+            if lv:contains(want) or want:contains(lv) then return nil, v, opts end
+        end
+        return nil, nil, opts
+    end
+
+    -- Validate and apply a mode argument. Returns true when the mode was set.
+    local function set_mode_arg(m, label, usage, arg)
+        local value, suggestion, opts = match_mode_value(m, arg)
+        if value then
+            m:set(value)
+            return true
+        end
+        if arg then
+            warn(('%s: "%s" is not a valid mode.%s'):format(
+                label, tostring(arg), suggestion and (' Did you mean [' .. suggestion .. ']?') or ''))
+        else
+            warn(('%s: no mode given.'):format(label))
+        end
+        warn(('Usage: //gs c %s [%s]'):format(usage, opts:concat('|')))
+        return false
+    end
     -------------------------------------------------------------------------------------------------------------------
     -- This function is called by the user via the self command - "gs c XXXX"
     -------------------------------------------------------------------------------------------------------------------
 
     function self_command(cmd)
-        local command = cmd:lower()
+        local command = cmd:lower():trim()
         if command == 'update auto' then
             local built_set = choose_set()
             if choose_set_custom then
@@ -3135,11 +3218,11 @@ do
                 state.TreasureMode:cycle()
                 info('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
                 display_box_update()
-            else
-                local mode = string.split(cmd, " ", 2)
-                state.TreasureMode:set(mode[2])
+            elseif set_mode_arg(state.TreasureMode, 'Treasure Hunter', 'TreasureHunter', command_arg(cmd)) then
                 info('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
                 display_box_update()
+            else
+                return
             end
             equip_set_command()
             return
@@ -3148,19 +3231,11 @@ do
                 state.SpellReceived:cycle()
                 info('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
                 display_box_update()
-            else
-                local mode = string.split(cmd, " ", 2)
-                if mode[2]:contains("on-locked") then
-                    state.SpellReceived:set("ON-Locked")
-                elseif mode[2]:contains("on-unlocked") then
-                    state.SpellReceived:set('ON-Unlocked')
-                elseif mode[2]:contains("off") then
-                    state.SpellReceived:set('OFF')
-                else
-                    warn('Spell Received state not recognized')
-                end
+            elseif set_mode_arg(state.SpellReceived, 'Spell Received', 'SpellReceived', command_arg(cmd)) then
                 info('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
                 display_box_update()
+            else
+                return
             end
             equip_set_command()
             return
@@ -3169,17 +3244,11 @@ do
                 state.Hoxne:cycle()
                 info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
                 display_box_update()
-            else
-                local mode = string.split(cmd, " ", 2)
-                if mode[2]:contains("on") then
-                    state.Hoxne:set("ON")
-                elseif mode[2]:contains("off") then
-                    state.Hoxne:set('OFF')
-                else
-                    warn('Hoxne Ampulla locking state not recognized')
-                end
-                info('Spell Received Mode: [' .. state.Hoxne.value .. ']')
+            elseif set_mode_arg(state.Hoxne, 'Hoxne Ampulla', 'Hoxne', command_arg(cmd)) then
+                info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
                 display_box_update()
+            else
+                return
             end
             if state.Hoxne.value == "ON" then
                 local hoxne_id = res.items:with('en', "Hoxne Ampulla").id
@@ -3204,10 +3273,10 @@ do
             if command == 'autobuff' then
                 state.AutoBuff:cycle()
                 info('Auto Buff is [' .. state.AutoBuff.value .. ']')
-            else
-                local mode = string.split(cmd, " ", 2)
-                state.AutoBuff:set(mode[2])
+            elseif set_mode_arg(state.AutoBuff, 'Auto Buff', 'AutoBuff', command_arg(cmd)) then
                 info('Auto Buff is [' .. state.AutoBuff.value .. ']')
+            else
+                return
             end
             display_box_update()
             equip_set_command()
@@ -3228,10 +3297,12 @@ do
             if settings.visible == true then
                 settings.visible = false
                 gs_status:hide()
+                gs_status:draggable(false)
                 add_to_chat(80, 'The UI is now hidden')
             else
-                gs_status:show()
                 settings.visible = true
+                gs_status:draggable(true)
+                gs_status:show()
                 display_box_update()
                 add_to_chat(80, 'The UI is now shown')
             end
@@ -3239,10 +3310,14 @@ do
             if settings.debug == true then
                 settings.debug = false
                 gs_debug:hide()
+                gs_debug:draggable(false)
                 windower.add_to_chat(80, 'The debugging is now [OFF]')
             else
                 settings.debug = true
+                gs_debug:draggable(true)
                 gs_debug:show()
+                debug_box_reset()
+                debug_box_update()
                 log('The debugging is now [ON]')
             end
         elseif command == 'warn' then
@@ -3300,12 +3375,12 @@ do
                         return
                     end
                 end
-            else
-                local mode = string.split(cmd, " ", 2)
-                state.OffenseMode:set(mode[2])
+            elseif set_mode_arg(state.OffenseMode, 'Offense Mode', 'OffenseMode', command_arg(cmd)) then
                 info('Offense Mode: [' .. state.OffenseMode.value .. ']')
                 display_box_update()
                 equip_set_command()
+                return
+            else
                 return
             end
         elseif command:contains('weaponmode') then
@@ -3325,14 +3400,14 @@ do
                         return
                     end
                 end
-            else
-                local mode = string.split(cmd, " ", 2)
-                state.WeaponMode:set(mode[2])
+            elseif set_mode_arg(state.WeaponMode, 'Weapon Mode', 'WeaponMode', command_arg(cmd)) then
                 info('Weapon Mode: [' .. state.WeaponMode.value .. ']')
                 display_box_update()
                 if self_command_custom then self_command_custom(command) end
                 two_hand_check()
                 equip_set_command()
+                return
+            else
                 return
             end
         elseif command:contains('jobmode2') then
@@ -3351,13 +3426,13 @@ do
                         return
                     end
                 end
-            else
-                local mode = string.split(cmd, " ", 2)
-                state.JobMode2:set(mode[2])
+            elseif set_mode_arg(state.JobMode2, UI_Name2 ~= '' and UI_Name2 or 'Job Mode 2', 'JobMode2', command_arg(cmd)) then
                 info(UI_Name2 .. ': [' .. state.JobMode2.value .. ']')
                 display_box_update()
                 if self_command_custom then self_command_custom(command) end
                 equip_set_command()
+                return
+            else
                 return
             end
         elseif command:contains('jobmode') then
@@ -3377,14 +3452,14 @@ do
                         return
                     end
                 end
-            else
-                local mode = string.split(cmd, " ", 2)
-                state.JobMode:set(mode[2])
+            elseif set_mode_arg(state.JobMode, UI_Name ~= '' and UI_Name or 'Job Mode', 'JobMode', command_arg(cmd)) then
                 info(UI_Name .. ': [' .. state.JobMode.value .. ']')
                 display_box_update()
                 -- Issue a command to the lua for the job specific command
                 if self_command_custom then self_command_custom(command) end
                 equip_set_command()
+                return
+            else
                 return
             end
             -- This profile mode is used to load a Silmaril profile and execute a script
@@ -3658,6 +3733,13 @@ do
 
     -- Unbind Keys when the file is unloaded
     function file_unload(file_name)
+        if gs_status then
+            gs_status:destroy()
+        end
+        if gs_debug then
+            gs_debug:destroy()
+        end
+
         send_command('unbind ^f9')
         send_command('unbind ^f10')
         send_command('unbind ^f11')
@@ -3666,13 +3748,6 @@ do
         send_command('unbind f10')
         send_command('unbind f11')
         send_command('unbind f12')
-
-        if gs_status then
-            gs_status:destroy()
-        end
-        if gs_debug then
-            gs_debug:destroy()
-        end
 
         if active_external_locks and next(active_external_locks) ~= nil then
             for slot, _ in pairs(active_external_locks) do
@@ -3728,6 +3803,7 @@ do
 
     -- Called when the player's subjob changes.
     function sub_job_change(new, old)
+        invalidate_layout()
         coroutine.schedule(dual_wield_check, 2)
         coroutine.schedule(two_hand_check, 2.1)
         coroutine.schedule(equip_set_command, 2.2)
@@ -3900,79 +3976,212 @@ do
     end
 
     -- UI for displaying the current states
+    local GLYPH = {
+        on    = string.char(0xE2, 0x97, 0x8F), -- U+25CF Black Circle
+        off   = string.char(0xE2, 0x97, 0x8F), -- U+25CB White Circle
+        prev  = string.char(0xE2, 0x97, 0x84), -- U+25C4 Black left-pointing arrow
+        next  = string.char(0xE2, 0x96, 0xBA), -- U+25BA Black right-pointing arrow
+        trunc = string.char(0xE2, 0x80, 0xA6), -- U+2026 Elipsis
+    }
+
+    local COLOR = {
+        label = '150,150,150',
+        value = '235,235,235',
+        chev = '110,110,110',
+        idle = '120,120,120',  -- Hollow "off" circle
+        good = '80,220,110',   -- Fully on - green
+        warn = '255,170,60',   -- Partially on - amber for TH tag
+        cyan = '90,200,255',   -- TH SATA mode
+    }
+
+    local function cs(color, s) return '\\cs(' .. color .. ')' .. s .. '\\cr' end
+
+    local SEP = '  '
+
+    -- Define glyph variables for displaying mode status as a colored circle
+    local GLYPH_FIELDS = {
+        {
+            label = 'TH',
+            mode = 'TreasureMode',
+            off = 'None',
+            colors = { ['Tag'] = COLOR.warn, ['Full Time'] = COLOR.good, ['SATA'] = COLOR.cyan }
+        },
+        {
+            label = 'SR',
+            mode = 'SpellReceived',
+            off = 'OFF',
+            colors = { ['ON'] = COLOR.good }
+        },
+        {
+            label = 'HOX',
+            mode = 'Hoxne',
+            off = 'OFF',
+            colors = { ['ON'] = COLOR.good }
+        },
+    }
+
+    --3 letter aliases for known ui names. Backward-compatible.
+    local UI_SHORT_ALIASES = {
+        ['mode'] = 'MDE',
+        ['pet'] = 'PET',
+        ['tp mode'] = 'TPM',
+        ['auto tank'] = 'TNK',
+        ['tank'] = 'TNK',
+        ['runes'] = 'RUN',
+        ['rune'] = 'RUN',
+    }
+
+    -- Derive a three-cell label from a long mode name. Alias first, then a
+    -- generic rule: one word takes its first three letters, several words take
+    -- two letters of the first plus the initial of the last ("TP Mode" -> TPM).
+    local function derive_short(name)
+        local alias = UI_SHORT_ALIASES[name:lower()]
+        if alias then return alias end
+
+        local words = {}
+        for w in name:gmatch('%a+') do words[#words + 1] = w end
+
+        local short
+        if #words == 0 then
+            short = name:upper()
+        elseif #words == 1 then
+            short = words[1]:upper()
+        else
+            short = (words[1]:sub(1, 2) .. words[#words]:sub(1, 1)):upper()
+        end
+        return (short .. '   '):sub(1, 3)
+    end
+
+    -- An explicit UI_Short always wins and is used verbatim. The label column
+    -- widens to fit it.
+    local function status_label(explicit, name)
+        if explicit and explicit ~= '' then return explicit end
+        return derive_short(name)
+    end
+
+    -- Display columns, not bytes: mode values are ASCII, but glyphs are 3 bytes
+    -- each and colour tags are zero-width, so never measure a composed string.
+    local function cells(s)
+        local n = 0
+        for i = 1, #s do
+            local b = s:byte(i)
+            if b < 0x80 or b >= 0xC0 then n = n + 1 end
+        end
+        return n
+    end
+
+    local layout -- nil = rebuild on next draw
+
+    local function option_cells(m)
+        local w = 0
+        if type(m) == 'table' and m._track and m._track._type == 'list' then
+            for _, v in ipairs(m) do
+                local n = #tostring(v)
+                if n > w then w = n end
+            end
+        end
+        return w
+    end
+
+    local function build_layout()
+        -- Modes are referenced by name, not by object, so a job file replacing a
+        -- state table wholesale cannot force holding a stale reference.
+        local fields = {
+            { label = 'STN', mode = 'OffenseMode' },
+            { label = 'DPS', mode = 'WeaponMode' },
+        }
+        if UI_Name ~= '' then
+            fields[#fields + 1] = { label = status_label(UI_Short, UI_Name), mode = 'JobMode' }
+        end
+        if UI_Name2 ~= '' then
+            fields[#fields + 1] = { label = status_label(UI_Short2, UI_Name2), mode = 'JobMode2' }
+        end
+
+        local label_w, value_w = 3, 0
+        for _, f in ipairs(fields) do
+            if #f.label > label_w then label_w = #f.label end
+            value_w = math.max(value_w, option_cells(state[f.mode]))
+        end
+
+        local header_w = 0
+        for i, g in ipairs(GLYPH_FIELDS) do
+            header_w = header_w + #g.label + 2 -- label + space + circle
+            if i > 1 then header_w = header_w + #SEP end
+        end
+
+        layout = {
+            fields = fields,
+            label_w = label_w,
+            header_w = header_w,
+            -- Stretch the value field so the closing chevrons land on the
+            -- header's right edge. Row = label_w + 1 + 1 + value_w + 1.
+            value_w = math.max(value_w, header_w - label_w - 3,
+                settings.Display_MinValueCells or 0),
+        }
+    end
+
+    function invalidate_layout() layout = nil end
+
+    local function glyph_entry(g)
+        local m = state[g.mode]
+        local v = m and tostring(m.value) or ''
+        if v == g.off then
+            return cs(COLOR.label, g.label) .. ' ' .. cs(COLOR.idle, GLYPH.off)
+        end
+        return cs(COLOR.label, g.label) .. ' ' .. cs(g.colors[v] or COLOR.good, GLYPH.on)
+    end
+
+    local function centered(v, w)
+        local n = cells(v)
+        if n > w then
+            v, n = v:sub(1, w - 1) .. GLYPH.trunc, w -- values are ASCII; safe to sub
+        end
+        local pad = w - n
+        local left = math.floor(pad / 2)
+        return string.rep(' ', left) .. v .. string.rep(' ', pad - left)
+    end
+
+    -- UI for displaying the current states
     function display_box_update()
-        local dialog = {}
+        if not layout then build_layout() end
 
-        dialog[1] = { description = 'TH', value = state.TreasureMode.value, color = '255,215,0' } -- Gold
-
-        dialog[2] = {
-            description = 'Spell-Rec',
-            value = state.SpellReceived.value,
-            color = (state.SpellReceived.value:contains('ON') and '0,255,0' or state.SpellReceived.value == 'OFF' and '255,0,0' or '255,255,255')
-        }
-
-        dialog[3] = {
-            description = 'Hoxne',
-            value = state.Hoxne.value,
-            color = (state.Hoxne.value == 'ON' and '0,255,0' or state.Hoxne.value == 'OFF' and '255,0,0' or '255,255,255')
-        }
-
-        dialog[4] = { description = 'Stance', value = state.OffenseMode.value, color = '255,255,255' }
-        dialog[5] = { description = 'DPS', value = state.WeaponMode.value, color = '255,255,255' }
-
-        if UI_Name ~= "" then
-            dialog[6] = { description = UI_Name, value = state.JobMode.value, color = '255,255,255' }
-        end
-        if UI_Name2 ~= "" then
-            dialog[7] = { description = UI_Name2, value = state.JobMode2.value, color = '255,255,255' }
-        end
-
-        local lines = T {}
+        local head = T {}
+        for _, g in ipairs(GLYPH_FIELDS) do head:insert(glyph_entry(g)) end
 
         if settings.oneline then
-            for k, v in ipairs(dialog) do
-                local colored_val = string.format('\\cs(%s)[%s]\\cr', v.color, tostring(v.value))
-                lines:insert(string.format('%s:%s', v.description, colored_val))
+            -- Chevrons sit tight against the value; entries are space separated.
+            for _, f in ipairs(layout.fields) do
+                head:insert(cs(COLOR.label, f.label) .. ' '
+                    .. cs(COLOR.chev, GLYPH.prev)
+                    .. cs(COLOR.value, tostring(state[f.mode].value))
+                    .. cs(COLOR.chev, GLYPH.next))
             end
-            gs_status:text(lines:concat(' '))
+            gs_status:text(head:concat(SEP))
         else
-            local max_desc_len = 0
-            local max_val_len = 0
-
-            for _, v in ipairs(dialog) do
-                local raw_val_str = '[' .. tostring(v.value) .. ']'
-                if string.len(v.description) > max_desc_len then
-                    max_desc_len = string.len(v.description)
-                end
-                if string.len(raw_val_str) > max_val_len then
-                    max_val_len = string.len(raw_val_str)
-                end
+            local lines = T { head:concat(SEP) }
+            for _, f in ipairs(layout.fields) do
+                lines:insert(cs(COLOR.label, f.label .. string.rep(' ', layout.label_w - #f.label))
+                    .. ' ' .. cs(COLOR.chev, GLYPH.prev)
+                    .. cs(COLOR.value, centered(tostring(state[f.mode].value), layout.value_w))
+                    .. cs(COLOR.chev, GLYPH.next))
             end
-
-            local target_desc_width = max_desc_len + 1
-
-            for k, v in ipairs(dialog) do
-                local raw_val_str = '[' .. tostring(v.value) .. ']'
-                local padded_desc = v.description:rpad(' ', target_desc_width)
-                local value_padding_needed = max_val_len - string.len(raw_val_str)
-                local value_spaces = string.rep(' ', value_padding_needed)
-                local colored_val = string.format('\\cs(%s)%s\\cr', v.color, raw_val_str)
-                lines:insert(padded_desc .. value_spaces .. colored_val)
-            end
-
             gs_status:text(lines:concat('\n'))
         end
     end
 
-    -- Zero the display window
+    -- Zero the display and debug windows
     function display_zero_command()
         gs_status:pos_x(0)
         gs_status:pos_y(0)
+        gs_debug:pos_x(0)
+        gs_debug:pos_y(100)
         config.save(settings)
-        add_to_chat("Settings Saved")
+        add_to_chat("Displays reset and positions saved")
     end
 
     local debug_box_state = {}
+    function debug_box_reset() debug_box_state = {} end
+
     -- Used to help debug issues
     function debug_box_update()
         if debug_box_state.busy == is_Busy
@@ -4268,28 +4477,6 @@ do
     windower.raw_register_event('outgoing chunk', main_engine)
     windower.raw_register_event('zone change', on_zone_change_for_th)
 
-    local is_dragging = false
-    local drag_sx, drag_sy, drag_dx, drag_dy
-    windower.raw_register_event('mouse', function(type, x, y, delta, blocked)
-        -- Mouse move is type 0.  Reject anything that is not a left button press (1) or release (2).
-        if type ~= 1 and type ~= 2 then return end
-
-        if type == 1 then
-            is_dragging = gs_status:hover(x, y) or gs_debug:hover(x, y)
-            if is_dragging then
-                drag_sx, drag_sy = gs_status:pos_x(), gs_status:pos_y()
-                drag_dx, drag_dy = gs_debug:pos_x(), gs_debug:pos_y()
-            end
-        elseif is_dragging then
-            is_dragging = false
-            if gs_status:pos_x() ~= drag_sx or gs_status:pos_y() ~= drag_sy
-                or gs_debug:pos_x() ~= drag_dx or gs_debug:pos_y() ~= drag_dy then
-                config.save(settings)
-                windower.add_to_chat(80, "Settings saved")
-            end
-        end
-    end)
-
     windower.register_event('ipc message', function(msg)
         if state.SpellReceived.value == 'OFF' then return end
 
@@ -4372,7 +4559,7 @@ do
                     end
                     if next(active_incoming_casters) == nil then
                         if settings.debug then debug("No active incoming casts remain. Resetting gear.") end
-                        if state.SpellReceived.value == 'ON-Locked' then
+                        if state.SpellReceived.value == 'ON' then
                             for slot, _ in pairs(active_external_locks) do
                                 enable(slot)
                                 if settings.debug then debug("Unlocking " .. tostring(slot)) end

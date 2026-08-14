@@ -90,7 +90,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -245,7 +245,7 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.name:contains('Maneuver') then
 		equipSet = sets.JA.Maneuver
 	elseif spell.type == 'WeaponSkill' then
@@ -257,53 +257,53 @@ function precast_custom(spell)
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
 
 -- Called when the pet dies or is summoned
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 -- Called during a pet midcast
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 -- Called after the performs an action
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 
 	return choose_gear()
 end
@@ -313,13 +313,13 @@ function self_command_custom(command)
 end
 --Custom Function
 function choose_gear()
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 
 	-- Sub job has least priority
@@ -337,7 +337,7 @@ function check_buff_JA()
 end
 
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	--local sp_recasts = windower.ffxi.get_spell_recasts()
 	return buff
 end

@@ -116,7 +116,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear={ name="Etiolation Earring", priority=1}, -- Used to Keep HP/MP pool
 		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}, priority=2}, --3/5
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"}, -- +1 Refresh
+		left_ring={name="Stikini Ring +1", bag="wardrobe"}, -- +1 Refresh
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"}, -- +1 Refresh
 		back={ name="Sucellos's Cape", augments={'MND+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Phys. dmg. taken-10%',}}, -- 10/0
     }
@@ -144,7 +144,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -173,7 +173,7 @@ function get_sets()
 		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
 		left_ear="Sherida Earring",
 		right_ear={ name="Leth. Earring +1",},
-		left_ring={name="Chirich Ring +1", bag="wardrobe1"},
+		left_ring={name="Chirich Ring +1", bag="wardrobe"},
 		right_ring={name="Chirich Ring +1", bag="wardrobe2"},
 		back="Null Shawl",
 	}
@@ -348,7 +348,7 @@ function get_sets()
 		waist="Embla Sash", --10
 		left_ear={ name="Etiolation Earring", priority=1}, -- Used to Keep HP/MP pool
 		right_ear="Leth. Earring +1", -- 8
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
 		back={ name="Sucellos's Cape", augments={'MND+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Phys. dmg. taken-10%',}}, -- 20
 	} -- 150% Duration
@@ -406,7 +406,7 @@ function get_sets()
 		left_ear="Regal Earring",
 		right_ear="Snotra Earring",
 		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		right_ring={name="Stikini Ring +1", bag="wardrobe"},
 		back={ name="Sucellos's Cape", augments={'MND+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Phys. dmg. taken-10%',}},
 	}
 

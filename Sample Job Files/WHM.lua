@@ -87,7 +87,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear={ name="Alabaster Earring", priority=2},
 		right_ear={ name="Etiolation Earring", priority=1}, -- 1
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"}, -- +1 Refresh
+		left_ring={name="Stikini Ring +1", bag="wardrobe"}, -- +1 Refresh
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"}, -- +1 Refresh
 		back={ name="Alaunus's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','HP+20','"Fast Cast"+10','Damage taken-5%',}},
     }
@@ -114,7 +114,7 @@ function get_sets()
 	sets.Idle.Refresh = set_combine(sets.Idle, {
 		body="Ebers Bliaut +3",
 	    feet={ name="Chironic Slippers", augments={'CHR+4','Attack+21','"Refresh"+2','Mag. Acc.+19 "Mag.Atk.Bns."+19',}},
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"}, -- +1 Refresh
+		left_ring={name="Stikini Ring +1", bag="wardrobe"}, -- +1 Refresh
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"}, -- +1 Refresh
 	})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
@@ -128,7 +128,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}

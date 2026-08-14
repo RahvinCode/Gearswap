@@ -132,7 +132,7 @@ function get_sets()
 		waist="Carrier's Sash",
 		left_ear="Etiolation Earring",
 		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"}, -- +1 Refresh
+		left_ring={name="Stikini Ring +1", bag="wardrobe"}, -- +1 Refresh
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"}, -- +1 Refresh
 		back={ name="Rosmerta's Cape", augments={'DEX+20','Accuracy+20 Attack+20','DEX+10','"Dbl.Atk."+10','Damage taken-5%',}},
     }
@@ -155,7 +155,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -239,7 +239,7 @@ function get_sets()
 	})
 
 	sets.OffenseMode.SB = set_combine ( sets.OffenseMode,{
-		left_ring={ name="Chirich Ring +1", bag="wardrobe1", priority=2},
+		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=2},
 		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=1},
 	})
 
@@ -337,7 +337,7 @@ function get_sets()
 		waist="Olympus Sash",
 		left_ear="Mimir Earring",
 		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}, priority=1},
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
 		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
 	}
@@ -378,14 +378,14 @@ function get_sets()
 		waist="Null Belt",
 		left_ear="Telos Earring",
 		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
 		back="Null Shawl",
 	})
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
 		waist="Siegel Sash",
 		neck="Nodens Gorget",
@@ -413,7 +413,7 @@ function get_sets()
 		waist="Null Belt",
 		left_ear="Crep. Earring",
 		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring="Weather. Ring",
 		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
 	})
@@ -429,7 +429,7 @@ function get_sets()
 		waist="Null Belt",
 		left_ear="Crep. Earring",
 		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring="Weather. Ring",
 		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
 	})
@@ -445,7 +445,7 @@ function get_sets()
 		waist="Null Belt",
 		left_ear="Crep. Earring",
 		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring="Weather. Ring",
 		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
 	})
@@ -552,7 +552,7 @@ function pretarget_custom(spell,action)
 end
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.type == 'WeaponSkill' then
 		if state.OffenseMode.value == "MEVA" then
 			equipSet = set_combine(equipSet, { neck="Warder's Charm +1", })
@@ -562,31 +562,31 @@ function precast_custom(spell)
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
@@ -607,13 +607,13 @@ function user_file_unload()
 end
 
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	--local ja_recasts = windower.ffxi.get_ability_recasts()
 	return buff
 end
 
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	local sp_recasts = windower.ffxi.get_spell_recasts()
 	if not buffactive['Phalanx'] and sp_recasts[517] == 0 and player.mp >= 19 then
 		buff = "Metallic Body"
@@ -626,19 +626,19 @@ function check_buff_SP()
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end

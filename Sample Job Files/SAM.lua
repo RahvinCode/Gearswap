@@ -108,7 +108,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -393,42 +393,42 @@ end
 
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = choose_Seigan()
 	return equipSet
 end
 
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = choose_Seigan()
 	return equipSet
 end
 
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = {}
+	local equipSet = {}
 	equipSet = choose_Seigan()
 	return equipSet
 end
 
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = {}
+	local equipSet = {}
 	equipSet = choose_Seigan()
 	return equipSet
 end
@@ -440,7 +440,7 @@ end
 
 --Custom Function
 function choose_Seigan()
-	equipSet = {}
+	local equipSet = {}
 		if player.status == "Engaged" then
 			if buffactive.Seigan then
 				--Equip the Seigan custom set when active
@@ -456,7 +456,7 @@ end
 
 --Function used to automate Job Ability use
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 	if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 then
 		buff = "Hasso"
@@ -475,7 +475,7 @@ end
 
 --Function used to automate Spell use
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	--local sp_recasts = windower.ffxi.get_spell_recasts()
 	return buff
 end
@@ -486,19 +486,19 @@ function user_file_unload()
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 
 	return equipSet
 end

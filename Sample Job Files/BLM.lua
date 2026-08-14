@@ -88,7 +88,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -247,7 +247,7 @@ function get_sets()
 		hands="Wicce Gloves +3",
 		legs="Wicce Chausses +3",
 		feet="Wicce Sabots +3",
-		left_ring={name="Stikini Ring +1", bag="wardrobe1"},
+		left_ring={name="Stikini Ring +1", bag="wardrobe"},
 		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
 	})
 

@@ -144,7 +144,7 @@ function get_sets()
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe1", priority=2},
+	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
 		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
 		waist="Gishdubar Sash",
 	}
@@ -223,7 +223,7 @@ function get_sets()
 		legs="Chas. Culottes +3",
 		neck="Null Loop",
 		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={ name="Chirich Ring +1", bag="wardrobe1", priority=2},
+		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=2},
 		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=1},
 	})
 
@@ -326,7 +326,7 @@ function get_sets()
 		-- 10 II from gleti's Knife
 		head={ name="Ikenga's Hat", augments={'Path: A',}}, -- 5 II
 		hands={ name="Ikenga's Gloves", augments={'Path: A',}}, -- 15
-		left_ring={ name="Chirich Ring +1",  bag="wardrobe1"}, -- 10
+		left_ring={ name="Chirich Ring +1",  bag="wardrobe"}, -- 10
 		right_ring={ name="Chirich Ring +1",  bag="wardrobe2"}, -- 10
     })
 
@@ -647,7 +647,7 @@ end
 
 -- Augment basic equipment sets
 function precast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.english == 'Fold' and buffactive['Bust'] == 2 then
 		equipSet = set_combine(equipSet, sets.Fold)
     end
@@ -656,7 +656,7 @@ function precast_custom(spell)
 end
 -- Augment basic equipment sets
 function midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	if spell.english == 'Fold' and buffactive['Bust'] == 2 then
 		equipSet = set_combine(equipSet, sets.Fold)
     end
@@ -665,22 +665,22 @@ function midcast_custom(spell)
 end
 -- Augment basic equipment sets
 function aftercast_custom(spell)
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check({})
 	return equipSet
 end
 --Function is called when the player gains or loses a buff
 function buff_change_custom(name,gain)
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check({})
 	return equipSet
 end
 --This function is called when a update request the correct equipment set
 function choose_set_custom()
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check({})
 	return equipSet
 end
 --Function is called when the player changes states
 function status_change_custom(new,old)
-	equipSet = Job_Mode_Check(equipSet)
+	local equipSet = Job_Mode_Check({})
 	return equipSet
 end
 
@@ -693,7 +693,7 @@ function user_file_unload()
 end
 
 function check_buff_JA()
-	buff = 'None'
+	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 	if player.sub_job == 'WAR' then
 		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
@@ -708,7 +708,7 @@ function check_buff_JA()
 end
 
 function check_buff_SP()
-	buff = 'None'
+	local buff = 'None'
 	return buff
 end
 
@@ -729,16 +729,16 @@ function Job_Mode_Check(equipSet)
 end
 
 function pet_change_custom(pet,gain)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
 
 function pet_aftercast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
 
 function pet_midcast_custom(spell)
-	equipSet = {}
+	local equipSet = {}
 	return equipSet
 end
