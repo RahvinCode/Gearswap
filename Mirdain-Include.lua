@@ -1,19 +1,24 @@
---[[
-This revision of Mirdain-Include was conceived and programmed by Rahvin.
-Enhanced features:
--Hoxne Ampulla Mode
--Multibox Spell-Received Gear Tracking with AoE prediction for -aga, -ra, Accession, Divine Veil and Majesty
--Automated Holy Water gear equipping
--Twilight Cape support
--One-Line or Full display toggling with automated position saving
--Optimization to the pretarget and precast routines
+--------------------------------------------------------------------------
+===          Mirdain Gearswap Enhanced by Rahvin                       ===
+--------------------------------------------------------------------------
+-- Revisions of Mirdain-Include and sample job files from 1.6.0 forward were conceived and programmed by Rahvin.
+-- Enhanced features:
+-- Hoxne Ampulla Mode with automatic equipping and item use
+-- Multibox Spell-Received Gear Tracking with AoE prediction for -aga, -ra, Accession, Divine Veil and Majesty
+-- Automated Holy Water gear equipping
+-- Twilight Cape support
+-- One-Line or Full display toggling with automated position saving
+-- Added commands
+-- Extensive optimization to all routines.  CPU performance improved by ~10% (2-3% less total cpu usage) on high end systems.
 
-See https://www.github.com/rahvincode for full details.
-Original credit to Mirdain.  Pull request to be submitted after beta testing.
-]]
+-- See https://www.github.com/rahvincode for full details.  
+-- README.md includes installation instructions and full feature explanations.
+-- Credit to Mirdain for the original concept and scaffolding.
+
+-----------------------------------------------------------------------------
 
 -- Global Variables
-Mirdain_GS = '1.6.5'
+Mirdain_GS = '1.6.6'
 
 -- Modes is the include file for a mode-tracking variable class.  Used for state vars, below.
 include('Modes')
@@ -223,7 +228,7 @@ state.SpellReceived:set('ON')
 
 --Modes for Hoxne Ampulla locking
 state.Hoxne = M { ['description'] = 'Hoxne' }
-state.Hoxne:options('OFF', 'ON')
+state.Hoxne:options('OFF', 'ON-Allow Critical', 'ON-Locked')
 state.Hoxne:set('OFF')
 
 --Modes for Auto Buff
@@ -476,6 +481,7 @@ do
     local res = require('resources')
     local socket = require('socket')
     local packets = require('packets')
+    local extdata = require('extdata')
 
     local default = {
         visible = true,
@@ -573,7 +579,6 @@ do
     local main_engine_time = os.clock()
 
     local Require_Update = false
-    local Use_Item_Command = ''
     local available_bullets = 0
 
     -- Spell-Received Gear Tracking. Cache heavy API endpoints and immutable configurations outside the function scope.
@@ -981,6 +986,378 @@ do
             end
         end
     end
+    -------------------------------------------------------------------------------------------------------------------
+    -- ENCHANTED ITEM ENGINE + HOXNE AMPULLA AUTOMATION
+    -------------------------------------------------------------------------------------------------------------------
+
+    -- res slot id -> GearSwap slot name.  Matches GearSwap's default_slot_map
+    -- (statics.lua:97), which is what player.equipment is keyed by and what
+    -- equip()/disable() accept.
+    local ENCH_SLOT_NAMES = {
+        [0] = 'main',  [1] = 'sub',       [2] = 'range',     [3] = 'ammo',
+        [4] = 'head',  [5] = 'body',      [6] = 'hands',     [7] = 'legs',
+        [8] = 'feet',  [9] = 'neck',      [10] = 'waist',
+        [11] = 'left_ear',  [12] = 'right_ear',
+        [13] = 'left_ring', [14] = 'right_ring', [15] = 'back',
+    }
+
+    -- 0 = Inventory, 8 = Wardrobe, 10-16 = Wardrobes 2-8.
+    local ENCH_BAGS = { 0, 8, 10, 11, 12, 13, 14, 15, 16 }
+
+    -- Lowercased name -> resource row, built once on first use.
+    -- self_command() lowercases every command, but 126 of the 533 usable enchanted
+    -- items have a mixed-case 'enl' ("Prishe's boots +1", "Hoxne ampulla", "Warp
+    -- cudgel") and every item's 'en' is capitalised - so the old
+    -- res.items:with('enl',x) or res.items:with('en',x) could never match those.
+    -- 'en' is indexed first so a real item name is never shadowed by another
+    -- item's log name (Albatross Ring, Pandit's Staff, etc).
+    local ench_index
+    local function build_ench_index()
+        ench_index = {}
+        local function usable(row)
+            return row.cast_delay and row.targets and row.targets:contains('Self')
+        end
+        for _, row in pairs(res.items) do
+            if usable(row) then
+                local k = row.en:lower()
+                ench_index[k] = ench_index[k] or row
+            end
+        end
+        for _, row in pairs(res.items) do
+            if usable(row) and row.enl then
+                local k = row.enl:lower()
+                ench_index[k] = ench_index[k] or row
+            end
+        end
+    end
+
+    -- Returns: resource row (nil if the name is unknown), decoded extdata (or nil),
+    -- and whether you are actually carrying it.
+    local function find_enchantment(name)
+        if not ench_index then build_ench_index() end
+        local row = ench_index[tostring(name):lower():trim()]
+        if not row then return nil, nil, false end
+        for _, bag_id in ipairs(ENCH_BAGS) do
+            local bag = windower.ffxi.get_items(bag_id)
+            if bag then
+                for _, it in ipairs(bag) do
+                    if type(it) == 'table' and it.id == row.id then
+                        local ok, ext = pcall(extdata.decode, it)
+                        return row, (ok and ext) or nil, true
+                    end
+                end
+            end
+        end
+        return row, nil, false
+    end
+
+    -- Seconds until the enchantment can be used.  0 = ready, nil = unknown.
+    -- extdata.next_use_time is a Unix timestamp (extdata.lua adds
+    -- server_timestamp_offset = 1009792800), so it compares to os.time().
+    local function enchantment_wait(ext)
+        if not ext then return nil end
+        if ext.next_use_time then
+            local remain = ext.next_use_time - os.time()
+            if remain > 0 then return remain end
+        end
+        return 0
+    end
+
+    -- Cooldown warnings are throttled by the item's own ready-time: once warned,
+    -- stay silent until it is actually back.  This is what stops the 1 Hz Hoxne
+    -- tick from spamming chat through the Ampulla's 60 second recast.
+    local ench_warned = {}
+    local function warn_unavailable(row, wait)
+        local ready_at = os.time() + math.ceil(wait)
+        if (ench_warned[row.id] or 0) >= ready_at then return end
+        ench_warned[row.id] = ready_at
+        if wait >= 3600 then
+            warn(('%s is on cooldown [%dh %dm].'):format(
+                row.en, math.floor(wait / 3600), math.floor(wait % 3600 / 60)))
+        else
+            warn(('%s is on cooldown [%d:%02d].'):format(
+                row.en, math.floor(wait / 60), math.floor(wait % 60)))
+        end
+    end
+
+    -------------------------------------------------------------------------------
+    -- Hoxne state
+    -------------------------------------------------------------------------------
+    local HOXNE_AMPULLA = 'Hoxne Ampulla'
+    local BUFF_ENCHANTMENT = 162   -- res.buffs[162] = "enchantment"
+
+    local hoxne = {
+        window     = false,  -- a critical action currently owns one slot
+        slot       = nil,    -- which slot it borrowed ('range' or 'ammo')
+        expires    = 0,      -- os.clock() deadline for that window
+        resume     = nil,    -- 'aftercast' | 'delay'
+        next_check = 0,      -- os.clock() gate for hoxne_tick (always 1s)
+        recheck_at = 0,      -- os.clock() before which the bags are not re-scanned
+    }
+
+    local function hoxne_on() return state.Hoxne.value ~= 'OFF' end
+
+    -- Global so UnlockByMode() can consult it.  During an open critical window
+    -- ONLY the borrowed slot is considered released - the other stays held, so an
+    -- unrelated UnlockByMode() (any item finishing, Doom/Sleep wearing off, a zone
+    -- change) cannot flush parked job ammo in and displace the instrument.
+    function hoxne_owns_slot(slot)
+        if not hoxne_on() then return false end
+        local s = (slot == 'ranged') and 'range' or slot
+        if s ~= 'range' and s ~= 'ammo' then return false end
+        if hoxne.window then return s ~= hoxne.slot end
+        return true
+    end
+
+    -------------------------------------------------------------------------------
+    -- Enchantment state machine.  No coroutines: a single driver (registered on
+    -- prerender, further down) advances this, so two chains can never exist and
+    -- nothing survives a //gs reload.
+    -------------------------------------------------------------------------------
+    local ench_active = nil
+    local ench_next_check = 0
+
+    local function finish_enchantment()
+        local st = ench_active
+        ench_active = nil
+        if not st then return end
+        if not hoxne_owns_slot(st.slot) then enable(st.slot) end
+        equip_set_command()
+    end
+
+    -- Called from the 'action' event.  The "item finished" packet is generic - it
+    -- fires for food, Remedies, Holy Water, anything - so only accept it as ours
+    -- once we have actually sent our own /item.
+    function enchantment_completed()
+        if ench_active and ench_active.phase == 'sent' then finish_enchantment() end
+    end
+
+    local function enchantment_tick(now)
+        local st = ench_active
+        if not st or now < st.next_step then return end
+
+        if now > st.deadline then
+            warn(st.name .. ': timed out, releasing lock.')
+            finish_enchantment()
+            return
+        end
+
+        if st.phase == 'sent' then
+            st.next_step = now + 1
+            return
+        end
+
+        -- Something took the slot (in-game /equipset, or the game clearing ammo).
+        if player.equipment[st.slot] ~= st.name then
+            st.attempts = st.attempts + 1
+            if st.attempts > 3 then
+                warn(st.name .. ': could not keep it equipped in ' .. st.slot .. '.')
+                finish_enchantment()
+                return
+            end
+            enable(st.slot)
+            equip({ [st.slot] = st.name })
+            disable(st.slot)
+            st.equipped_at = now
+            st.next_step = now + st.cast_delay + 1
+            return
+        end
+
+        if is_moving or midaction() or pet_midaction() then
+            st.next_step = now + 1
+            return
+        end
+
+        local held = now - st.equipped_at
+        if held < st.cast_delay then
+            st.next_step = now + (st.cast_delay - held) + 0.5
+            return
+        end
+
+        local row, ext = find_enchantment(st.name)
+        local wait = enchantment_wait(ext)
+        if wait and wait > 0 then
+            if wait < 15 then
+                st.next_step = now + wait + 0.5
+            else
+                warn_unavailable(row or { id = st.id, en = st.name }, wait)
+                finish_enchantment()
+            end
+            return
+        end
+
+        log('/item "', st.name, '" <me>')
+        windower.chat.input('/item "' .. st.name .. '" <me>')
+        st.phase = 'sent'
+        st.next_step = now + 1
+        st.deadline = math.min(st.deadline, now + st.cast_time + 8)
+    end
+
+    function use_enchantment(item)
+        local row, ext, carried = find_enchantment(item)
+        if not row then
+            info('Unknown enchanted item: [' .. tostring(item) .. ']')
+            return
+        end
+        if not carried then
+            info(row.en .. ': not found in inventory or wardrobes.')
+            return
+        end
+        if ench_active then
+            info('Already using [' .. ench_active.name .. ']. Ignoring [' .. row.en .. '].')
+            return
+        end
+
+        local wait = enchantment_wait(ext)
+        if wait and wait > 0 then
+            warn_unavailable(row, wait)
+            return
+        end
+
+        -- Prefer the slot the item already occupies: rings list both slots and
+        -- pairs() order is undefined, which is why the old loop picked at random.
+        local slot, first
+        for id = 0, 15 do
+            if row.slots:contains(id) then
+                local name = ENCH_SLOT_NAMES[id]
+                first = first or name
+                if player.equipment[name] == row.en then
+                    slot = name
+                    break
+                end
+            end
+        end
+        slot = slot or first
+        if not slot then
+            info('No equippable slot for [' .. row.en .. '].')
+            return
+        end
+
+        local cd, ct = row.cast_delay or 5, row.cast_time or 1
+        local now = os.clock()
+        ench_active = {
+            name = row.en, id = row.id, slot = slot,
+            cast_delay = cd, cast_time = ct,
+            equipped_at = now, attempts = 0, phase = 'waiting',
+            next_step = now + cd + 1,
+            deadline  = now + cd + ct + 12,
+        }
+
+        enable(slot)
+        equip({ [slot] = row.en })
+        disable(slot)
+        log('use_enchantment: ', row.en, ' -> ', slot)
+    end
+
+    -------------------------------------------------------------------------------
+    -- Hoxne enforcement
+    -------------------------------------------------------------------------------
+    -- enable() is bound to user_enable() (GearSwap refresh.lua:117), which
+    -- immediately re-equips whatever choose_set() parked in not_sent_out_equip
+    -- while the slot was locked.  The enable/equip/disable trio must therefore
+    -- happen in ONE event and in THIS order, so the Ampulla wins the same
+    -- equip_list flush as the parked job ammo.
+    local function hoxne_equip_ampulla()
+        enable('range', 'ammo')
+        equip({ range = empty, ammo = HOXNE_AMPULLA })
+        disable('range', 'ammo')
+    end
+
+    local function hoxne_relock()
+        hoxne.window = false
+        hoxne.slot   = nil
+        hoxne.resume = nil
+        hoxne_equip_ampulla()
+        equip_set_command()
+        log('Hoxne: critical window closed, Ampulla re-locked.')
+    end
+
+    local function hoxne_tick(now)
+        if not hoxne_on() then return end
+
+        -- While a critical window is open this is a passive observer: it only
+        -- compares the clock.  It never reads or writes equipment, so a borrowed
+        -- instrument or Angon cannot be overwritten before the window closes.
+        if hoxne.window then
+            if now >= hoxne.expires then hoxne_relock() end
+            return
+        end
+
+        if ench_active then return end
+
+        -- Re-assert the lock every tick.  disable() is a pure table write into
+        -- GearSwap's disable_table (user_functions.lua:131) - no packet, no equip -
+        -- so this is effectively free, and it makes the mode self-healing after
+        -- 'gs c enableall' or any other blanket enable().  That is why Unlock()
+        -- does not need to know about Hoxne: the owner re-establishes its own
+        -- invariant instead of every unlocker having to know about it.
+        disable('range', 'ammo')
+
+        -- disable() only stops GearSwap from swapping.  The game still clears
+        -- ammo when an instrument enters range, and in-game /equipset bypasses
+        -- disable_table entirely - so repair the slot here.
+        if player.equipment.ammo ~= HOXNE_AMPULLA then
+            local _, _, carried = find_enchantment(HOXNE_AMPULLA)
+            if not carried then return end
+            hoxne_equip_ampulla()
+            return
+        end
+
+        if buffactive[BUFF_ENCHANTMENT] then return end
+        if is_Busy or is_moving or midaction() or pet_midaction() then return end
+        if player.status == 'Dead' or player.status == 'Engaged dead' then return end
+
+        -- Bag-scan gate.  windower.ffxi.get_items() marshals a full table per bag
+        -- and find_enchantment() walks up to nine of them, so during a recast gap
+        -- re-scan at most every 10 seconds, or the moment the cooldown completes,
+        -- whichever comes first.  This gate covers ONLY the scan: the tick itself
+        -- keeps running once per second, so the repair path and the disable()
+        -- re-assert above stay at one-second latency in every state.
+        if now < hoxne.recheck_at then return end
+
+        local row, ext = find_enchantment(HOXNE_AMPULLA)
+        if not row then return end
+        local wait = enchantment_wait(ext)
+        if wait and wait > 0 then
+            warn_unavailable(row, wait)
+            hoxne.recheck_at = now + math.min(wait, 10)
+            return
+        end
+        -- Assume the use lands.  If it did, buff 162 short-circuits this function
+        -- long before the gate matters; if it did not, we retry within 10 seconds.
+        hoxne.recheck_at = now + math.min(row.recast_delay or 60, 10)
+
+        log('/item "', HOXNE_AMPULLA, '" <me>')
+        windower.chat.input('/item "' .. HOXNE_AMPULLA .. '" <me>')
+    end
+
+    -------------------------------------------------------------------------------
+    -- Critical actions allowed to borrow range/ammo in 'ON-Allow Critical'.
+    -- Verified against Windower resources:
+    --   Angon          id 18259, slots=8 -> ammo   (DRG)
+    --   Thr. Tomahawk  id 18258, slots=8 -> ammo   (WAR; the ammo item is
+    --                                       "Thr. Tomahawk", NOT "Tomahawk",
+    --                                       which is a level 25 main/sub axe)
+    --   Marsyas        id 21398, slots=4 -> range  (BRD)
+    --   Dunna          id 21372, slots=4 -> range  (GEO)
+    -- Job abilities: Tomahawk = 150, Angon = 170.
+    -- Spell types:   'BardSong'; Geo- and Indi- are both 'Geomancy'.
+    -------------------------------------------------------------------------------
+    local CRITICAL_JA = {
+        [150] = { slot = 'ammo', force = 'Thr. Tomahawk', resume = 'aftercast' },
+        [170] = { slot = 'ammo', force = 'Angon',         resume = 'aftercast' },
+    }
+    local CRITICAL_TYPE = {
+        ['BardSong'] = { slot = 'range', resume = 'delay', delay = 5 },
+        ['Geomancy'] = { slot = 'range', resume = 'delay', delay = 5 },
+    }
+
+    function critical_action_for(spell)
+        if not spell then return nil end
+        if spell.type == TYPE_JA then return CRITICAL_JA[spell.id] end
+        return CRITICAL_TYPE[spell.type]
+    end
+
     -------------------------------------------------------------------------------------------------------------------
     -- This function is called from the default GearSwap Function "pretarget" to validate the user action
     -------------------------------------------------------------------------------------------------------------------
@@ -2710,6 +3087,26 @@ do
             cancel_spell()
             return
         end
+        -- Hoxne critical window.  Derived here rather than handed over from
+        -- pretarget: precast only runs for actions that survived every
+        -- cancel_spell() guard in pretargetcheck AND pretarget_custom, so a
+        -- cancelled action can never leave a slot unlocked, and two actions in
+        -- flight cannot clobber each other's intent.  Only the ONE slot the
+        -- action needs is released.  The forced item is applied before
+        -- precastequip(), so a job file's own sets.JA['Angon'] still wins.
+        if state.Hoxne.value == 'ON-Allow Critical' then
+            local crit = critical_action_for(spell)
+            if crit then
+                hoxne.window  = true
+                hoxne.slot    = crit.slot
+                hoxne.resume  = crit.resume
+                hoxne.expires = os.clock() + 20 -- watchdog only; aftercast sets the real countdown
+                enable(crit.slot)
+                if crit.force then equip({ [crit.slot] = crit.force }) end
+                log('Hoxne: critical window open for ', spell.english, ' (', crit.slot, ')')
+            end
+        end
+
         --Generate the correct set from the include file and custom function
         local built_set = precastequip(spell)
         -- Process a custom set if enabled
@@ -2791,6 +3188,18 @@ do
             SpellCastTime = 0
         end
         Spellstart = os.clock()
+
+        -- Close the Hoxne critical window.  Job abilities resume immediately
+        -- whether they landed or failed; songs and Geomancy get a 5 second
+        -- debounce that each new cast refreshes, so a wave of songs or an
+        -- Indi/Geo pair is one continuous window.  Only the critical action
+        -- itself moves the countdown - an unrelated JA landing inside the
+        -- window must not extend it indefinitely.
+        local crit = hoxne.window and critical_action_for(spell) or nil
+        if crit then
+            hoxne.expires = os.clock() +
+                ((crit.resume == 'delay') and (crit.delay or 5) or 0.5)
+        end
     end
 
     -------------------------------------------------------------------------------------------------------------------
@@ -3250,21 +3659,32 @@ do
             else
                 return
             end
-            if state.Hoxne.value == "ON" then
-                local hoxne_id = res.items:with('en', "Hoxne Ampulla").id
-                if has_item(hoxne_id) then
-                    equip({ ranged = "", ammo = "Hoxne Ampulla" })
-                    disable('ranged', 'ammo')
-                    info('Hoxne Ampulla equipped. Ranged and ammo locked. Use hoxne manually.')
+            if state.Hoxne.value ~= 'OFF' then
+                local _, _, carried = find_enchantment('Hoxne Ampulla')
+                if carried then
+                    hoxne.window   = false
+                    hoxne.slot     = nil
+                    hoxne.resume   = nil
+                    hoxne.recheck_at = 0
+                    hoxne_equip_ampulla()
+                    if state.Hoxne.value == 'ON-Allow Critical' then
+                        info('Hoxne locked. Songs, Geomancy, Tomahawk and Angon may borrow range/ammo.')
+                    else
+                        info('Hoxne locked. Range and ammo are held; instruments and Angon/Tomahawk will not equip.')
+                    end
                 else
-                    warn("Hoxne Ampulla not found.  Not locking ranged/ammo")
+                    warn("Hoxne Ampulla not found.  Not locking range/ammo")
                     state.Hoxne:set('OFF')
                     info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
                     display_box_update()
                 end
             else
-                enable('ranged', 'ammo')
-                info('Hoxne mode disabled.  Ranged and ammo unlocked.')
+                hoxne.window   = false
+                hoxne.slot     = nil
+                hoxne.resume   = nil
+                hoxne.recheck_at = 0
+                enable('range', 'ammo')
+                info('Hoxne mode disabled.  Range and ammo unlocked.')
             end
             equip_set_command()
             return
@@ -3695,42 +4115,6 @@ do
         end
     end
 
-    function use_enchantment(item)
-        local SlotList = { "main", "sub", "range", "ammo", "head", "body", "hands", "legs", "feet", "neck", "waist",
-            "lear", "rear", "left_ring", "right_ring", "back" }
-        local item_table = res.items:with('enl', item) or res.items:with('en', item)
-        local slot = ''
-
-        if item_table == nil or not item_table.targets:contains('Self') then
-            info("Invalid item.")
-            return
-        end
-        if item_table.slots:contains(0) then
-            slot = 'main'
-        else
-            for k, v in pairs(item_table.slots) do
-                if v == true then
-                    slot = SlotList[k + 1]
-                    break
-                end
-            end
-        end
-        enable(slot)
-        equip({ [slot] = item_table.en })
-        disable(slot)
-        local delay_use = item_table.cast_delay + 3
-        local delay_unlock = delay_use + item_table.cast_time + 3
-        Use_Item_Command = item_table.en
-        coroutine.schedule(Use_Item, delay_use)
-        coroutine.schedule(Unlock, delay_unlock)
-        coroutine.schedule(equip_set_command, delay_unlock)
-    end
-
-    function Use_Item()
-        log('/item "', Use_Item_Command, '" ', player.id)
-        windower.chat.input('/item "' .. Use_Item_Command .. '" <me>')
-    end
-
     -- Unbind Keys when the file is unloaded
     function file_unload(file_name)
         if gs_status then
@@ -3748,6 +4132,12 @@ do
         send_command('unbind f10')
         send_command('unbind f11')
         send_command('unbind f12')
+
+        ench_active    = nil
+        hoxne.window   = false
+        hoxne.slot     = nil
+        hoxne.recheck_at = 0
+        enable('range', 'ammo')
 
         if active_external_locks and next(active_external_locks) ~= nil then
             for slot, _ in pairs(active_external_locks) do
@@ -3952,20 +4342,27 @@ do
             'legs', 'feet', 'back')
     end
 
+    -- UnlockByMode() fires on zone change, Doom/Sleep wearing off, and every item
+    -- completion, so it must not release a slot Hoxne is holding.  Unlock() above
+    -- is deliberately left alone: its only caller is 'gs c enableall', the manual
+    -- recovery escape hatch, and hoxne_tick re-asserts the lock within a second.
+    local function enable_except_held(slots)
+        local list = {}
+        for _, s in ipairs(slots) do
+            if not hoxne_owns_slot(s) then list[#list + 1] = s end
+        end
+        if #list > 0 then enable(unpack(list)) end
+    end
+
     function UnlockByMode()
         log('Unlock By Mode Called')
-        if state.Hoxne.value == "ON" then
-            enable('main', 'sub', 'head', 'ear1', 'ear2', 'body', 'hands', 'ring1', 'ring2', 'waist',
-                'legs', 'feet', 'back')
-        else
-            enable('main', 'sub', 'range', 'ammo', 'head', 'ear1', 'ear2', 'body', 'hands', 'ring1', 'ring2',
-                'waist',
-                'legs', 'feet', 'back')
-        end
+        local slots = { 'main', 'sub', 'range', 'ammo', 'head', 'ear1', 'ear2', 'body',
+            'hands', 'ring1', 'ring2', 'waist', 'legs', 'feet', 'back' }
         if not Divergence_Zones:contains(world.area) then
             -- Only unlock neck if not in divergence zone.
-            enable('neck')
+            slots[#slots + 1] = 'neck'
         end
+        enable_except_held(slots)
     end
 
     function Lock()
@@ -4016,7 +4413,7 @@ do
             label = 'HOX',
             mode = 'Hoxne',
             off = 'OFF',
-            colors = { ['ON'] = COLOR.good }
+            colors = { ['ON-Allow Critical'] = COLOR.warn, ['ON-Locked'] = COLOR.good }
         },
     }
 
@@ -4574,6 +4971,23 @@ do
         end
     end)
 
+    -- prerender fires every frame, independent of network traffic.  main_engine is
+    -- bound to 'outgoing chunk', so it only runs when the client is actually
+    -- sending packets - which is why the Ampulla re-equip and auto-use live here
+    -- instead: they keep working while you stand still doing nothing.  The two
+    -- clock gates make the per-frame cost one os.clock() call and a compare.
+    windower.raw_register_event('prerender', function()
+        local now = os.clock()
+        if now >= ench_next_check then
+            ench_next_check = now + 0.25
+            enchantment_tick(now)
+        end
+        if now >= hoxne.next_check then
+            hoxne.next_check = now + 1.0
+            hoxne_tick(now)
+        end
+    end)
+
     windower.raw_register_event('prerender', function()
         if not failsafe_active or state.SpellReceived.value == "OFF" then return end
 
@@ -4742,6 +5156,7 @@ do
                         log('Item use')
                     elseif data.param == 28787 then
                         log('Item Use Interupted')
+                        enchantment_completed()
                         UnlockByMode()
                         equip_set_command()
                     end
@@ -4749,6 +5164,7 @@ do
                 elseif data.category == 5 then
                     if data.param == 4154 then
                         log('Item Use Finished')
+                        enchantment_completed()
                         UnlockByMode()
                         equip_set_command()
                     end
@@ -4756,6 +5172,9 @@ do
                 elseif data.category == 8 then
                     if data.param == 28787 then
                         log('Spell Interupt')
+                        -- An interrupted song never reaches aftercast; collapse
+                        -- the watchdog so the Ampulla comes back promptly.
+                        if hoxne.window then hoxne.expires = os.clock() + 0.5 end
                         equip_set_command()
                     elseif data.param == 24931 then
                         log('Casting Spell')
