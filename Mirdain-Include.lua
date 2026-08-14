@@ -3739,7 +3739,7 @@ do
         if gs_debug then
             gs_debug:destroy()
         end
-        
+
         send_command('unbind ^f9')
         send_command('unbind ^f10')
         send_command('unbind ^f11')
@@ -3978,18 +3978,20 @@ do
     -- UI for displaying the current states
     local GLYPH = {
         on    = string.char(0xE2, 0x97, 0x8F), -- U+25CF Black Circle
-        off   = string.char(0xE2, 0x97, 0x8B), -- U+25CB White Circle
+        off   = string.char(0xE2, 0x97, 0x8F), -- U+25CB White Circle
         prev  = string.char(0xE2, 0x97, 0x84), -- U+25C4 Black left-pointing arrow
         next  = string.char(0xE2, 0x96, 0xBA), -- U+25BA Black right-pointing arrow
         trunc = string.char(0xE2, 0x80, 0xA6), -- U+2026 Elipsis
     }
 
     local COLOR = {
-        label = '150,150,150', value = '235,235,235', chev = '110,110,110',
-        idle  = '120,120,120',                        -- Hollow "off" circle
-        good  = '80,220,110',                         -- Fully on - green
-        warn  = '255,170,60',                         -- Partially on - amber for TH tag
-        cyan  = '90,200,255',                         -- TH SATA mode
+        label = '150,150,150',
+        value = '235,235,235',
+        chev = '110,110,110',
+        idle = '120,120,120',  -- Hollow "off" circle
+        good = '80,220,110',   -- Fully on - green
+        warn = '255,170,60',   -- Partially on - amber for TH tag
+        cyan = '90,200,255',   -- TH SATA mode
     }
 
     local function cs(color, s) return '\\cs(' .. color .. ')' .. s .. '\\cr' end
@@ -3998,19 +4000,35 @@ do
 
     -- Define glyph variables for displaying mode status as a colored circle
     local GLYPH_FIELDS = {
-        { label = 'TH',  mode = 'TreasureMode',  off = 'None',
-          colors = { ['Tag'] = COLOR.warn, ['Full Time'] = COLOR.good, ['SATA'] = COLOR.cyan } },
-        { label = 'SR',  mode = 'SpellReceived', off = 'OFF',
-          colors = { ['ON'] = COLOR.good } },
-        { label = 'HOX', mode = 'Hoxne',         off = 'OFF',
-          colors = { ['ON'] = COLOR.good } },
+        {
+            label = 'TH',
+            mode = 'TreasureMode',
+            off = 'None',
+            colors = { ['Tag'] = COLOR.warn, ['Full Time'] = COLOR.good, ['SATA'] = COLOR.cyan }
+        },
+        {
+            label = 'SR',
+            mode = 'SpellReceived',
+            off = 'OFF',
+            colors = { ['ON'] = COLOR.good }
+        },
+        {
+            label = 'HOX',
+            mode = 'Hoxne',
+            off = 'OFF',
+            colors = { ['ON'] = COLOR.good }
+        },
     }
 
     --3 letter aliases for known ui names. Backward-compatible.
     local UI_SHORT_ALIASES = {
-        ['mode']      = 'MDE', ['pet']  = 'PET', ['tp mode'] = 'TPM',
-        ['auto tank'] = 'TNK', ['tank'] = 'TNK',
-        ['runes']     = 'RUN', ['rune'] = 'RUN',
+        ['mode'] = 'MDE',
+        ['pet'] = 'PET',
+        ['tp mode'] = 'TPM',
+        ['auto tank'] = 'TNK',
+        ['tank'] = 'TNK',
+        ['runes'] = 'RUN',
+        ['rune'] = 'RUN',
     }
 
     -- Derive a three-cell label from a long mode name. Alias first, then a
@@ -4087,12 +4105,14 @@ do
 
         local header_w = 0
         for i, g in ipairs(GLYPH_FIELDS) do
-            header_w = header_w + #g.label + 2        -- label + space + circle
+            header_w = header_w + #g.label + 2 -- label + space + circle
             if i > 1 then header_w = header_w + #SEP end
         end
 
         layout = {
-            fields = fields, label_w = label_w, header_w = header_w,
+            fields = fields,
+            label_w = label_w,
+            header_w = header_w,
             -- Stretch the value field so the closing chevrons land on the
             -- header's right edge. Row = label_w + 1 + 1 + value_w + 1.
             value_w = math.max(value_w, header_w - label_w - 3,
@@ -4152,7 +4172,7 @@ do
     -- Zero the display and debug windows
     function display_zero_command()
         gs_status:pos_x(0)
-        gs_status:pos_y(0)        
+        gs_status:pos_y(0)
         gs_debug:pos_x(0)
         gs_debug:pos_y(100)
         config.save(settings)
@@ -4161,7 +4181,7 @@ do
 
     local debug_box_state = {}
     function debug_box_reset() debug_box_state = {} end
-    
+
     -- Used to help debug issues
     function debug_box_update()
         if debug_box_state.busy == is_Busy
