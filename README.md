@@ -1,3 +1,4 @@
+
 # Mirdain Gearswap Enhanced by Rahvin
 
 **Version 1.6.5** · A GearSwap engine for Final Fantasy XI (Windower 4)
@@ -98,20 +99,11 @@ The suite draws two boxes on screen.
 
 Stacked:
 
-```
-TH .  SR .  HOX o
-STN <    DT     >
-DPS <Black Halo >
-MDE <   Melee   >
-```
+<img width="179" height="91" alt="Screenshot 2026-08-13 211137" src="https://github.com/user-attachments/assets/6323dc5e-4019-4422-a7be-816e956951d6" />
 
 One-line:
 
-```
-TH .  SR .  HOX o  STN <DT>  DPS <Black Halo>  MDE <Melee>
-```
-
-*(The box draws filled/hollow circles and solid triangles. They are transcribed above as `.`, `o`, `<` and `>` so this file stays readable in a plain-text editor.)*
+<img width="544" height="48" alt="Screenshot 2026-08-13 211103" src="https://github.com/user-attachments/assets/c3815acb-cba3-42ad-9cdb-bcaffef27f6c" />
 
 **Reading the indicators**
 
