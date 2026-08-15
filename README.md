@@ -45,7 +45,7 @@ Nothing here requires a change to your job files.
 - **Enchanted item use explains itself** rather than failing quietly: wrong job, level too low, item on cooldown, or `Equipping and using [...]` when it goes ahead.
 - **`gs c enchinfo <item>`** is a new diagnostic that prints an item's live charges, equip delay and cooldown.
 - **Twilight Cape is now limited to Cura and Curaga**, so single-target cures keep the back piece your set specifies.
-- **The engine file has been reorganised** into 23 documented sections. Behaviour is unchanged — no function was altered, only moved and commented.
+- **The engine file has been reorganised** into 23 documented sections.
 
 ---
 
