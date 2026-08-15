@@ -5,7 +5,7 @@
 -- README.md covers installation, features, commands and troubleshooting
 
 -- Enhanced features compared to Mirdain 1.5.X:
--- Hoxne Ampulla Mode with automatic equipping and item use. 
+-- Hoxne Ampulla Mode with automatic equipping and item use.
 --     Specialized modes: (ON-Allow Critical) allow critical spells to equip ranged and ammo
 --                        (ON-Locked) disallow any ranged or ammo changes.
 -- Multibox Spell-Received Gear Tracking with AoE prediction for -aga, -ra, Accession, Divine Veil and Majesty.
@@ -19,7 +19,7 @@
 --     Supports all usable items for gs c use xxxx . Type the name of the item out in all lower case, including spaces and +1 when applicable.
 --     Item equip delays and recast times are tracked now, with warnings when requested items are on cooldown.
 --     No longer silently fails to use warp rings due to unlock or equip overwrites from movement, incoming action packets, combat commands, etc.
--- Extensive optimization to core code.  
+-- Extensive optimization to core code.
 --     CPU performance improved by ~10%. 2-3% less total cpu usage for a 6 box on high end systems.
 --     Many functions and table calls optimized to use hash-mapped checks over iterative lookups.
 --     Event registers switched to raw register events for some routines to reduce background table allocations
@@ -28,6 +28,15 @@
 -- See https://www.github.com/rahvincode for full details and latest version.
 -- README.md includes installation instructions and full feature explanations.
 -- Credit to Mirdain for the original concept and scaffolding.
+
+-- TODO v 1.6.6:
+-- Clean up documentation.
+-- Rearrange gs c if/else tree to optimize the most called functions first and prevent command clobbering through :contains().
+-- Check that all requested features were addressed in this version.
+-- Uncomment TH precast routine but still guard against firing precast for spells.
+-- Fix display issues.
+-- Do a bug check pass and double check cpu usage.
+-- Write patch notes and update readme.
 
 -----------------------------------------------------------------------------
 
@@ -1008,11 +1017,22 @@ do
     -- (statics.lua:97), which is what player.equipment is keyed by and what
     -- equip()/disable() accept.
     local ENCH_SLOT_NAMES = {
-        [0] = 'main',  [1] = 'sub',       [2] = 'range',     [3] = 'ammo',
-        [4] = 'head',  [5] = 'body',      [6] = 'hands',     [7] = 'legs',
-        [8] = 'feet',  [9] = 'neck',      [10] = 'waist',
-        [11] = 'left_ear',  [12] = 'right_ear',
-        [13] = 'left_ring', [14] = 'right_ring', [15] = 'back',
+        [0] = 'main',
+        [1] = 'sub',
+        [2] = 'range',
+        [3] = 'ammo',
+        [4] = 'head',
+        [5] = 'body',
+        [6] = 'hands',
+        [7] = 'legs',
+        [8] = 'feet',
+        [9] = 'neck',
+        [10] = 'waist',
+        [11] = 'left_ear',
+        [12] = 'right_ear',
+        [13] = 'left_ring',
+        [14] = 'right_ring',
+        [15] = 'back',
     }
 
     -- 0 = Inventory, 8 = Wardrobe, 10-16 = Wardrobes 2-8.
@@ -1057,7 +1077,10 @@ do
                 for _, it in ipairs(bag) do
                     if type(it) == 'table' and it.id == row.id then
                         local ok, ext = pcall(extdata.decode, it)
-                        return row, (ok and ext) or nil, true
+                        -- status == 5 marks the bag copy of a currently worn
+                        -- item - the same field GearSwap's own equip pipeline
+                        -- trusts (equip_processing.lua:139).
+                        return row, (ok and ext) or nil, true, (it.status == 5)
                     end
                 end
             end
@@ -1065,31 +1088,77 @@ do
         return row, nil, false
     end
 
-    -- Seconds until the enchantment can be used.  0 = ready, nil = unknown.
-    -- extdata.next_use_time is a Unix timestamp (extdata.lua adds
-    -- server_timestamp_offset = 1009792800), so it compares to os.time().
-    local function enchantment_wait(ext)
-        if not ext then return nil end
+    -- extdata.lua decodes enchantment timestamps by adding
+    -- server_timestamp_offset = 1009792800, which is 2001-12-31 10:00 UTC.
+    -- The server's actual epoch is midnight 2002-01-01 JST = 1009810800 UTC,
+    -- so every decoded timestamp lands exactly 18000 seconds (5 hours) in the
+    -- past.  That bias is why cooldowns shorter than 5 hours (Warp Ring 10min,
+    -- Hoxne Ampulla 60s) always read as "ready" while Prishe's Boots' 60 hour
+    -- cooldown was detected fine.  Validated numerically: an on-cooldown Warp
+    -- Ring read next_use -17432s; corrected, that is +568s remaining of a
+    -- 600s recast measured ~30s after the use.
+    local EXTDATA_TS_CORRECTION = 18000
+
+    -- The server does not accept an enchantment use until ~2.5-3s after the
+    -- listed equip delay / recast boundary (confirmed empirically for Warp
+    -- Ring and Hoxne Ampulla; the wikis document only the listed delay).
+    local ENCH_ACTIVATION_BUFFER = 3
+
+    -- Returns TWO waits in seconds, both epoch-corrected and buffered:
+    --   recast     - a genuine cooldown.  The item cannot be used at all yet,
+    --                and no amount of waiting while equipped helps.  Worth
+    --                telling the user about, and worth refusing a command for.
+    --   activation - the equip delay.  The item only needs to stay worn a
+    --                little longer.  NEVER a cooldown, never a refusal - the
+    --                engine's whole job is to equip and wait this out.
+    -- Collapsing these two into one number is what produced cooldown warnings
+    -- for items that were merely inside their equip delay.
+    -- next_use_time is the recast; activation_time is when the equip delay
+    -- completes and RESTARTS on every re-equip.  While unequipped its raw
+    -- field is 0, decoding to a bare epoch value far in the past, so the
+    -- clamp below turns it into "no wait" rather than nonsense.
+    local function enchantment_waits(ext)
+        if not ext then return nil, nil end
+        local now_t = os.time() - EXTDATA_TS_CORRECTION
+        local recast, activation = 0, 0
         if ext.next_use_time then
-            local remain = ext.next_use_time - os.time()
-            if remain > 0 then return remain end
+            recast = (ext.next_use_time - now_t) + ENCH_ACTIVATION_BUFFER
         end
-        return 0
+        if ext.activation_time then
+            activation = (ext.activation_time - now_t) + ENCH_ACTIVATION_BUFFER
+        end
+        if recast < 0 then recast = 0 end
+        if activation < 0 then activation = 0 end
+        -- Clocks say ready but the item disagrees.  usable is a plain flag,
+        -- immune to the epoch arithmetic, so trust it - but treat the unknown
+        -- as an activation delay (wait quietly) rather than a cooldown (warn
+        -- and refuse), which is the safer error for the user.
+        if recast == 0 and activation == 0 and ext.usable == false then
+            activation = 5
+        end
+        return recast, activation
     end
 
     -- Cooldown warnings are throttled by the item's own ready-time: once warned,
     -- stay silent until it is actually back.  This is what stops the 1 Hz Hoxne
     -- tick from spamming chat through the Ampulla's 60 second recast.
+    -- always=true bypasses the throttle entirely for user-initiated commands
+    -- (gs c use / gs c warp / gs c holla ...): someone who typed a command
+    -- deserves an answer every single time, even the tenth time in a row.
+    -- Those calls also leave the throttle state untouched, so they can never
+    -- silence a later Hoxne tick - and a Hoxne warning can never silence them.
     local ench_warned = {}
-    local function warn_unavailable(row, wait)
-        local ready_at = os.time() + math.ceil(wait)
-        if (ench_warned[row.id] or 0) >= ready_at then return end
-        ench_warned[row.id] = ready_at
+    local function warn_unavailable(row, wait, always)
+        if not always then
+            local ready_at = os.time() + math.ceil(wait)
+            if (ench_warned[row.id] or 0) >= ready_at then return end
+            ench_warned[row.id] = ready_at
+        end
         if wait >= 3600 then
-            warn(('%s is on cooldown [%dh %dm].'):format(
+            info(('%s is on cooldown [%dh %dm].'):format(
                 row.en, math.floor(wait / 3600), math.floor(wait % 3600 / 60)))
         else
-            warn(('%s is on cooldown [%d:%02d].'):format(
+            info(('%s is on cooldown [%d:%02d].'):format(
                 row.en, math.floor(wait / 60), math.floor(wait % 60)))
         end
     end
@@ -1098,29 +1167,77 @@ do
     -- Hoxne state
     -------------------------------------------------------------------------------
     local HOXNE_AMPULLA = 'Hoxne Ampulla'
-    local BUFF_ENCHANTMENT = 162   -- res.buffs[162] = "enchantment"
+    local BUFF_ENCHANTMENT = 162 -- res.buffs[162] = "enchantment"
 
     local hoxne = {
-        window     = false,  -- a critical action currently owns one slot
-        slot       = nil,    -- which slot it borrowed ('range' or 'ammo')
-        expires    = 0,      -- os.clock() deadline for that window
-        resume     = nil,    -- 'aftercast' | 'delay'
-        next_check = 0,      -- os.clock() gate for hoxne_tick (always 1s)
-        recheck_at = 0,      -- os.clock() before which the bags are not re-scanned
+        window         = false, -- a critical action currently owns one slot
+        slot           = nil,   -- which slot it borrowed ('range' or 'ammo')
+        expires        = 0,     -- os.clock() deadline for that window
+        resume         = nil,   -- 'aftercast' | 'delay'
+        next_check     = 0,     -- os.clock() gate for hoxne_tick (always 1s)
+        recheck_at     = 0,     -- os.clock() before which the bags are not re-scanned
+        use_not_before = 0,     -- os.clock() before which no /item may be attempted
     }
+
+    -- Ampulla equip-delay lockout: cast_delay (5s) + the ~3s server activation
+    -- latency + 1s margin.  Also covers extdata staleness right after our own
+    -- equip: a tick reading extdata in that gap would see the PREVIOUS
+    -- activation_time and fire /item straight into the lockout.
+    local HOXNE_EQUIP_LOCKOUT = 9
 
     local function hoxne_on() return state.Hoxne.value ~= 'OFF' end
 
-    -- Global so UnlockByMode() can consult it.  During an open critical window
-    -- ONLY the borrowed slot is considered released - the other stays held, so an
-    -- unrelated UnlockByMode() (any item finishing, Doom/Sleep wearing off, a zone
-    -- change) cannot flush parked job ammo in and displace the instrument.
+    -------------------------------------------------------------------------------
+    -- ON-Allow Critical holds range/ammo by DATA, not by disable().
+    --
+    -- GearSwap intercepts every action command as outgoing TEXT (triggers.lua:43)
+    -- and validates it in check_spell (helper_functions.lua:709) BEFORE any user
+    -- hook runs.  Gear-gated spells - Honor March 417, Aria of Passion 418 - are
+    -- exempted from the "You do not know that spell" rejection ONLY while slot 2
+    -- (range) is not in disable_table:
+    --     (not disable_table[2] and (spell.id == 417 or spell.id == 418))
+    -- With range disabled, the command is refused before pretarget ever fires and
+    -- falls through to the client, which errors.  No pretarget/precast hook can
+    -- fix that, so this mode never disables range/ammo.  Instead every equip
+    -- request passes through this wrapper: outside a critical window, range and
+    -- ammo are stripped from the request, so the slots never move while staying
+    -- fully enabled.  ON-Locked keeps the old disable() hold; gear-gated
+    -- commands failing in that mode is its documented behavior.
+    -------------------------------------------------------------------------------
+    local gs_equip = equip
+    function equip(...)
+        if state.Hoxne.value ~= 'ON-Allow Critical' or hoxne.window then
+            return gs_equip(...)
+        end
+        local n = select('#', ...)
+        local args = { ... }
+        for i = 1, n do
+            local set = args[i]
+            if type(set) == 'table' then
+                local cleaned
+                for k in pairs(set) do
+                    local canon = type(k) == 'string' and CANON_SLOT[k:lower()]
+                    if canon == 'range' or canon == 'ammo' then
+                        if not cleaned then
+                            cleaned = {}
+                            for k2, v2 in pairs(set) do cleaned[k2] = v2 end
+                        end
+                        cleaned[k] = nil
+                    end
+                end
+                if cleaned then args[i] = cleaned end
+            end
+        end
+        return gs_equip(unpack(args, 1, n))
+    end
+
+    -- Global so UnlockByMode() can consult it.  Only ON-Locked holds slots in
+    -- disable_table now, so only ON-Locked needs protecting from blanket
+    -- enables; ON-Allow Critical keeps the slots enabled by design (see above).
     function hoxne_owns_slot(slot)
-        if not hoxne_on() then return false end
+        if state.Hoxne.value ~= 'ON-Locked' then return false end
         local s = (slot == 'ranged') and 'range' or slot
-        if s ~= 'range' and s ~= 'ammo' then return false end
-        if hoxne.window then return s ~= hoxne.slot end
-        return true
+        return s == 'range' or s == 'ammo'
     end
 
     -------------------------------------------------------------------------------
@@ -1151,29 +1268,17 @@ do
         if not st or now < st.next_step then return end
 
         if now > st.deadline then
-            warn(st.name .. ': timed out, releasing lock.')
+            if st.phase == 'sent' then
+                warn(st.name .. ': use was not accepted - most likely still on cooldown. Releasing.')
+            else
+                warn(st.name .. ': timed out, releasing lock.')
+            end
             finish_enchantment()
             return
         end
 
         if st.phase == 'sent' then
             st.next_step = now + 1
-            return
-        end
-
-        -- Something took the slot (in-game /equipset, or the game clearing ammo).
-        if player.equipment[st.slot] ~= st.name then
-            st.attempts = st.attempts + 1
-            if st.attempts > 3 then
-                warn(st.name .. ': could not keep it equipped in ' .. st.slot .. '.')
-                finish_enchantment()
-                return
-            end
-            enable(st.slot)
-            equip({ [st.slot] = st.name })
-            disable(st.slot)
-            st.equipped_at = now
-            st.next_step = now + st.cast_delay + 1
             return
         end
 
@@ -1188,15 +1293,49 @@ do
             return
         end
 
-        local row, ext = find_enchantment(st.name)
-        local wait = enchantment_wait(ext)
-        if wait and wait > 0 then
-            if wait < 15 then
-                st.next_step = now + wait + 0.5
+        -- One bag walk answers everything: presence, equipped state, and the
+        -- enchantment timers.  player.equipment is NOT usable for the equipped
+        -- check here: it only refreshes when a wrapped GearSwap event begins
+        -- (flow.lua:59), so in this raw handler it lags our own equip and
+        -- triggers phantom repairs.  That is exactly what stretched a ~6s use
+        -- to 13s (boots, cd 5) and 19s (Warp Ring, cd 8): cd+1 for the misread,
+        -- then cd+2 again for the pointless re-equip.
+        local row, ext, carried, equipped = find_enchantment(st.name)
+
+        -- Something genuinely took the slot (in-game /equipset, or the game
+        -- clearing ammo).  The re-equip routes through self_command because
+        -- equip() from raw context is discarded (flow.lua:60).
+        if not equipped then
+            st.attempts = st.attempts + 1
+            if st.attempts > 3 then
+                warn(st.name .. ': could not keep it equipped in ' .. st.slot .. '.')
+                finish_enchantment()
+                return
+            end
+            windower.send_command('gs c enchrepair')
+            st.equipped_at = now
+            st.next_step = now + st.cast_delay + ENCH_ACTIVATION_BUFFER + 1
+            return
+        end
+
+        local recast, activation = enchantment_waits(ext)
+        recast, activation = recast or 0, activation or 0
+        if recast > 0 then
+            -- A genuine cooldown discovered after we already equipped.  Short
+            -- ones are worth waiting out; long ones are not.
+            if recast < 15 then
+                st.next_step = now + recast + 0.5
             else
-                warn_unavailable(row or { id = st.id, en = st.name }, wait)
+                -- Still the user's gs c use command (ench_active is only ever
+                -- set by use_enchantment), so answer unconditionally here too.
+                warn_unavailable(row, recast, true)
                 finish_enchantment()
             end
+            return
+        end
+        if activation > 0 then
+            -- Equip delay only: wait silently, however long it takes.
+            st.next_step = now + activation + 0.5
             return
         end
 
@@ -1204,7 +1343,11 @@ do
         windower.chat.input('/item "' .. st.name .. '" <me>')
         st.phase = 'sent'
         st.next_step = now + 1
-        st.deadline = math.min(st.deadline, now + st.cast_time + 8)
+        -- If the server accepted, the item-finished action event closes this
+        -- out (enchantment_completed).  If it silently rejected, nothing will
+        -- ever arrive, so allow cast_time plus a margin and release with a
+        -- specific message instead of the generic lockout failsafe.
+        st.deadline = now + st.cast_time + 4
     end
 
     function use_enchantment(item)
@@ -1213,20 +1356,49 @@ do
             info('Unknown enchanted item: [' .. tostring(item) .. ']')
             return
         end
+        local i_name = row.en
         if not carried then
-            info(row.en .. ': not found in inventory or wardrobes.')
-            return
-        end
-        if ench_active then
-            info('Already using [' .. ench_active.name .. ']. Ignoring [' .. row.en .. '].')
+            info(i_name .. ': not found in inventory or wardrobes.')
             return
         end
 
-        local wait = enchantment_wait(ext)
-        if wait and wait > 0 then
-            warn_unavailable(row, wait)
+        -- Up-front equippability guards, mirroring the rejections GearSwap
+        -- applies when it builds an equip packet (equip_processing.lua:196-207).
+        -- extdata cannot answer any of this - it describes the item instance,
+        -- not the character wearing it - so the check is res.items crossed with
+        -- player.  Catching it here turns a confusing lock-and-timeout ("could
+        -- not keep it equipped", 20+ seconds later) into an immediate reason.
+        local job_level = (player.jobs and player.jobs[player.main_job]) or player.main_job_level
+        if row.jobs and not row.jobs[player.main_job_id] then
+            info(i_name .. ' cannot be worn by this job.')
+            return
+        elseif row.level and job_level and row.level > job_level then
+            info(('%s requires level %d; your %s is %d.'):format(
+                i_name, row.level, tostring(player.main_job), job_level))
+            return
+        elseif row.races and not row.races[player.race_id] then
+            info(i_name .. ' cannot be worn by your race.')
+            return
+        elseif not row.slots then
+            info(i_name .. ' cannot be worn.')
             return
         end
+
+        if ench_active then
+            info('Already using [' .. ench_active.name .. ']. Ignoring [' .. i_name .. '].')
+            return
+        end
+
+        -- Only a genuine cooldown refuses the command.  An equip delay is not
+        -- a failure - equipping and waiting it out is precisely what this
+        -- function exists to do, so it is ignored here and handled by the tick.
+        local recast = enchantment_waits(ext)
+        if recast and recast > 0 then
+            warn_unavailable(row, recast, true) -- user asked; always answer
+            return
+        end
+
+        info('Equipping and using [' .. i_name .. ']')
 
         -- Prefer the slot the item already occupies: rings list both slots and
         -- pairs() order is undefined, which is why the old loop picked at random.
@@ -1235,55 +1407,73 @@ do
             if row.slots:contains(id) then
                 local name = ENCH_SLOT_NAMES[id]
                 first = first or name
-                if player.equipment[name] == row.en then
+                if player.equipment[name] == i_name then
                     slot = name
                     break
                 end
             end
         end
         slot = slot or first
+        -- The guard above rejects a nil slots field; this catches the rarer
+        -- case of a slots set that exists but is empty.
         if not slot then
-            info('No equippable slot for [' .. row.en .. '].')
+            info('No equippable slot for [' .. i_name .. '].')
             return
         end
 
         local cd, ct = row.cast_delay or 5, row.cast_time or 1
         local now = os.clock()
         ench_active = {
-            name = row.en, id = row.id, slot = slot,
-            cast_delay = cd, cast_time = ct,
-            equipped_at = now, attempts = 0, phase = 'waiting',
-            next_step = now + cd + 1,
-            deadline  = now + cd + ct + 12,
+            name        = i_name,
+            id          = row.id,
+            slot        = slot,
+            cast_delay  = cd,
+            cast_time   = ct,
+            equipped_at = now,
+            attempts    = 0,
+            phase       = 'waiting',
+            next_step   = now + cd + ENCH_ACTIVATION_BUFFER,
+            deadline    = now + cd + ct + 12,
         }
 
+        -- gs_equip: the engine manages its own slot, so the Hoxne data-filter
+        -- must not strip an ammo or range enchantment the user asked for.
         enable(slot)
-        equip({ [slot] = row.en })
+        gs_equip({ [slot] = i_name })
         disable(slot)
-        log('use_enchantment: ', row.en, ' -> ', slot)
+        log('use_enchantment: ', i_name, ' -> ', slot)
     end
 
     -------------------------------------------------------------------------------
     -- Hoxne enforcement
     -------------------------------------------------------------------------------
-    -- enable() is bound to user_enable() (GearSwap refresh.lua:117), which
-    -- immediately re-equips whatever choose_set() parked in not_sent_out_equip
-    -- while the slot was locked.  The enable/equip/disable trio must therefore
-    -- happen in ONE event and in THIS order, so the Ampulla wins the same
-    -- equip_list flush as the parked job ammo.
+    -- ON-Locked: enable() is bound to user_enable() (GearSwap refresh.lua:117),
+    -- which immediately re-equips whatever choose_set() parked in
+    -- not_sent_out_equip while the slot was disabled, so the trio must happen in
+    -- ONE event and in THIS order - the Ampulla wins the same equip_list flush
+    -- as the parked job ammo.  ON-Allow Critical: nothing is disabled and
+    -- nothing parked; a plain raw equip suffices, and the slots must STAY out
+    -- of disable_table (see the equip wrapper).  Only call from wrapped events.
     local function hoxne_equip_ampulla()
-        enable('range', 'ammo')
-        equip({ range = empty, ammo = HOXNE_AMPULLA })
-        disable('range', 'ammo')
+        if state.Hoxne.value == 'ON-Locked' then
+            enable('range', 'ammo')
+            gs_equip({ range = empty, ammo = HOXNE_AMPULLA })
+            disable('range', 'ammo')
+        else
+            gs_equip({ range = empty, ammo = HOXNE_AMPULLA })
+        end
     end
 
     local function hoxne_relock()
         hoxne.window = false
         hoxne.slot   = nil
         hoxne.resume = nil
-        hoxne_equip_ampulla()
-        equip_set_command()
-        log('Hoxne: critical window closed, Ampulla re-locked.')
+        -- This runs from the raw prerender driver.  equip() from raw context is
+        -- silently discarded (flow.lua:60 clears equip_list when the next
+        -- wrapped event begins), so route the re-equip through self_command,
+        -- which executes inside a wrapped event.
+        windower.send_command('gs c hoxnerelock')
+        log('Hoxne: critical window closed, re-locking Ampulla.')
     end
 
     local function hoxne_tick(now)
@@ -1299,27 +1489,36 @@ do
 
         if ench_active then return end
 
-        -- Re-assert the lock every tick.  disable() is a pure table write into
-        -- GearSwap's disable_table (user_functions.lua:131) - no packet, no equip -
-        -- so this is effectively free, and it makes the mode self-healing after
-        -- 'gs c enableall' or any other blanket enable().  That is why Unlock()
-        -- does not need to know about Hoxne: the owner re-establishes its own
-        -- invariant instead of every unlocker having to know about it.
-        disable('range', 'ammo')
+        -- ON-Locked re-asserts its hold every tick.  disable() is a pure table
+        -- write into GearSwap's disable_table (user_functions.lua:131) - safe
+        -- from this raw handler, and self-healing after 'gs c enableall'.
+        -- ON-Allow Critical must NEVER do this: GearSwap's gear-gated spell
+        -- exemption (check_spell, helper_functions.lua:714) refuses Honor March
+        -- and Aria of Passion while slot 2 sits in disable_table.  That mode
+        -- holds by filtering equip requests instead (see the equip wrapper).
+        if state.Hoxne.value == 'ON-Locked' then
+            disable('range', 'ammo')
+        end
 
-        -- disable() only stops GearSwap from swapping.  The game still clears
-        -- ammo when an instrument enters range, and in-game /equipset bypasses
-        -- disable_table entirely - so repair the slot here.
+        -- Neither hold stops the game itself: equipping an instrument clears
+        -- ammo, and in-game /equipset bypasses GearSwap entirely - so repair
+        -- the slot here, routed through self_command because equip() from this
+        -- raw handler would be discarded (flow.lua:60).
         if player.equipment.ammo ~= HOXNE_AMPULLA then
             local _, _, carried = find_enchantment(HOXNE_AMPULLA)
             if not carried then return end
-            hoxne_equip_ampulla()
+            windower.send_command('gs c hoxnerelock')
+            hoxne.next_check = now + 2
             return
         end
 
         if buffactive[BUFF_ENCHANTMENT] then return end
         if is_Busy or is_moving or midaction() or pet_midaction() then return end
         if player.status == 'Dead' or player.status == 'Engaged dead' then return end
+
+        -- Never attempt a use inside the equip-delay window after our own
+        -- re-equip (see HOXNE_EQUIP_LOCKOUT).
+        if now < hoxne.use_not_before then return end
 
         -- Bag-scan gate.  windower.ffxi.get_items() marshals a full table per bag
         -- and find_enchantment() walks up to nine of them, so during a recast gap
@@ -1331,15 +1530,21 @@ do
 
         local row, ext = find_enchantment(HOXNE_AMPULLA)
         if not row then return end
-        local wait = enchantment_wait(ext)
-        if wait and wait > 0 then
-            warn_unavailable(row, wait)
-            hoxne.recheck_at = now + math.min(wait, 10)
+        local recast, activation = enchantment_waits(ext)
+        recast, activation = recast or 0, activation or 0
+        if recast > 0 then
+            warn_unavailable(row, recast)
+            hoxne.recheck_at = now + math.min(recast, 5)
+            return
+        end
+        if activation > 0 then
+            -- Equip delay after our own re-equip: silent, no warning.
+            hoxne.recheck_at = now + math.min(activation, 5)
             return
         end
         -- Assume the use lands.  If it did, buff 162 short-circuits this function
         -- long before the gate matters; if it did not, we retry within 10 seconds.
-        hoxne.recheck_at = now + math.min(row.recast_delay or 60, 10)
+        hoxne.recheck_at = now + math.min(row.recast_delay or 60, 5)
 
         log('/item "', HOXNE_AMPULLA, '" <me>')
         windower.chat.input('/item "' .. HOXNE_AMPULLA .. '" <me>')
@@ -1359,7 +1564,7 @@ do
     -------------------------------------------------------------------------------
     local CRITICAL_JA = {
         [150] = { slot = 'ammo', force = 'Thr. Tomahawk', resume = 'aftercast' },
-        [170] = { slot = 'ammo', force = 'Angon',         resume = 'aftercast' },
+        [170] = { slot = 'ammo', force = 'Angon', resume = 'aftercast' },
     }
     local CRITICAL_TYPE = {
         ['BardSong'] = { slot = 'range', resume = 'delay', delay = 5 },
@@ -3064,8 +3269,54 @@ do
     function pretarget(spell, action)
         --Calls the function in the include file for basic checks
         pretargetcheck(spell, action)
+
+        -- The Hoxne critical window opens HERE - after the include's guards but
+        -- BEFORE pretarget_custom - so any instrument or ammo equips a job file
+        -- performs at pretarget flow through the Allow-Critical filter instead
+        -- of being silently stripped.  Equips made in this event flush when
+        -- pretarget ends, so the implement is worn before GearSwap composes and
+        -- injects the action packet (flow.lua:221-287).  _global is the
+        -- per-event state GearSwap reassigns on entry; cancel_spell() sets
+        -- _global.cancel_spell (user_functions.lua:62), so a window never opens
+        -- for an action pretargetcheck already cancelled.
+        local hoxne_opened = false
+        if state.Hoxne.value == 'ON-Allow Critical' then
+            local crit = critical_action_for(spell)
+            if crit then
+                if _global.cancel_spell then
+                    log('Hoxne: window not opened; pretargetcheck cancelled [', spell.english, ']')
+                else
+                    hoxne_opened  = true
+                    hoxne.window  = true
+                    hoxne.slot    = crit.slot
+                    hoxne.resume  = crit.resume
+                    hoxne.expires = os.clock() + 20 -- watchdog only; aftercast sets the real countdown
+                    -- Marsyas / Loughnashade for the gear-gated songs, or the
+                    -- forced ammo for Tomahawk / Angon.  Ordinary songs and
+                    -- Geomancy need nothing here: their instruments arrive with
+                    -- pretarget_custom or the precast/midcast sets, all of which
+                    -- flow untouched while the window is open.
+                    local gated   = check_equipment_spells(spell)
+                    if gated then
+                        equip(gated)
+                    elseif crit.force then
+                        equip({ [crit.slot] = crit.force })
+                    end
+                    log('Hoxne: critical window open for ', spell.english, ' (', crit.slot, ')')
+                end
+            end
+        end
+
         --Calls the job specific function
         if pretarget_custom then pretarget_custom(spell, action) end
+
+        -- If the job file cancelled after the window opened, collapse it soon.
+        -- The 2 second grace covers the common cancel-equip-reissue pattern: a
+        -- re-issued command re-opens the window before the tick re-locks.
+        if hoxne_opened and _global.cancel_spell then
+            hoxne.expires = os.clock() + 2
+            log('Hoxne: pretarget_custom cancelled [', spell.english, ']; window closing in 2s')
+        end
     end
 
     -------------------------------------------------------------------------------------------------------------------
@@ -3101,23 +3352,37 @@ do
             cancel_spell()
             return
         end
-        -- Hoxne critical window.  Derived here rather than handed over from
-        -- pretarget: precast only runs for actions that survived every
-        -- cancel_spell() guard in pretargetcheck AND pretarget_custom, so a
-        -- cancelled action can never leave a slot unlocked, and two actions in
-        -- flight cannot clobber each other's intent.  Only the ONE slot the
-        -- action needs is released.  The forced item is applied before
-        -- precastequip(), so a job file's own sets.JA['Angon'] still wins.
+        -- Fallback window-open for actions that never passed through pretarget:
+        -- casts initiated from the in-game menus arrive as action packets, not
+        -- text, so GearSwap's 'outgoing text' interception (triggers.lua:43)
+        -- never fires for them and only precast/midcast/aftercast run.  Without
+        -- this, the equip wrapper would strip instruments from every menu cast.
+        -- Gear-gated songs need no handling here: the menu cannot initiate them
+        -- unless the implement is already worn.
         if state.Hoxne.value == 'ON-Allow Critical' then
             local crit = critical_action_for(spell)
             if crit then
-                hoxne.window  = true
-                hoxne.slot    = crit.slot
-                hoxne.resume  = crit.resume
-                hoxne.expires = os.clock() + 20 -- watchdog only; aftercast sets the real countdown
-                enable(crit.slot)
-                if crit.force then equip({ [crit.slot] = crit.force }) end
-                log('Hoxne: critical window open for ', spell.english, ' (', crit.slot, ')')
+                if not hoxne.window then
+                    hoxne.window  = true
+                    hoxne.slot    = crit.slot
+                    hoxne.resume  = crit.resume
+                    hoxne.expires = os.clock() + 20
+                    if crit.force then equip({ [crit.slot] = crit.force }) end
+                    log('Hoxne: critical window open at precast for ', spell.english, ' (', crit.slot, ')')
+                else
+                    -- A new critical action is in flight inside an already-open
+                    -- window, so push the deadline back out.  Without this,
+                    -- back-to-back critical actions that bypass pretarget -
+                    -- menu casts, and number-target commands, which jump
+                    -- straight to precast (triggers.lua:132) - inherit the
+                    -- PREVIOUS action's 5 second aftercast countdown and the
+                    -- window slams shut mid-cast (the Entrust -> Indi-Barrier
+                    -- failure).  Their own aftercast restarts the countdown.
+                    hoxne.slot    = crit.slot
+                    hoxne.resume  = crit.resume
+                    hoxne.expires = os.clock() + 20
+                    log('Hoxne: critical window refreshed at precast for ', spell.english)
+                end
             end
         end
 
@@ -3662,6 +3927,52 @@ do
             end
             equip_set_command()
             return
+        elseif command == 'hoxnerelock' then
+            -- Wrapped landing point for the raw prerender driver (hoxne_relock /
+            -- hoxne_tick).  Skips if a window opened while the command was in
+            -- flight, so an async re-lock can never stomp a borrowed instrument.
+            if state.Hoxne.value ~= 'OFF' and not hoxne.window then
+                hoxne_equip_ampulla()
+                -- The equip delay restarts on every re-equip, but the recast
+                -- may be longer still: whichever is larger governs, with the
+                -- equip lockout as the floor against stale extdata.
+                local _, hx_ext = find_enchantment(HOXNE_AMPULLA)
+                local hx_recast = enchantment_waits(hx_ext) or 0
+                hoxne.use_not_before = os.clock() + math.max(HOXNE_EQUIP_LOCKOUT, hx_recast)
+                equip_set_command()
+            end
+            return
+        elseif command == 'enchrepair' then
+            -- Wrapped landing point for enchantment_tick's re-equip.
+            local st = ench_active
+            if st then
+                enable(st.slot)
+                gs_equip({ [st.slot] = st.name })
+                disable(st.slot)
+            end
+            return
+        elseif command:startswith('enchinfo') then
+            -- Diagnostic: dumps the live extdata for an enchanted item so the
+            -- cooldown and activation the engine sees can be compared against
+            -- reality.  Usage: gs c enchinfo warp ring
+            local name = command_arg(cmd)
+            local row, ext, carried, equipped = find_enchantment(name or '')
+            if not row then
+                info('enchinfo: unknown item [' .. tostring(name) .. ']')
+            elseif not carried then
+                info(row.en .. ': not in inventory or wardrobes.')
+            elseif not ext then
+                info(row.en .. ': carried, but extdata did not decode.')
+            else
+                local now_t = os.time() - EXTDATA_TS_CORRECTION
+                local recast, activation = enchantment_waits(ext)
+                info(('%s: equipped=%s usable=%s charges=%s activation %+ds next_use %+ds (epoch-corrected)'):format(
+                    row.en, tostring(equipped), tostring(ext.usable), tostring(ext.charges_remaining),
+                    (ext.activation_time or now_t) - now_t, (ext.next_use_time or now_t) - now_t))
+                info(('  -> engine sees: cooldown %ds (warns/refuses), equip delay %ds (waits quietly)'):format(
+                    recast or 0, activation or 0))
+            end
+            return
         elseif command:contains('hoxne') then
             if command == "hoxne" then
                 state.Hoxne:cycle()
@@ -3676,11 +3987,22 @@ do
             if state.Hoxne.value ~= 'OFF' then
                 local _, _, carried = find_enchantment('Hoxne Ampulla')
                 if carried then
-                    hoxne.window   = false
-                    hoxne.slot     = nil
-                    hoxne.resume   = nil
+                    hoxne.window     = false
+                    hoxne.slot       = nil
+                    hoxne.resume     = nil
                     hoxne.recheck_at = 0
+                    if state.Hoxne.value == 'ON-Allow Critical' then
+                        -- The Allow-Critical hold is data-side: range/ammo must
+                        -- stay OUT of disable_table or GearSwap's gear-gated
+                        -- spell exemption dies (see equip wrapper).  This also
+                        -- clears the hold left behind when toggling over from
+                        -- ON-Locked.
+                        enable('range', 'ammo')
+                    end
                     hoxne_equip_ampulla()
+                    local _, hx_ext = find_enchantment(HOXNE_AMPULLA)
+                    local hx_recast = enchantment_waits(hx_ext) or 0
+                    hoxne.use_not_before = os.clock() + math.max(HOXNE_EQUIP_LOCKOUT, hx_recast)
                     if state.Hoxne.value == 'ON-Allow Critical' then
                         info('Hoxne locked. Songs, Geomancy, Tomahawk and Angon may borrow range/ammo.')
                     else
@@ -3693,9 +4015,9 @@ do
                     display_box_update()
                 end
             else
-                hoxne.window   = false
-                hoxne.slot     = nil
-                hoxne.resume   = nil
+                hoxne.window     = false
+                hoxne.slot       = nil
+                hoxne.resume     = nil
                 hoxne.recheck_at = 0
                 enable('range', 'ammo')
                 info('Hoxne mode disabled.  Range and ammo unlocked.')
@@ -4147,9 +4469,9 @@ do
         send_command('unbind f11')
         send_command('unbind f12')
 
-        ench_active    = nil
-        hoxne.window   = false
-        hoxne.slot     = nil
+        ench_active      = nil
+        hoxne.window     = false
+        hoxne.slot       = nil
         hoxne.recheck_at = 0
         enable('range', 'ammo')
 
@@ -4399,10 +4721,10 @@ do
         label = '150,150,150',
         value = '235,235,235',
         chev = '110,110,110',
-        idle = '120,120,120',  -- Hollow "off" circle
-        good = '80,220,110',   -- Fully on - green
-        warn = '255,170,60',   -- Partially on - amber for TH tag
-        cyan = '90,200,255',   -- TH SATA mode
+        idle = '120,120,120', -- Hollow "off" circle
+        good = '80,220,110',  -- Fully on - green
+        warn = '255,170,60',  -- Partially on - amber for TH tag
+        cyan = '90,200,255',  -- TH SATA mode
     }
 
     local function cs(color, s) return '\\cs(' .. color .. ')' .. s .. '\\cr' end
