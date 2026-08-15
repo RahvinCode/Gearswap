@@ -1,6 +1,6 @@
 # Mirdain-Include Enhanced
 
-**Version 1.6.5** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 1.6.6** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
 Enhanced version of Mirdain-Include, created by Rahvin. Check your running version in game with `//gs c version`.
 
@@ -33,6 +33,19 @@ GearSwap is a Windower addon that changes your equipment automatically as you pl
 **Job files** (`WAR.lua`, `WHM.lua`, `BLM.lua`, …) are yours. They contain your gear, your modes, and your preferences. You will spend all of your time in these.
 
 If you have never used GearSwap before: you only need to fill in gear sets in your job file. The engine handles the rest.
+
+### New in 1.6.6
+
+Nothing here requires a change to your job files.
+
+- **Hoxne mode now has two on states.** `ON-Locked` behaves as the old `ON` did. `ON-Allow Critical` stands aside for bard songs, Geomancy, Tomahawk and Angon, then takes the slot back. Bards and Geomancers want this one — see [Hoxne](#hoxne--hoxne-ampulla-lock).
+- **The Ampulla is now used automatically** while either mode is on, and put back if something knocks it out of your ammo slot.
+- **`gs c use` works for every enchanted item**, including ones whose in-game log name is capitalised differently from their item name. Roughly a quarter of usable items previously could not be found by name at all.
+- **Cooldowns are read from the item and reported accurately.** Items with a recast under five hours — warp rings, the Ampulla — could not previously be detected as unavailable, so a use would silently do nothing. You now get the time remaining.
+- **Enchanted item use explains itself** rather than failing quietly: wrong job, level too low, item on cooldown, or `Equipping and using [...]` when it goes ahead.
+- **`gs c enchinfo <item>`** is a new diagnostic that prints an item's live charges, equip delay and cooldown.
+- **Twilight Cape is now limited to Cura and Curaga**, so single-target cures keep the back piece your set specifies.
+- **The engine file has been reorganised** into 23 documented sections. Behaviour is unchanged — no function was altered, only moved and commented.
 
 ---
 
@@ -118,7 +131,7 @@ TH .  SR .  HOX o  STN <DT>  DPS <Black Halo>  MDE <Melee>
 | Indicator | Meaning |
 |---|---|
 | Filled circle, green | Mode is fully on |
-| Filled circle, amber | Partially on — currently only TH `Tag` |
+| Filled circle, amber | Partially on — TH `Tag`, or Hoxne `ON-Allow Critical` |
 | Filled circle, cyan | THF-only TH `SATA` |
 | Hollow circle, grey | Mode is off (`None` / `OFF`) |
 | Value between triangles | A cycling mode — press its key, or `//gs c <mode> <value>` |
@@ -161,7 +174,7 @@ Bound automatically when your job file loads.
 | <kbd>F11</kbd> | Cycle **TreasureHunter** |
 | <kbd>F12</kbd> | Cycle **OffenseMode** |
 | <kbd>Ctrl</kbd>+<kbd>F9</kbd> | Cycle **SpellReceived** |
-| <kbd>Ctrl</kbd>+<kbd>F10</kbd> | Cycle **Hoxne** |
+| <kbd>Ctrl</kbd>+<kbd>F10</kbd> | Cycle **Hoxne** — `OFF` → `ON-Allow Critical` → `ON-Locked` |
 | <kbd>Ctrl</kbd>+<kbd>F11</kbd> | Cycle **JobMode2** |
 | <kbd>Ctrl</kbd>+<kbd>F12</kbd> | Cycle **JobMode** |
 
@@ -241,11 +254,30 @@ Requires the corresponding `*_Received` sets. See [Spell-Received Tracking](#spe
 
 ### Hoxne — Hoxne Ampulla lock
 
-Locks Hoxne Ampulla into your ammo slot and stops the engine from unlocking it. Persists through zoning. You must still use the item manually to gain the buff.
+Holds Hoxne Ampulla in your ammo slot, keeps it there when something knocks it out, and uses it automatically whenever the enchantment has worn off and the item is off cooldown. Persists through zoning.
 
-- **Options:** `OFF` `ON`
-- **Command:** `//gs c hoxne`
+- **Options:** `OFF` `ON-Allow Critical` `ON-Locked`
+- **Command:** `//gs c hoxne`, or `//gs c hoxne ON-Locked` to set one directly
 - Will refuse to turn on if the item is not in your inventory or wardrobes.
+
+**`ON-Locked`** holds range and ammo outright. Nothing else may enter either slot, so instruments, handbells, Angon and Thr. Tomahawk will not equip while it is on. This is the strictest setting and the one to use when you only care about keeping the Ampulla up.
+
+**`ON-Allow Critical`** holds both slots the same way, but stands aside for the handful of actions that genuinely need them:
+
+| Action | Slot borrowed |
+|---|---|
+| Bard songs | `range` (instrument) |
+| Geomancy — both `Geo-` and `Indi-` | `range` (handbell) |
+| Tomahawk (WAR) | `ammo` (Thr. Tomahawk) |
+| Angon (DRG) | `ammo` (Angon) |
+
+The slot is released as the action starts and reclaimed afterwards — immediately for job abilities, and five seconds after the last cast for songs and Geomancy, so a full song rotation or a Geo/Indi pair is treated as one continuous window rather than fighting you between casts.
+
+Equipping an instrument or handbell makes the game clear your ammo slot, so the Ampulla is dropped for the duration and put back when the window closes. That is expected, not a fault.
+
+> **Bards and Geomancers should use `ON-Allow Critical`.** Honor March and Aria of Passion can only be cast while Marsyas or Loughnashade is equipped, and `ON-Locked` blocks the instrument, so those two songs will fail outright with a command error. Geomancy needs its handbell for the same reason.
+
+Automatic use waits out the item's equip delay and its recast, so the first use after locking the mode on takes a few seconds. If it is genuinely on cooldown you get one warning with the time remaining, not a repeated one.
 
 ### JobMode and JobMode2 — your own switches
 
@@ -303,7 +335,7 @@ All commands are typed as `//gs c <command>` and are **case-insensitive**.
 | `gs c TreasureHunter [mode]` | Cycle, or jump to a TH mode |
 | `gs c AutoBuff [mode]` | Cycle, or set auto-buffing |
 | `gs c SpellReceived [ON\|OFF]` | Cycle, or set spell-received tracking |
-| `gs c hoxne [ON\|OFF]` | Toggle or set Hoxne Ampulla lock |
+| `gs c Hoxne [OFF\|ON-Allow Critical\|ON-Locked]` | Cycle, or set the Hoxne Ampulla lock |
 | `gs c JobMode [mode]` | Cycle, or jump to a job-specific mode |
 | `gs c JobMode2 [mode]` | Cycle, or jump to a second job-specific mode |
 
@@ -353,7 +385,8 @@ Partial values are offered as a suggestion but never accepted, so `//gs c Treasu
 | Command | Description |
 |---|---|
 | `gs c food` | Use the item named in your `Food` variable |
-| `gs c use <item>` | Use any enchanted item; auto-detects slot and cast time |
+| `gs c use <item>` | Equip and use any enchanted item; auto-detects slot, equip delay and cooldown |
+| `gs c enchinfo <item>` | Print an enchanted item's live charges, equip delay and cooldown |
 | `gs c temps` | Use the six Escha temporary drinks in sequence |
 | `gs c warp` | Use Warp Ring |
 | `gs c warp club` | Use Warp Cudgel |
@@ -361,6 +394,39 @@ Partial values are offered as a suggestion but never accepted, so `//gs c Treasu
 | `gs c dem` | Use Dim. Ring (Dem) |
 | `gs c mea` | Use Dim. Ring (Mea) |
 | `gs c cp` | Use Trizek Ring |
+
+#### Using enchanted items
+
+`gs c use` handles the whole sequence for you: it equips the item, waits out its equip delay, uses it, then gives your slot back. Type the item name in lower case, spaces and all, exactly as it appears in game — including any `+1`.
+
+```
+//gs c use warp ring
+//gs c use prishe's boots +1
+//gs c use volte harness
+```
+
+The shortcut commands above (`gs c warp`, `gs c cp` and friends) do the same thing for the items people use most often.
+
+It tells you what it is doing rather than failing silently. Before equipping anything it checks that you own the item, that your job, level and race can wear it, and that it is not on cooldown, and it names whichever check failed:
+
+```
+Equipping and using [Warp Ring]
+Warp Ring is on cooldown [8:32].
+Volte Harness cannot be worn by this job.
+Prishe's Boots +1 requires level 99; your WHM is 76.
+```
+
+Cooldown and equip delay are read live from the item itself, so the times are accurate and survive a `//gs reload` or a relog. There is nothing to configure and no timer to keep in sync.
+
+If the timing ever looks wrong, `gs c enchinfo <item>` prints what the engine can see:
+
+```
+//gs c enchinfo warp ring
+Warp Ring: equipped=true usable=false charges=1 activation +6s next_use -515s (epoch-corrected)
+  -> engine sees: cooldown 0s (warns/refuses), equip delay 9s (waits quietly)
+```
+
+The second line is the one that matters: a **cooldown** means the item cannot be used yet and the command is refused, whereas an **equip delay** just means it needs to stay worn a few seconds longer, which the engine waits out on its own.
 
 ### Other
 
@@ -601,7 +667,7 @@ The engine cancels actions that would fail, and tells you why:
 
 ### Automatic gear rules
 
-- **Weather and day bonus** — on elemental magic, equips Hachirin-no-Obi, Orpheus's Sash, Chatoyant Staff or Twilight Cape when day, weather or target distance makes them worthwhile. Only if you actually own the item.
+- **Weather and day bonus** — on elemental magic, equips Hachirin-no-Obi, Orpheus's Sash, Chatoyant Staff or Twilight Cape when day, weather or target distance makes them worthwhile. Only if you actually own the item. Twilight Cape is restricted to Cura and Curaga, so single-target cures keep whatever back piece your set specifies.
 - **Required equipment** — Dispelga equips Daybreak, Honor March equips Marsyas, Aria of Passion equips Loughnashade, Impact equips Crepuscular Cloak or Twilight Cloak.
 - **Two-handed detection** — inspects your WeaponMode weapon and sets the two-hand flag, which suppresses sub-slot swaps.
 
@@ -749,13 +815,15 @@ jobsetup(LockStylePallet, MacroBook, MacroSet)
 
 ### "sets.X not found!" in chat
 
-Exactly what it says — the engine wanted a set you have not defined. Add it to `get_sets()`, even as an empty table:
+The engine wanted a set you have not defined. Add it to `get_sets()`, even as an empty table:
 
 ```lua
 sets.Weapons.Sleep = {}
 ```
 
 Silence these with `//gs c warn` once your file is finished loading.
+
+**Do not rely on the absence of this warning.** Most of these messages only fire for sets whose name is built from a mode value, such as `sets.OffenseMode.<your mode>`. For fixed names the engine creates an empty placeholder at load, so a set you never defined merges as nothing at all and says so — which is why a missing or empty set usually looks like "it just does not work" rather than an error. If gear is not appearing, check that the set exists **and has items in it** before assuming the engine is at fault.
 
 ### Gear is not swapping
 
@@ -767,11 +835,27 @@ Silence these with `//gs c warn` once your file is finished loading.
 
 ### A slot is stuck
 
-Some features deliberately lock slots — Sleep locks main and ranged, Doom locks your Cursna set, `SpellReceived ON` locks the received set, Hoxne mode locks ammo. Use `//gs c enablebymode` to release what the current mode allows, or `//gs c enableall` to release everything.
+Some features deliberately lock slots — Sleep locks main and ranged, Doom locks your Cursna set, `SpellReceived ON` locks the received set, and either Hoxne mode holds range and ammo. Use `//gs c enablebymode` to release what the current mode allows, or `//gs c enableall` to release everything.
+
+`//gs c enableall` is a manual override, so it releases range and ammo even while a Hoxne mode is on. The mode notices within a second and takes them back. If you want them free, switch Hoxne to `OFF`.
 
 ### An item is not equipping
 
 The engine can only equip items you own. Check spelling exactly as the item appears in game, and confirm it is in inventory or a wardrobe — not in storage, a satchel or a sack.
+
+### An enchanted item is not being used
+
+`gs c use` names the reason it stopped, so read the chat line first — it will tell you whether the item is missing, unusable by your job, or on cooldown. If it printed `Equipping and using [...]` and then nothing happened, run `gs c enchinfo <item>` and check the `-> engine sees:` line described under [Commands → Items](#items).
+
+A few things are worth knowing:
+
+- **The first use after equipping always takes a few seconds.** Enchanted gear has to be worn for its equip delay before the game will accept a use, and the server wants a little more than the delay the wiki lists.
+- **Timings restart every time the item is re-equipped**, so anything that swaps that slot mid-wait starts the clock again.
+- **A song or Geomancy cast clears your ammo slot.** If you are running Hoxne `ON-Allow Critical`, that is why the Ampulla disappears during a song and returns afterwards.
+
+### A bard song or Geomancy spell fails with a command error
+
+Check whether Hoxne is set to `ON-Locked`. Honor March and Aria of Passion can only be cast while Marsyas or Loughnashade is equipped, and Geomancy needs a handbell, so a mode that blocks the range slot blocks those actions before GearSwap ever sees them. Switch to `ON-Allow Critical`, which stands aside for exactly these cases.
 
 ### The display box is gone
 
