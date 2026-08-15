@@ -5244,7 +5244,7 @@ do
     -------------------------------------------------------------------------------------------------------------------
 
     function choose_set()
-        if buffactive['Sleep'] then return end
+        if buffactive['Sleep'] then return {} end
         local built_set = {}
         -- Combat Checks
         if player.status == "Engaged" then
