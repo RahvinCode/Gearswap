@@ -1,4 +1,5 @@
-# Mirdain-Include Enhanced by Rahvin
+# Mirdain Gearswap Enhanced by Rahvin
+## Now including GearSets-Include by Rahvin
 
 **Version 1.7.1** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
