@@ -85,7 +85,7 @@ Measured, not guessed: a simulated Dynamis Divergence alliance fight — a six-c
 - **Frame rate is never at risk from the engine.** The worst single frame in twenty minutes of simulated combat is about 1% of a 60 fps frame budget on 1.5.12, and about half that on 1.7.0. Both engines together, across all six clients, use under 0.03% of one CPU core.
 - **Chat volume is the one load that scales with settings rather than engine**: with every channel on, six clients emit about 1,400 lines a minute; with chat off, effectively none. For long fights, keep `debug` off — it is worth three orders of magnitude more rendered chat than any other choice.
 
-The full write-up — per-cast costs, frame-budget analysis, allocation, chat volume, and methodology — is in the repository at [`Performance Impact Report.md`]
+The full write-up — per-cast costs, frame-budget analysis, allocation, chat volume, and methodology — is in the repository at https://github.com/RahvinCode/Gearswap/blob/master/Performance%20Impact%20Report.md
 ---
 
 ## 2. Installation
