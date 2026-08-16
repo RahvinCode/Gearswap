@@ -33,9 +33,11 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 
 ## 1.7.1
 
-Knowing what your gear sets are doing. Every action names the set it wore, in one
+Know what your gear sets are doing. Every action names the set it wore, in one
 consistent format, and the warnings that tell you a set is empty stay readable through a
-long fight.
+long fight.  GearSets-Include.lua introduces a full library of HP, MP and rank prioritized gear to be used 
+for automatic hp-saving ordering of gear swaps for any set, any action.  You will save hundreds of hp per
+cast by not accidentally dropping your Max HP for no reason.
 
 ### Notices
 
