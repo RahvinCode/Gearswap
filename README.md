@@ -1,4 +1,4 @@
-# Mirdain-Include Enhanced
+# Mirdain-Include Enhanced by Rahvin
 
 **Version 1.7.0** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
@@ -77,6 +77,15 @@ The first public release since 1.6.5, and it carries the 1.6.6 work with it. Not
 - Slots left locked by a previous load are released at startup.
 - Sample job files for all 22 jobs are included.
 
+#### Performance
+
+Measured, not guessed: a simulated Dynamis Divergence alliance fight — a six-client multibox party inside an 18-player alliance with a full mob wave, every entity acting every one to three seconds — puts this engine and the original Mirdain-Include 1.5.12 side by side on identical timelines.
+
+- **1.7.0 runs at roughly 70% of 1.5.12's CPU cost and 72% of its allocation rate**, with Hoxne, spell-received tracking, enchanted-item automation and the gear diagnostics all running. With every chat channel on, 1.7.0 costs what 1.5.12 costs running silent.
+- **Frame rate is never at risk from the engine.** The worst single frame in twenty minutes of simulated combat is about 1% of a 60 fps frame budget on 1.5.12, and about half that on 1.7.0. Both engines together, across all six clients, use under 0.03% of one CPU core.
+- **Chat volume is the one load that scales with settings rather than engine**: with every channel on, six clients emit about 1,400 lines a minute; with chat off, effectively none. For long fights, keep `debug` off — it is worth three orders of magnitude more rendered chat than any other choice.
+
+The full write-up — per-cast costs, frame-budget analysis, allocation, chat volume, and methodology — is in the repository at [`Performance Impact Report.md`]
 ---
 
 ## 2. Installation
