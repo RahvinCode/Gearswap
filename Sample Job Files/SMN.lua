@@ -2,6 +2,7 @@
 --Morwen
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -40,46 +41,46 @@ function get_sets()
 	sets.Weapons = {}
 
 	sets.Weapons['Nirvana'] = {
-		main="Nirvana",
-		sub="Elan Strap +1",
+		main=gear.nirvana,
+		sub=gear.elanStrapPlusOne,
 	}
 
 	sets.Weapons['Unlocked'] = {
 		--main="Malignance Pole",
-		sub="Enki Strap",
+		sub=gear.enki,
 	}
 
 	sets.Weapons.Physical = {
-		main="Nirvana",
-		sub="Elan Strap +1",
+		main=gear.nirvana,
+		sub=gear.elanStrapPlusOne,
 	}
 
 	sets.Weapons.Magic = {
-		main={ name="Grioavolr", augments={'Blood Pact Dmg.+9','Pet: INT+15','Pet: Mag. Acc.+24',}},
-		sub="Elan Strap +1",
+		main = gear.grioavolrMaccBloodPact,
+		sub=gear.elanStrapPlusOne,
 	}
 
 	--Shield used when not using a staf
 	sets.Weapons.Shield = {
-		sub="Genmei Shield",
+		sub=gear.genmeiShield,
 	}
 
 	-- Standard Idle set with -DT,Refresh,Regen
 	sets.Idle = {
-		sub="Elan Strap +1",
-		ammo="Sancus Sachet +1",
-		head="Beckoner's Horn +1",
-		body="Bunzi's Robe",
-		hands={ name="Bunzi's Gloves", augments={'Path: A',}},
-		legs="Bunzi's Pants",
-		feet="Bunzi's Sabots",
-		neck={ name="Smn. Collar +2", augments={'Path: A',}},
-		waist="Regal Belt",
-		left_ear="C. Palug Earring",
-		right_ear="Beck. Earring +1",
-		left_ring="Defending Ring",
-		right_ring="C. Palug Ring",
-		back={ name="Campestres's Cape", augments={'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20','Eva.+20 /Mag. Eva.+20','Pet: "Regen"+10',}},
+		sub=gear.elanStrapPlusOne,
+		ammo=gear.sancusSachetPlusOne,
+		head=gear.beckonerHeadPlusOne,
+		body=gear.bunziBody,
+		hands = gear.bunziHands,
+		legs=gear.bunziLegs,
+		feet=gear.bunziFeet,
+		neck = gear.summonerCollarPlusTwo,
+		waist=gear.regalBelt,
+		left_ear=gear.cathPalugEarring,
+		right_ear=gear.beckonerEarringPlusOne,
+		left_ring=gear.defending,
+		right_ring=gear.cathPalugRing,
+		back = gear.smnPetRegen,
     }
 
 	sets.Idle.TP = set_combine(sets.Idle, {})
@@ -92,21 +93,21 @@ function get_sets()
 
 	-- Perpetuation and Refresh Set
 	sets.Idle.Pet = set_combine(sets.Idle, {
-		waist="Lucidity Sash",
-		feet={ name="Apogee Pumps +1", augments={'MP+80','Pet: Attack+35','Blood Pact Dmg.+8',}},
+		waist=gear.luciditySash,
+		feet = gear.apogeeFeetPlusOnePathB,
 	})
 
 	sets.Movement = {
-		feet="Herald's Gaiters",
+		feet=gear.heraldGaiters,
 	}
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -114,7 +115,7 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	sets.OffenseMode = {}
@@ -127,19 +128,19 @@ function get_sets()
 
 	-- Used for Magic Spells
 	sets.Precast.FastCast = {
-		ammo="Sancus Sachet +1",
-		head={ name="Merlinic Hood", augments={'"Mag.Atk.Bns."+22','"Fast Cast"+7','STR+6',}},
-		body="Inyanga Jubbah +2",
-		hands={ name="Merlinic Dastanas", augments={'"Mag.Atk.Bns."+26','"Fast Cast"+7',}},
-		legs={ name="Merlinic Shalwar", augments={'Mag. Acc.+23','"Fast Cast"+7','VIT+3','"Mag.Atk.Bns."+13',}},
-		feet={ name="Merlinic Crackows", augments={'Mag. Acc.+12','"Fast Cast"+7','INT+9','"Mag.Atk.Bns."+8',}},
-		neck="Voltsurge Torque",
-		waist="Embla Sash",
-		left_ear="Malignance Earring",
-		right_ear="Etiolation Earring",
-		left_ring="Kishar Ring",
-		right_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+		ammo=gear.sancusSachetPlusOne,
+		head = gear.merlinicHoodFC,
+		body=gear.inyangaBodyPlusTwo,
+		hands = gear.merlinicDastanasFC,
+		legs = gear.merlinicShalwarFC,
+		feet = gear.merlinicCrackowsFC,
+		neck=gear.voltsurge,
+		waist=gear.embla,
+		left_ear=gear.malignanceEar,
+		right_ear=gear.etiolation,
+		left_ring=gear.kishar,
+		right_ring = gear.gelatinousPlusOne,
+		back = gear.smnFCB,
 	}
 
 	sets.Precast.Cure = set_combine(sets.Precast.FastCast, {})
@@ -160,111 +161,111 @@ function get_sets()
 
 	-- Cure Set
 	sets.Midcast.Cure = {
-		head={ name="Vanya Hood", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}},
-		body={ name="Bunzi's Robe", augments={'Path: A',}},
-		hands={ name="Vanya Cuffs", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}},
-		legs={ name="Vanya Slops", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}},
-		feet={ name="Vanya Clogs", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}},
-		neck={ name="Loricate Torque +1", augments={'Path: A',}},
-		waist="Plat. Mog. Belt",
-		left_ear="Roundel Earring",
-		right_ear="Etiolation Earring",
-		left_ring="Naji's Loop",
-		right_ring="Lehko's Ring",
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+		head = gear.vanyaHeadPathB,
+		body = gear.bunziBody,
+		hands = gear.vanyaHandsPathB,
+		legs = gear.vanyaLegsPathB,
+		feet = gear.vanyaFeetPathB,
+		neck = gear.loricatePlusOne,
+		waist=gear.platinumMoogleBelt,
+		left_ear=gear.roundelEarring,
+		right_ear=gear.etiolation,
+		left_ring=gear.najiLoop,
+		right_ring=gear.lehkoHabhokaRing,
+		back = gear.smnFCB,
     }
 	-- Enhancing Skill
 	sets.Midcast.Enhancing = {
-		ring1="Stikini Ring +1",
-		ring2="Stikini Ring +1",
+		ring1=gear.stikiniPlusOne,
+		ring2=gear.stikiniPlusOne,
 	}
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {
-	    main={ name="Grioavolr", augments={'Enfb.mag. skill +13','Mag. Acc.+24','"Mag.Atk.Bns."+27',}},
-		ammo="Sancus Sachet +1",
-		head={ name="Amalric Coif +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		body="Inyanga Jubbah +2",
-		hands={ name="Amalric Gages +1", augments={'INT+12','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		legs="Inyanga Shalwar +2",
-		feet={ name="Medium's Sabots", augments={'MP+45','MND+9','"Conserve MP"+5','"Cure" potency +4%',}},
-		neck="Sanctity Necklace",
-		waist="Luminary Sash",
-		left_ear="Digni. Earring",
-		right_ear="Hermetic Earring",
-		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe"},
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+	    main = gear.grioavolrNukeB,
+		ammo=gear.sancusSachetPlusOne,
+		head = gear.amalricHeadPlusOnePathA,
+		body=gear.inyangaBodyPlusTwo,
+		hands = gear.amalricHandsPlusOnePathD,
+		legs=gear.inyangaLegsPlusTwo,
+		feet = gear.mediumSabotsCureB,
+		neck=gear.sanctity,
+		waist=gear.luminarySash,
+		left_ear=gear.dignitary,
+		right_ear=gear.hermetic,
+		left_ring = gear.stikiniRingPlusOne2,
+		right_ring = gear.stikiniRingPlusOne1,
+		back = gear.smnFC,
 	}
 
 	sets.Midcast.Nuke = {
-	    main={ name="Grioavolr", augments={'Enfb.mag. skill +13','Mag. Acc.+24','"Mag.Atk.Bns."+27',}},
-		ammo="Sancus Sachet +1",
-		head={ name="Amalric Coif +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		body="Inyanga Jubbah +2",
-		hands={ name="Amalric Gages +1", augments={'INT+12','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		legs="Inyanga Shalwar +2",
-		feet={ name="Medium's Sabots", augments={'MP+45','MND+9','"Conserve MP"+5','"Cure" potency +4%',}},
-		neck="Sanctity Necklace",
-		waist="Luminary Sash",
-		left_ear="Digni. Earring",
-		right_ear="Hermetic Earring",
-		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe"},
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+	    main = gear.grioavolrNukeB,
+		ammo=gear.sancusSachetPlusOne,
+		head = gear.amalricHeadPlusOnePathA,
+		body=gear.inyangaBodyPlusTwo,
+		hands = gear.amalricHandsPlusOnePathD,
+		legs=gear.inyangaLegsPlusTwo,
+		feet = gear.mediumSabotsCureB,
+		neck=gear.sanctity,
+		waist=gear.luminarySash,
+		left_ear=gear.dignitary,
+		right_ear=gear.hermetic,
+		left_ring = gear.stikiniRingPlusOne2,
+		right_ring = gear.stikiniRingPlusOne1,
+		back = gear.smnFC,
 	}
 
 	-- BP Timer Gear
     sets.Midcast.BP = {
-		main="Malignance Pole",
-		sub="Enki Strap",
-		ammo="Sancus Sachet +1",
-		head="Beckoner's Horn +1",
-		body="Con. Doublet +3",
-		hands={ name="Merlinic Dastanas", augments={'Pet: Mag. Acc.+23 Pet: "Mag.Atk.Bns."+23','Blood Pact Dmg.+9','Pet: INT+3',}},
-		legs="Assiduity Pants",
-		feet={ name="Apogee Pumps +1", augments={'Pet: Attack+25','Pet: "Mag.Atk.Bns."+25','Blood Pact Dmg.+8',}},
-		neck={ name="Smn. Collar +2", augments={'Path: A',}},
-		waist="Lucidity Sash",
-		left_ear="C. Palug Earring",
-		right_ear="Andoaa Earring",
-		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe"},
-		back="Solemnity Cape",
+		main=gear.malignancePole,
+		sub=gear.enki,
+		ammo=gear.sancusSachetPlusOne,
+		head=gear.beckonerHeadPlusOne,
+		body=gear.convokerBodyPlusThree,
+		hands = gear.merlinicDastanasNukeBloodPact,
+		legs=gear.assiduityPants,
+		feet = gear.apogeeFeetPlusOnePathC,
+		neck = gear.summonerCollarPlusTwo,
+		waist=gear.luciditySash,
+		left_ear=gear.cathPalugEarring,
+		right_ear=gear.andoaaEarring,
+		left_ring = gear.stikiniRingPlusOne2,
+		right_ring = gear.stikiniRingPlusOne1,
+		back=gear.solemnityCape,
 	}
 	sets.Midcast.Summon = set_combine(sets.Idle, {
-		body="Baayami Robe +1"
+		body=gear.baayamiRobePlusOne
 	})
 
 	sets.Midcast.MAB = {
-		sub="Elan Strap +1",
-		ammo="Sancus Sachet +1",
-		head={ name="Amalric Coif +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		body="Inyanga Jubbah +2",
-		hands={ name="Amalric Gages +1", augments={'INT+12','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		legs={ name="Amalric Slops +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		feet={ name="Amalric Nails +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		neck="Sanctity Necklace",
-		waist="Eschan Stone",
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Friomisi Earring",
-		left_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe"},
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+		sub=gear.elanStrapPlusOne,
+		ammo=gear.sancusSachetPlusOne,
+		head = gear.amalricHeadPlusOnePathA,
+		body=gear.inyangaBodyPlusTwo,
+		hands = gear.amalricHandsPlusOnePathD,
+		legs = gear.amalricLegsPlusOnePathA,
+		feet = gear.amalricFeetPlusOnePathA,
+		neck=gear.sanctity,
+		waist=gear.eschan,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.friomisi,
+		left_ring = gear.stikiniRingPlusOne2,
+		right_ring = gear.stikiniRingPlusOne1,
+		back = gear.smnFC,
 	}
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		waist="Siegel Sash",
-		neck="Nodens Gorget",
+		waist=gear.siegel,
+		neck=gear.nodens,
 	})
 
 	sets.Midcast.Refresh = set_combine(sets.Midcast.Enhancing, {
-		head="Amalric Coif +1",
-		waist="Gishdubar Sash"
+		head=gear.amalricCoifPlusOne,
+		waist=gear.gishdubar
 	})
 
 	sets.Midcast["Aquaveil"] = set_combine(sets.Midcast.Enhancing, {
-		head="Amalric Coif +1"
+		head=gear.amalricCoifPlusOne
 	})
 
 	-- ===================================================================================================================
@@ -286,81 +287,81 @@ function get_sets()
 
 	-- Main physical pact set (Volt Strike, Pred Claws, etc.)
 	sets.Pet_Midcast.Physical_BP = {
-		main="Nirvana",
-		sub="Elan Strap +1",
-		ammo="Sancus Sachet +1",
-		head={ name="Apogee Crown +1", augments={'MP+80','Pet: Attack+35','Blood Pact Dmg.+8',}},
-		body="Con. Doublet +3",
-		hands={ name="Merlinic Dastanas", augments={'Pet: Mag. Acc.+23 Pet: "Mag.Atk.Bns."+23','Blood Pact Dmg.+9','Pet: INT+3',}},
-		legs={ name="Apogee Slacks +1", augments={'Pet: STR+20','Blood Pact Dmg.+14','Pet: "Dbl. Atk."+4',}},
-		feet={ name="Apogee Pumps +1", augments={'Pet: Attack+25','Pet: "Mag.Atk.Bns."+25','Blood Pact Dmg.+8',}},
-		neck={ name="Smn. Collar +2", augments={'Path: A',}},
-		waist="Incarnation Sash",
-		left_ear="Lugalbanda Earring",
-		right_ear="Kyrene's Earring",
-		left_ring="Varar Ring +1",
-		right_ring="C. Palug Ring",
-		back={ name="Campestres's Cape", augments={'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20','Eva.+20 /Mag. Eva.+20','Pet: "Regen"+10',}},
+		main=gear.nirvana,
+		sub=gear.elanStrapPlusOne,
+		ammo=gear.sancusSachetPlusOne,
+		head = gear.apogeeHeadPlusOnePathB,
+		body=gear.convokerBodyPlusThree,
+		hands = gear.merlinicDastanasNukeBloodPact,
+		legs = gear.apogeeLegsPlusOnePathD,
+		feet = gear.apogeeFeetPlusOnePathC,
+		neck = gear.summonerCollarPlusTwo,
+		waist=gear.incarnationSash,
+		left_ear=gear.lugalbanda,
+		right_ear=gear.kyreneEarring,
+		left_ring=gear.vararRingPlusOne,
+		right_ring=gear.cathPalugRing,
+		back = gear.smnPetRegen,
 	}
 	-- Physical pacts which benefit more from TP than Pet:DA (like single-hit BP)
 	sets.Pet_Midcast.Physical_BP_TP = set_combine(sets.Pet_Midcast.Physical_BP, {
-		legs="Enticer's Pants",
+		legs=gear.enticerPants,
 	})
 	-- Base magic pact set
 	sets.Pet_Midcast.Magic_BP = {
-		main={ name="Grioavolr", augments={'Blood Pact Dmg.+9','Pet: STR+7','Pet: Mag. Acc.+26','Pet: "Mag.Atk.Bns."+30',}},
-		sub="Elan Strap +1",
-		ammo="Sancus Sachet +1",
-		head="C. Palug Crown",
-		body="Con. Doublet +3",
-		hands={ name="Merlinic Dastanas", augments={'Pet: Mag. Acc.+23 Pet: "Mag.Atk.Bns."+23','Blood Pact Dmg.+9','Pet: INT+3',}},
-		legs={ name="Enticer's Pants", augments={'MP+50','Pet: Accuracy+15 Pet: Rng. Acc.+15','Pet: Mag. Acc.+15','Pet: Damage taken -5%',}},
-		feet={ name="Apogee Pumps +1", augments={'MP+80','Pet: Attack+35','Blood Pact Dmg.+8',}},
-		neck={ name="Smn. Collar +2", augments={'Path: A',}},
-		waist="Regal Belt",
-		left_ear="Lugalbanda Earring",
-		right_ear="Beck. Earring +1",
-		left_ring={name="Varar Ring +1", bag="wardrobe2"},
-		right_ring={name="Varar Ring +1", bag="wardrobe"},
-		back={ name="Campestres's Cape", augments={'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20','Eva.+20 /Mag. Eva.+20','Pet: Attack+10 Pet: Rng.Atk.+10','Pet: "Regen"+10','Pet: Damage taken -5%',}},
+		main = gear.grioavolrNukeBloodPact,
+		sub=gear.elanStrapPlusOne,
+		ammo=gear.sancusSachetPlusOne,
+		head=gear.cathPalugCrown,
+		body=gear.convokerBodyPlusThree,
+		hands = gear.merlinicDastanasNukeBloodPact,
+		legs = gear.enticerPantsMaccPetMacc,
+		feet = gear.apogeeFeetPlusOnePathB,
+		neck = gear.summonerCollarPlusTwo,
+		waist=gear.regalBelt,
+		left_ear=gear.lugalbanda,
+		right_ear=gear.beckonerEarringPlusOne,
+		left_ring = gear.vararRingPlusOne2,
+		right_ring = gear.vararRingPlusOne1,
+		back = gear.smnPetRegenB,
 	}
 	-- Some magic pacts benefit more from TP than others.
 	sets.Pet_Midcast.Magic_BP_TP = set_combine(sets.Pet_Midcast.Magic_BP, {
-		legs="Enticer's Pants"
+		legs=gear.enticerPants
 	})
 	-- Similar to the Magic Set except Nirvana used
 	sets.Pet_Midcast.FlamingCrush = {
-		main={ name="Grioavolr", augments={'Blood Pact Dmg.+9','Pet: STR+7','Pet: Mag. Acc.+26','Pet: "Mag.Atk.Bns."+30',}},
-		sub="Elan Strap +1",
-		ammo="Sancus Sachet +1",
-		head={ name="Apogee Crown +1", augments={'MP+80','Pet: Attack+35','Blood Pact Dmg.+8',}},
-		body="Con. Doublet +3",
-		hands={ name="Merlinic Dastanas", augments={'Pet: Mag. Acc.+23 Pet: "Mag.Atk.Bns."+23','Blood Pact Dmg.+9','Pet: INT+3',}},
-		legs={ name="Apogee Slacks +1", augments={'Pet: STR+20','Blood Pact Dmg.+14','Pet: "Dbl. Atk."+4',}},
-		feet={ name="Apogee Pumps +1", augments={'Pet: Attack+25','Pet: "Mag.Atk.Bns."+25','Blood Pact Dmg.+8',}},
-		neck={ name="Smn. Collar +2", augments={'Path: A',}},
-		waist="Regal Belt",
-		left_ear="Lugalbanda Earring",
-		right_ear="Kyrene's Earring",
-		left_ring="Varar Ring +1",
-		right_ring="C. Palug Ring",
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+		main = gear.grioavolrNukeBloodPact,
+		sub=gear.elanStrapPlusOne,
+		ammo=gear.sancusSachetPlusOne,
+		head = gear.apogeeHeadPlusOnePathB,
+		body=gear.convokerBodyPlusThree,
+		hands = gear.merlinicDastanasNukeBloodPact,
+		legs = gear.apogeeLegsPlusOnePathD,
+		feet = gear.apogeeFeetPlusOnePathC,
+		neck = gear.summonerCollarPlusTwo,
+		waist=gear.regalBelt,
+		left_ear=gear.lugalbanda,
+		right_ear=gear.kyreneEarring,
+		left_ring=gear.vararRingPlusOne,
+		right_ring=gear.cathPalugRing,
+		back = gear.smnFCB,
 	}
 	-- Pure summoning magic set, mainly used for buffs like Hastega II.
 	sets.Pet_Midcast.SummoningMagic = {
-		ammo="Sancus Sachet +1",
-		head="Baayami Hat +1",
-		body="Baayami Robe +1",
-		hands="Baayami Cuffs +1",
-		legs="Baayami Slops",
-		feet="Baaya. Sabots +1",
-		neck={ name="Smn. Collar +2", augments={'Path: A',}},
-		waist="Lucidity Sash",
-		left_ear="Lugalbanda Earring",
-		right_ear="C. Palug Earring",
-		left_ring="Stikini Ring +1",
-		right_ring="Stikini Ring +1",
-		back={ name="Campestres's Cape", augments={'Pet: M.Acc.+20 Pet: M.Dmg.+20','Mag. Acc+20 /Mag. Dmg.+20','Pet: Magic Damage+10','"Fast Cast"+10',}},
+		ammo=gear.sancusSachetPlusOne,
+		head=gear.baayamiHatPlusOne,
+		body=gear.baayamiRobePlusOne,
+		hands=gear.baayamiCuffsPlusOne,
+		legs=gear.baayamiSlops,
+		feet=gear.baayamiSabotsPlusOne,
+		neck = gear.summonerCollarPlusTwo,
+		waist=gear.luciditySash,
+		left_ear=gear.lugalbanda,
+		right_ear=gear.cathPalugEarring,
+		left_ring=gear.stikiniPlusOne,
+		right_ring=gear.stikiniPlusOne,
+		back = gear.smnFC,
 	}
 
 	-- Job Abilities
@@ -373,7 +374,7 @@ function get_sets()
 	sets.JA["Apogee"] = {}
 
 	sets.TreasureHunter = {
-		waist="Chaac Belt",
+		waist=gear.chaac,
 	}
 end
 

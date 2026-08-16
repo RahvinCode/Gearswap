@@ -2,6 +2,7 @@
 --Luthien
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -93,28 +94,28 @@ function get_sets()
 	sets.Weapons = {}
 
 	sets.Weapons['Almace'] = {
-		main="Almace",
-		sub={ name="Sakpata's Sword", augments={'Path: A',}},
+		main=gear.almace,
+		sub = gear.sakpataSword,
 	}
 
 	sets.Weapons['Naegling'] = {
-		main="Naegling",
-		sub="Zantetsuken",
+		main=gear.naegling,
+		sub=gear.zantetsuken,
 		--sub={ name="Machaera +2", augments={'TP Bonus +1000',}},
 	}
 
 	sets.Weapons['Black Halo'] = {
-	    main="Maxentius",
-		sub="Bunzi's Rod",
+	    main=gear.maxentius,
+		sub=gear.bunzi,
 	}
 
 	sets.Weapons['Cleave'] = {
-		main={ name="Nibiru Cudgel", augments={'MP+50','INT+10','"Mag.Atk.Bns."+15',}},
-		sub={ name="Nibiru Cudgel", augments={'MP+50','INT+10','"Mag.Atk.Bns."+15',}},
+		main = gear.nibiruCudgelNuke,
+		sub = gear.nibiruCudgelNuke,
 	}
 
 	sets.Weapons.Shield = {
-		sub="Genmei Shield",
+		sub=gear.genmeiShield,
 	}
 
 	sets.Weapons.Shield = {}
@@ -122,19 +123,19 @@ function get_sets()
 
 	-- Standard Idle set with -DT,Refresh,Regen and movement gear
 	sets.Idle = {
-		ammo="Staunch Tathlum +1",
-		head="Malignance Chapeau",
-		body="Hashishin Mintan +3",
-		hands="Hashi. Bazu. +3",
-		legs="Hashishin Tayt +3",
-		feet="Hashi. Basmak +3",
-		neck={ name="Loricate Torque +1", augments={'Path: A',}},
-		waist="Carrier's Sash",
-		left_ear="Etiolation Earring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={name="Stikini Ring +1", bag="wardrobe"}, -- +1 Refresh
-		right_ring={name="Stikini Ring +1", bag="wardrobe2"}, -- +1 Refresh
-		back={ name="Rosmerta's Cape", augments={'DEX+20','Accuracy+20 Attack+20','DEX+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo=gear.staunchPlusOne,
+		head=gear.malignanceHead,
+		body=gear.hashishinBodyPlusThree,
+		hands=gear.hashishinHandsPlusThree,
+		legs=gear.hashishinLegsPlusThree,
+		feet=gear.hashishinFeetPlusThree,
+		neck = gear.loricatePlusOne,
+		waist=gear.carriers,
+		left_ear=gear.etiolation,
+		right_ear = gear.odnowaPlusOne,
+		left_ring = gear.stikiniRingPlusOne1, -- +1 Refresh
+		right_ring = gear.stikiniRingPlusOne2, -- +1 Refresh
+		back = gear.bluDA,
     }
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
@@ -143,21 +144,21 @@ function get_sets()
 	sets.Idle.SB = set_combine(sets.Idle, {})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 	sets.Idle.MEVA = set_combine(sets.Idle, {
-		neck="Warder's Charm +1",
-		waist="Carrier's Sash",
+		neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
 	})
 
 	sets.Movement = {
-		legs={ name="Carmine Cuisses +1", augments={'HP+80','STR+12','INT+12',}, priority=1},
+		legs = gear.carmineLegsPlusOnePathA,
     }
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -165,53 +166,53 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	sets.Subtle_Blow = {
-		neck="Bathy Choker +1",
-		left_ring={ name="Chirich Ring +1", bag="wardrobe2"},
+		neck=gear.bathyPlusOne,
+		left_ring = gear.chirichPlusOne2,
 	}
 
 	sets.OffenseMode = {
-	    ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
-		neck={ name="Mirage Stole +2", augments={'Path: A',}},
-		waist="Reiki Yotai",
-		left_ear="Eabani Earring",
-		right_ear={ name="Hashi. Earring +1", augments={'System: 1 ID: 1676 Val: 0','Accuracy+15','Mag. Acc.+15','"Dbl.Atk."+5',}},
-		left_ring="Epona's Ring",
-		right_ring="Lehko's Ring",
-		back={ name="Rosmerta's Cape", augments={'DEX+20','Accuracy+20 Attack+20','DEX+10','"Dbl.Atk."+10','Damage taken-5%',}},
+	    ammo = gear.coiste,
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
+		neck = gear.mirageStole,
+		waist=gear.reiki,
+		left_ear=gear.eabani,
+		right_ear = gear.hashishinEarringPlusOneDA,
+		left_ring=gear.eponas,
+		right_ring=gear.lehkoHabhokaRing,
+		back = gear.bluDA,
 	}
 
 	sets.OffenseMode.TP = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head={ name="Gleti's Mask", augments={'Path: A',}},
-		body={ name="Gleti's Cuirass", augments={'Path: A',}},
-		hands={ name="Gleti's Gauntlets", augments={'Path: A',}},
-		legs={ name="Gleti's Breeches", augments={'Path: A',}},
-		feet={ name="Gleti's Boots", augments={'Path: A',}},
-		waist="Windbuffet Belt +1",
-		left_ear="Crep. Earring",
-		right_ear="Telos Earring",
-		left_ring="Epona's Ring",
-		right_ring="Lehko's Ring",
-		back={ name="Rosmerta's Cape", augments={'DEX+20','Accuracy+20 Attack+20','DEX+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo = gear.coiste,
+		head = gear.gletiHead,
+		body = gear.gletiBody,
+		hands = gear.gletiHands,
+		legs = gear.gletiLegs,
+		feet = gear.gletiFeet,
+		waist=gear.windbuffetPlusOne,
+		left_ear=gear.crepuscularEar,
+		right_ear=gear.telos,
+		left_ring=gear.eponas,
+		right_ring=gear.lehkoHabhokaRing,
+		back = gear.bluDA,
 	}
 
 	sets.OffenseMode.DT = set_combine ( sets.OffenseMode.TP, {
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
-		left_ring="Defending Ring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
+		left_ring=gear.defending,
+		right_ear = gear.odnowaPlusOne,
 	})
 
 	sets.OffenseMode.ACC = set_combine ( sets.OffenseMode.DT,{
@@ -223,29 +224,29 @@ function get_sets()
 	})
 
 	sets.OffenseMode.MEVA = set_combine ( sets.OffenseMode.DT,{
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head={ name="Gleti's Mask", augments={'Path: A',}},
-		body={ name="Gleti's Cuirass", augments={'Path: A',}},
-		hands={ name="Gleti's Gauntlets", augments={'Path: A',}},
-		legs={ name="Gleti's Breeches", augments={'Path: A',}},
-		feet={ name="Gleti's Boots", augments={'Path: A',}},
-		neck="Warder's Charm +1",
-		waist="Reiki Yotai",
-		left_ear="Telos Earring",
-		right_ear="Eabani Earring",
-		left_ring="Chirich Ring +1",
-		right_ring="Lehko's Ring",
-		back={ name="Rosmerta's Cape", augments={'DEX+20','Accuracy+20 Attack+20','DEX+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo = gear.coiste,
+		head = gear.gletiHead,
+		body = gear.gletiBody,
+		hands = gear.gletiHands,
+		legs = gear.gletiLegs,
+		feet = gear.gletiFeet,
+		neck=gear.warderCharmPlusOne,
+		waist=gear.reiki,
+		left_ear=gear.telos,
+		right_ear=gear.eabani,
+		left_ring=gear.chirichRingPlusOne,
+		right_ring=gear.lehkoHabhokaRing,
+		back = gear.bluDA,
 	})
 
 	sets.OffenseMode.SB = set_combine ( sets.OffenseMode,{
-		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=2},
-		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=1},
+		left_ring = gear.chirichPlusOne1,
+		right_ring = gear.chirichPlusOne2,
 	})
 
 	sets.DualWield = {
-		left_ear="Eabani Earring",
-		waist="Reiki Yotai",
+		left_ear=gear.eabani,
+		waist=gear.reiki,
 	}
 
 	sets.Precast = {}
@@ -253,23 +254,23 @@ function get_sets()
 	-- Used for Magic Spells
 	-- 10% FC from sword
 	sets.Precast.FastCast = {
-		ammo="Impatiens", -- Quick Magic 2
-		head={ name="Carmine Mask +1", augments={'Accuracy+20','Mag. Acc.+12','"Fast Cast"+4',}}, --14
-		body={ name="Taeon Tabard", augments={'"Fast Cast"+5','HP+40',}}, -- 9
-		hands={ name="Leyline Gloves", augments={'Accuracy+15','Mag. Acc.+15','"Mag.Atk.Bns."+15','"Fast Cast"+3',}}, -- 8
-		legs="Aya. Cosciales +2", --6
-		feet={ name="Carmine Greaves +1", augments={'HP+80','MP+80','Phys. dmg. taken -4',}}, --8
-		neck="Voltsurge Torque", -- 4
-		waist="Witful Belt", -- Quick Magic 3
-		left_ear="Etiolation Earring", --1
-		right_ear="Loquac. Earring", --2
-		left_ring="Lebeche Ring", -- Quick Magic 2
-		right_ring="Weather. Ring", --5 Quick Magic 3
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}}, --10
+		ammo=gear.impatiens, -- Quick Magic 2
+		head = gear.carmineHeadPlusOnePathD, --14
+		body = gear.taeonTabardFCB, -- 9
+		hands = gear.leylineGlovesFCB, -- 8
+		legs=gear.ayanmoLegsPlusTwo, --6
+		feet = gear.carmineFeetPlusOnePathD, --8
+		neck=gear.voltsurge, -- 4
+		waist=gear.witful, -- Quick Magic 3
+		left_ear=gear.etiolation, --1
+		right_ear=gear.loquacious, --2
+		left_ring=gear.lebecheRing, -- Quick Magic 2
+		right_ring=gear.weatherspoon, --5 Quick Magic 3
+		back = gear.bluFCSird, --10
 	} -- 79 and 10% Quick Magic
 
 	sets.Precast.BlueMagic = set_combine (sets.Precast.FastCast, {
-		body="Hashishin Mintan +3", -- 16
+		body=gear.hashishinBodyPlusThree, -- 16
 	})
 
 	-- Job Abilities
@@ -289,10 +290,10 @@ function get_sets()
 	sets.Step = set_combine(sets.OffenseMode.DT, {})
 	sets.Samba = set_combine(sets.Idle.DT, {})
 	sets.Waltz = set_combine(sets.OffenseMode.DT, {
-		ammo="Yamarang", -- 5
-		body={ name="Gleti's Cuirass", augments={'Path: A',}}, -- 10
-		hands="Slither Gloves +1", -- 5
-		legs="Dashing Subligar", -- 10
+		ammo=gear.yamarang, -- 5
+		body = gear.gletiBody, -- 10
+		hands=gear.slitherGlovesPlusOne, -- 5
+		legs=gear.dashingSubligar, -- 10
 	}) -- 30% Potency
 
 
@@ -301,64 +302,64 @@ function get_sets()
 
 	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
 	sets.Midcast.SIRD = { --Total = 15 merits + 84 gear = 99 - Cap is 105
-		ammo="Staunch Tathlum +1", -- 11
-		hands={ name="Amalric Gages +1", augments={'INT+12','Mag. Acc.+20','"Mag.Atk.Bns."+20',}}, --11
-		legs={ name="Carmine Cuisses +1", augments={'HP+80','STR+12','INT+12',},}, -- 20
-		feet={ name="Amalric Nails +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}}, --16
-		waist="Rumination Sash", --10
+		ammo=gear.staunchPlusOne, -- 11
+		hands = gear.amalricHandsPlusOnePathD, --11
+		legs = gear.carmineLegsPlusOnePathA, -- 20
+		feet = gear.amalricFeetPlusOnePathA, --16
+		waist=gear.ruminationSash, --10
 	}
 
 	-- Cure Set
 	sets.Midcast.Cure = {
-		ammo="Staunch Tathlum +1",
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body="Hashishin Mintan +3",
-		hands={ name="Telchine Gloves", augments={'Enh. Mag. eff. dur. +10',}},
-		legs="Hashishin Tayt +3",
-		feet={ name="Medium's Sabots", augments={'MP+50','MND+10','"Conserve MP"+7','"Cure" potency +5%',}},
-		neck="Incanter's Torque",
-		waist="Gishdubar Sash",
-		left_ear="Mendi. Earring",
-		right_ear="Hashi. Earring +1",
-		left_ring="Lebeche Ring",
-		right_ring="Menelaus's Ring",
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
+		ammo=gear.staunchPlusOne,
+		head = gear.nyameHead,
+		body=gear.hashishinBodyPlusThree,
+		hands = gear.telchineGlovesCEnhDur,
+		legs=gear.hashishinLegsPlusThree,
+		feet = gear.mediumSabotsCure,
+		neck=gear.incanterTorque,
+		waist=gear.gishdubar,
+		left_ear=gear.mendicantEarring,
+		right_ear=gear.hashishinEarringPlusOne,
+		left_ring=gear.lebecheRing,
+		right_ring=gear.menelausRing,
+		back = gear.bluFCSird,
     } --35 %
 
 	-- Enhancing Skill
 	sets.Midcast.Enhancing = {
-	    ammo="Staunch Tathlum +1",
-		head={ name="Telchine Cap", augments={'Enh. Mag. eff. dur. +10',}},
-		body={ name="Telchine Chas.", augments={'Enh. Mag. eff. dur. +10',}},
-		hands={ name="Telchine Gloves", augments={'Enh. Mag. eff. dur. +10',}},
-		legs={ name="Telchine Braconi", augments={'Enh. Mag. eff. dur. +10',}},
-		feet={ name="Telchine Pigaches", augments={'Enh. Mag. eff. dur. +10',}},
-		neck="Incanter's Torque",
-		waist="Olympus Sash",
-		left_ear="Mimir Earring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}, priority=1},
-		left_ring={name="Stikini Ring +1", bag="wardrobe"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
+	    ammo=gear.staunchPlusOne,
+		head = gear.telchineCapBEnhDur,
+		body = gear.telchineChasubleBEnhDur,
+		hands = gear.telchineGlovesCEnhDur,
+		legs = gear.telchineBraconiBEnhDur,
+		feet = gear.telchinePigachesBEnhDur,
+		neck=gear.incanterTorque,
+		waist=gear.olympus,
+		left_ear=gear.mimir,
+		right_ear = gear.odnowaPlusOne,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne2,
+		back = gear.bluFCSird,
 	}
 
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {}
 
 	sets.Midcast.Nuke = {
-		ammo="Pemphredo Tathlum",
-		head="Hashishin Kavuk +3",
-		body="Hashishin Mintan +3",
-		hands="Hashi. Bazu. +3",
-		legs="Hashishin Tayt +3",
-		feet="Hashi. Basmak +3",
-		neck="Sanctity Necklace",
-		waist="Orpheus's Sash",
-		left_ear="Friomisi Earring",
-		right_ear="Regal Earring",
-		left_ring="Shiva Ring +1",
-		right_ring={ name="Metamor. Ring +1", augments={'Path: A',}},
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
+		ammo=gear.pemphredoTathlum,
+		head=gear.hashishinHeadPlusThree,
+		body=gear.hashishinBodyPlusThree,
+		hands=gear.hashishinHandsPlusThree,
+		legs=gear.hashishinLegsPlusThree,
+		feet=gear.hashishinFeetPlusThree,
+		neck=gear.sanctity,
+		waist=gear.orpheusWaist,
+		left_ear=gear.friomisi,
+		right_ear=gear.regalEarring,
+		left_ring=gear.shivaRingPlusOne,
+		right_ring = gear.metamorphPlusOne,
+		back = gear.bluFCSird,
 	}
 
 	-- Blue Magic
@@ -368,31 +369,31 @@ function get_sets()
 	sets.Midcast.BlueMagic.Healing = set_combine(sets.Midcast.Cure, {})
 	sets.Midcast.BlueMagic.Enmity = set_combine(sets.Enmity, {})
 	sets.Midcast.BlueMagic.ACC = set_combine(sets.Idle, {
-		ammo="Pemphredo Tathlum",
-		head="Hashishin Kavuk +3",
-		body="Hashishin Mintan +3",
-		hands="Hashi. Bazu. +3",
-		legs="Hashishin Tayt +3",
-		feet="Hashi. Basmak +3",
-		neck="Null Loop",
-		waist="Null Belt",
-		left_ear="Telos Earring",
-		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		back="Null Shawl",
+		ammo=gear.pemphredoTathlum,
+		head=gear.hashishinHeadPlusThree,
+		body=gear.hashishinBodyPlusThree,
+		hands=gear.hashishinHandsPlusThree,
+		legs=gear.hashishinLegsPlusThree,
+		feet=gear.hashishinFeetPlusThree,
+		neck=gear.nullLoop,
+		waist=gear.nullWaist,
+		left_ear=gear.telos,
+		right_ear=gear.hashishinEarringPlusOne,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne2,
+		back=gear.nullShawl,
 	})
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		left_ring={name="Stikini Ring +1", bag="wardrobe"},
-		right_ring={name="Stikini Ring +1", bag="wardrobe2"},
-		waist="Siegel Sash",
-		neck="Nodens Gorget",
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne2,
+		waist=gear.siegel,
+		neck=gear.nodens,
 	})
 
     sets.Midcast["Refresh"] = set_combine(sets.Midcast.Enhancing, {
-		waist="Gishdubar Sash"
+		waist=gear.gishdubar
 	})
 	
     -- White Wind heals floor(MaxHP/7)*2 and is affected by Cure Potency, but NOT by
@@ -403,71 +404,71 @@ function get_sets()
 	})
 
 	sets.Midcast["Feather Tickle"] = set_combine(sets.Midcast.BlueMagic.ACC, {
-		ammo="Pemphredo Tathlum",
-		head={ name="Carmine Mask +1", augments={'Accuracy+20','Mag. Acc.+12','"Fast Cast"+4',}},
-		body="Hashishin Mintan +3",
-		hands="Hashi. Bazu. +3",
-		legs="Hashishin Tayt +3",
-		feet="Hashi. Basmak +3",
-		neck="Null Loop",
-		waist="Null Belt",
-		left_ear="Crep. Earring",
-		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe"},
-		right_ring="Weather. Ring",
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
+		ammo=gear.pemphredoTathlum,
+		head = gear.carmineHeadPlusOnePathD,
+		body=gear.hashishinBodyPlusThree,
+		hands=gear.hashishinHandsPlusThree,
+		legs=gear.hashishinLegsPlusThree,
+		feet=gear.hashishinFeetPlusThree,
+		neck=gear.nullLoop,
+		waist=gear.nullWaist,
+		left_ear=gear.crepuscularEar,
+		right_ear=gear.hashishinEarringPlusOne,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring=gear.weatherspoon,
+		back = gear.bluFCSird,
 	})
 
 	sets.Midcast["Reaving Wind"] = set_combine(sets.Midcast.BlueMagic.ACC, {
-		ammo="Pemphredo Tathlum",
-		head={ name="Carmine Mask +1", augments={'Accuracy+20','Mag. Acc.+12','"Fast Cast"+4',}},
-		body="Hashishin Mintan +3",
-		hands="Hashi. Bazu. +3",
-		legs="Hashishin Tayt +3",
-		feet="Hashi. Basmak +3",
-		neck="Null Loop",
-		waist="Null Belt",
-		left_ear="Crep. Earring",
-		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe"},
-		right_ring="Weather. Ring",
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
+		ammo=gear.pemphredoTathlum,
+		head = gear.carmineHeadPlusOnePathD,
+		body=gear.hashishinBodyPlusThree,
+		hands=gear.hashishinHandsPlusThree,
+		legs=gear.hashishinLegsPlusThree,
+		feet=gear.hashishinFeetPlusThree,
+		neck=gear.nullLoop,
+		waist=gear.nullWaist,
+		left_ear=gear.crepuscularEar,
+		right_ear=gear.hashishinEarringPlusOne,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring=gear.weatherspoon,
+		back = gear.bluFCSird,
 	})
 
 	sets.Midcast["Cruel Joke"] = set_combine(sets.Midcast.BlueMagic.ACC, {
-		ammo="Pemphredo Tathlum",
-		head={ name="Carmine Mask +1", augments={'Accuracy+20','Mag. Acc.+12','"Fast Cast"+4',}},
-		body="Hashishin Mintan +3",
-		hands="Hashi. Bazu. +3",
-		legs="Hashishin Tayt +3",
-		feet="Hashi. Basmak +3",
-		neck="Null Loop",
-		waist="Null Belt",
-		left_ear="Crep. Earring",
-		right_ear="Hashi. Earring +1",
-		left_ring={name="Stikini Ring +1", bag="wardrobe"},
-		right_ring="Weather. Ring",
-		back={ name="Rosmerta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10','Spell interruption rate down-10%',}},
+		ammo=gear.pemphredoTathlum,
+		head = gear.carmineHeadPlusOnePathD,
+		body=gear.hashishinBodyPlusThree,
+		hands=gear.hashishinHandsPlusThree,
+		legs=gear.hashishinLegsPlusThree,
+		feet=gear.hashishinFeetPlusThree,
+		neck=gear.nullLoop,
+		waist=gear.nullWaist,
+		left_ear=gear.crepuscularEar,
+		right_ear=gear.hashishinEarringPlusOne,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring=gear.weatherspoon,
+		back = gear.bluFCSird,
 	})
 
 	sets.Midcast['Entomb'] = set_combine(sets.Midcast.BlueMagic.Nuke, {
-		neck="Quanpur Necklace",
+		neck=gear.quanpur,
 	})
 
 	sets.WS = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head="Hashishin Kavuk +3",
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Mirage Stole +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Ishvara Earring",
-		left_ring="Epaminondas's Ring",
-		right_ring="Epona's Ring",
-		back={ name="Rosmerta's Cape", augments={'MND+20','Accuracy+20 Attack+20','MND+10','Weapon skill damage +10%','Damage taken-5%',}},
+		ammo = gear.coiste,
+		head=gear.hashishinHeadPlusThree,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.mirageStole,
+		waist = gear.sailfi,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.ishvara,
+		left_ring=gear.epimanondas,
+		right_ring=gear.eponas,
+		back = gear.bluWSDDt,
 	}
 
 	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
@@ -477,62 +478,62 @@ function get_sets()
 	sets.WS.SB = sets.Subtle_Blow
 
 	sets.WS['Black Halo'] = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head="Hashishin Kavuk +3",
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Mirage Stole +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Ishvara Earring",
-		left_ring="Epaminondas's Ring",
-		right_ring="Epona's Ring",
-		back={ name="Rosmerta's Cape", augments={'MND+20','Accuracy+20 Attack+20','MND+10','Weapon skill damage +10%','Damage taken-5%',}},
+		ammo = gear.coiste,
+		head=gear.hashishinHeadPlusThree,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.mirageStole,
+		waist = gear.sailfi,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.ishvara,
+		left_ring=gear.epimanondas,
+		right_ring=gear.eponas,
+		back = gear.bluWSDDt,
 	}
 
 	sets.WS['Expiacion'] = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head="Hashishin Kavuk +3",
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Mirage Stole +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Ishvara Earring",
-		left_ring="Epaminondas's Ring",
-		right_ring="Epona's Ring",
-		back={ name="Rosmerta's Cape", augments={'MND+20','Accuracy+20 Attack+20','MND+10','Weapon skill damage +10%','Damage taken-5%',}},
+		ammo = gear.coiste,
+		head=gear.hashishinHeadPlusThree,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.mirageStole,
+		waist = gear.sailfi,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.ishvara,
+		left_ring=gear.epimanondas,
+		right_ring=gear.eponas,
+		back = gear.bluWSDDt,
 	}
 
 	sets.WS['Chant du Cygne'] = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head={ name="Adhemar Bonnet +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-		body={ name="Gleti's Cuirass", augments={'Path: A',}},
-		hands={ name="Gleti's Gauntlets", augments={'Path: A',}},
-		legs={ name="Gleti's Breeches", augments={'Path: A',}},
-		feet={ name="Gleti's Boots", augments={'Path: A',}},
-		neck={ name="Mirage Stole +2", augments={'Path: A',}},
-		waist="Fotia Belt",
-		left_ear="Odr Earring",
-		right_ear="Hashi. Earring +1",
-		left_ring="Lehko's Ring",
-		right_ring="Epona's Ring",
-		back={ name="Rosmerta's Cape", augments={'DEX+20','Accuracy+20 Attack+20','DEX+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo = gear.coiste,
+		head = gear.adhemarHeadPlusOnePathA,
+		body = gear.gletiBody,
+		hands = gear.gletiHands,
+		legs = gear.gletiLegs,
+		feet = gear.gletiFeet,
+		neck = gear.mirageStole,
+		waist=gear.fotiaWaist,
+		left_ear=gear.odr,
+		right_ear=gear.hashishinEarringPlusOne,
+		left_ring=gear.lehkoHabhokaRing,
+		right_ring=gear.eponas,
+		back = gear.bluDA,
 	}
 
 	-- Note that the Mote library will unlock these gear spots when used.
 	sets.TreasureHunter = {
-		waist="Chaac Belt",
-		body="Volte Jupon",
-		ammo="Per. Lucky Egg",
+		waist=gear.chaac,
+		body=gear.volteJupon,
+		ammo=gear.perfectEgg,
 	}
 
 	sets.Diffusion = {
-	    feet={ name="Luhlaza Charuqs +1", augments={'Enhances "Diffusion" effect',}},
+	    feet = gear.luhlazaFeetPlusOne,
 	}
 
 end
@@ -555,7 +556,7 @@ function precast_custom(spell)
 	local equipSet = {}
 	if spell.type == 'WeaponSkill' then
 		if state.OffenseMode.value == "MEVA" then
-			equipSet = set_combine(equipSet, { neck="Warder's Charm +1", })
+			equipSet = set_combine(equipSet, { neck=gear.warderCharmPlusOne, })
 		end
 	end
 	return equipSet

@@ -2,6 +2,7 @@
 --Morwen
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -43,9 +44,9 @@ function get_sets()
 	sets.Weapons = {}
 
 	sets.Weapons['God Hands'] = {
-		main="Godhands",
-		range={ name="Neo Animator", augments={'Path: A',}},
-		ammo="Automat. Oil +3",
+		main=gear.godhands,
+		range = gear.neoAnimator,
+		ammo=gear.canOfAutomatonOilPlusThree,
 	}
 
 	sets.Weapons['Club'] = {}
@@ -56,18 +57,18 @@ function get_sets()
 
 	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
-		head="Nyame Helm",
-		body="Nyame Mail",
-		hands="Nyame Gauntlets",
-		legs="Nyame Flanchard",
-		feet="Nyame Sollerets",
-		neck={ name="Loricate Torque +1", augments={'Path: A',}},
-		waist="Carrier's Sash",
-		left_ear="Etiolation Earring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring="Regal Ring",
-		right_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-		back={ name="Visucius's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		head=gear.nyameHead,
+		body=gear.nyameBody,
+		hands=gear.nyameHands,
+		legs=gear.nyameLegs,
+		feet=gear.nyameFeet,
+		neck = gear.loricatePlusOne,
+		waist=gear.carriers,
+		left_ear=gear.etiolation,
+		right_ear = gear.odnowaPlusOne,
+		left_ring=gear.regalRing,
+		right_ring = gear.gelatinousPlusOne,
+		back = gear.pupDA,
     }
 
 	sets.Idle.Pet = {}
@@ -77,22 +78,22 @@ function get_sets()
 	sets.Idle.PDT = set_combine(sets.Idle, {})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 	sets.Idle.MEVA = set_combine(sets.Idle, {
-		neck="Warder's Charm +1",
-		waist="Carrier's Sash",
+		neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
 	})
 
 	--Used to swap into movement gear when the player is detected movement when not engaged
 	sets.Movement = {
-		feet="Hermes' Sandals",
+		feet=gear.hermesSandals,
 	}
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -100,22 +101,22 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	sets.OffenseMode = {
-		head="Mpaca's Cap",
-		body={ name="Mpaca's Doublet", augments={'Path: A',}},
-		hands="Mpaca's Gloves",
-		legs="Mpaca's Hose",
-		feet="Mpaca's Boots",
-		neck="Combatant's Torque",
-		waist="Moonbow Belt +1",
-		left_ear="Mache Earring +1",
-		right_ear={ name="Kara. Earring +1", augments={'System: 1 ID: 1676 Val: 0','Accuracy+12','Mag. Acc.+12','"Store TP"+4',}},
-		left_ring="Niqmaddu Ring",
-		right_ring="Gere Ring",
-		back={ name="Visucius's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		head=gear.mpacaHead,
+		body = gear.mpacaBody,
+		hands=gear.mpacaHands,
+		legs=gear.mpacaLegs,
+		feet=gear.mpacaFeet,
+		neck=gear.combatantTorque,
+		waist=gear.moonbowBeltPlusOne,
+		left_ear=gear.macheEarringPlusOne,
+		right_ear = gear.karagozEarringPlusOneSTP,
+		left_ring=gear.niqmaddu,
+		right_ring=gear.gereRing,
+		back = gear.pupDA,
 	}
 
 	sets.OffenseMode.TP = set_combine(sets.OffenseMode,{ })
@@ -123,7 +124,7 @@ function get_sets()
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode,{ })
 	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, { })
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode.TP,{
-		neck="Warder's Charm +1",
+		neck=gear.warderCharmPlusOne,
 	})
 
 	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
@@ -134,17 +135,17 @@ function get_sets()
 		-- Mpaca Legs SB II 5%
 		-- Ring SB II 5%
 		-- Earring SB I 6%
-		head="Volte Tiara", -- 6%
-		body="Malignance Tabard",
-		hands="Volte Mittens", -- 6%
-		legs="Mpaca's Hose", -- 5%
-		feet="Volte Spats", -- 6%
-		waist="Moonbow Belt +1", -- 15%
-		left_ear="Mache Earring +1",
-		right_ear="Kara. Earring +1", -- 6%
-		left_ring="Niqmaddu Ring", -- 5%
-		right_ring="Chirich Ring +1", -- 10%
-		back={ name="Visucius's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		head=gear.volteTiara, -- 6%
+		body=gear.malignanceBody,
+		hands=gear.volteMittens, -- 6%
+		legs=gear.mpacaLegs, -- 5%
+		feet=gear.volteSpats, -- 6%
+		waist=gear.moonbowBeltPlusOne, -- 15%
+		left_ear=gear.macheEarringPlusOne,
+		right_ear=gear.karagozEarringPlusOne, -- 6%
+		left_ring=gear.niqmaddu, -- 5%
+		right_ring=gear.chirichRingPlusOne, -- 10%
+		back = gear.pupDA,
 	}
 
 	sets.Precast = {}
@@ -187,18 +188,18 @@ function get_sets()
 
 	--Default WS set base
 	sets.WS = {
-		head="Mpaca's Cap",
-		body="Mpaca's Doublet",
-		hands="Mpaca's Gloves",
-		legs="Mpaca's Hose",
-		feet="Mpaca's Boots",
-		neck="Fotia Gorget",
-		waist="Moonbow Belt +1",
-		left_ear={ name="Schere Earring", augments={'Path: A',}},
-		right_ear="Mache Earring +1",
-		left_ring="Regal Ring",
-		right_ring="Niqmaddu Ring",
-		back={ name="Visucius's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		head=gear.mpacaHead,
+		body=gear.mpacaBody,
+		hands=gear.mpacaHands,
+		legs=gear.mpacaLegs,
+		feet=gear.mpacaFeet,
+		neck=gear.fotiaNeck,
+		waist=gear.moonbowBeltPlusOne,
+		left_ear = gear.schere,
+		right_ear=gear.macheEarringPlusOne,
+		left_ring=gear.regalRing,
+		right_ring=gear.niqmaddu,
+		back = gear.pupDA,
 	}
 
 	sets.WS.SB = set_combine( sets.WS, { -- This maximize SB
@@ -250,7 +251,7 @@ function precast_custom(spell)
 		equipSet = sets.JA.Maneuver
 	elseif spell.type == 'WeaponSkill' then
 		if state.OffenseMode.value == "MEVA" then
-			equipSet = { neck="Warder's Charm +1", }
+			equipSet = { neck=gear.warderCharmPlusOne, }
 		end
 	end
 	return equipSet

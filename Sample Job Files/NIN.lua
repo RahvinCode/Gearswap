@@ -2,6 +2,7 @@
 --Turin
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -40,28 +41,28 @@ function get_sets()
 	sets.Weapons = {}
 
 	sets.Weapons['Kannagi'] = {
-		main={ name="Kannagi", augments={'Path: A',}},
-		sub="Gokotai",
+		main = gear.kannagi,
+		sub=gear.gokotai,
 	}
 
 	sets.Weapons['Ninjitsu'] = {
-		main="Tauret",
-		sub="Gokotai",
+		main=gear.tauret,
+		sub=gear.gokotai,
 	}
 
 	sets.Weapons['Savage Blade'] = {
-		main="Naegling",
-		sub="Blurred Knife +1",
+		main=gear.naegling,
+		sub=gear.blurredKnife,
 	}
 
 	sets.Weapons['Karambit'] = {
-		main="Karambit",
+		main=gear.karambit,
 		sub="empty",
 	}
 
 	sets.Weapons['Aeolian Edge'] = {
-		main="Tauret",
-		sub="Naegling",
+		main=gear.tauret,
+		sub=gear.naegling,
 	}
 
 	sets.Weapons['Abyssea'] = {
@@ -74,19 +75,19 @@ function get_sets()
 
 	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
-		ammo="Staunch Tathlum +1",
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Loricate Torque +1", augments={'Path: A',}},
-		waist="Carrier's Sash",
-		left_ear="Etiolation Earring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring="Eihwaz Ring",
-		right_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-		back={ name="Andartia's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo=gear.staunchPlusOne,
+		head = gear.nyameHead,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.loricatePlusOne,
+		waist=gear.carriers,
+		left_ear=gear.etiolation,
+		right_ear = gear.odnowaPlusOne,
+		left_ring=gear.eihwazRing,
+		right_ring = gear.gelatinousPlusOne,
+		back = gear.ninDA,
     }
 
 	sets.Idle.TP = set_combine(sets.Idle, {})
@@ -95,30 +96,30 @@ function get_sets()
 	sets.Idle.PDL = set_combine(sets.Idle, {})
 	sets.Idle.SB = set_combine(sets.Idle, {})
 	sets.Idle.MEVA = set_combine(sets.Idle, {
-		neck="Warder's Charm +1",
-		waist="Carrier's Sash",
+		neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
 	})
 
 	--Defined below based off time of day
 	sets.Movement = {}
 
 	sets.Movement.Day = {
-		feet="Danzo Sune-Ate",
+		feet=gear.danzoSuneAte,
 	}
 	sets.Movement.Night = {
-		feet="Hachi. Kyahan +1",
+		feet=gear.hachiyaFeetPlusOne,
 	}
 	sets.Movement.Dusk = {
-		feet="Hachi. Kyahan +1",
+		feet=gear.hachiyaFeetPlusOne,
 	}
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -126,53 +127,53 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	sets.OffenseMode = {}
 
 	--Base TP set to build off
 	sets.OffenseMode.TP = {
-		ammo="Happo Shuriken +1",
-		head={ name="Adhemar Bonnet +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-		body="Ken. Samue +1",
-		hands={ name="Adhemar Wrist. +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-		legs={ name="Samnuha Tights", augments={'STR+10','DEX+10','"Dbl.Atk."+3','"Triple Atk."+3',}},
-		feet="Ken. Sune-Ate +1",
-		neck={ name="Ninja Nodowa +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear="Telos Earring",
-		right_ear="Hattori Earring +1",
-		left_ring="Gere Ring",
-		right_ring="Epona's Ring",
-		back={ name="Andartia's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo=gear.happoShurikenPlusOne,
+		head = gear.adhemarHeadPlusOnePathA,
+		body=gear.kendatsubaSamuePlusOne,
+		hands = gear.adhemarHandsPlusOnePathA,
+		legs = gear.samnuhaTightsDA,
+		feet=gear.kendatsubaFeetPlusOne,
+		neck = gear.ninjaNodowaPlusTwo,
+		waist = gear.sailfi,
+		left_ear=gear.telos,
+		right_ear=gear.hattoriEarringPlusOne,
+		left_ring=gear.gereRing,
+		right_ring=gear.eponas,
+		back = gear.ninDA,
 	}
 	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
 	sets.OffenseMode.DT = set_combine (sets.OffenseMode.TP, {
-	    head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
+	    head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
 	})
 	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine (sets.OffenseMode.TP, {
-	    head="Ken. Jinpachi +1",
-		body="Ken. Samue +1",
-		hands="Ken. Tekko +1",
-		legs="Ken. Hakama +1",
-		feet="Ken. Sune-Ate +1",
+	    head=gear.kendatsubaJinpachiPlusOne,
+		body=gear.kendatsubaSamuePlusOne,
+		hands=gear.kendatsubaTekkoPlusOne,
+		legs=gear.kendatsubaHakamaPlusOne,
+		feet=gear.kendatsubaFeetPlusOne,
 	})
 	sets.OffenseMode.PDL = set_combine (sets.OffenseMode.TP, {
-	    head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
+	    head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
 	})
 
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode.DT,{
-		neck={ name="Warder's Charm +1", augments={'Path: A',}},
+		neck = gear.warderCharmPlusOne,
 	})
 
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode.DT,{ })
@@ -182,23 +183,23 @@ function get_sets()
 	sets.Precast = {}
 	-- Used for Magic Spells
 	sets.Precast.FastCast = {
-		ammo="Sapience Orb", -- 2
-		head={ name="Herculean Helm", augments={'"Mag.Atk.Bns."+21','"Fast Cast"+6',}}, --13
-		body={ name="Taeon Tabard", augments={'"Fast Cast"+5','HP+47',}}, -- 9
-		hands={ name="Leyline Gloves", augments={'Accuracy+15','Mag. Acc.+15','"Mag.Atk.Bns."+15','"Fast Cast"+3',}}, -- 8
-		legs={ name="Herculean Trousers", augments={'Mag. Acc.+17','"Fast Cast"+6','STR+9',}}, -- 6
-		feet={ name="Herculean Boots", augments={'"Fast Cast"+6',}}, -- 6
-		neck="Voltsurge Torque", -- 4
-		waist="Plat. Mog. Belt",
-		left_ear="Etiolation Earring", -- 1
-		right_ear="Loquac. Earring", -- 2
-		left_ring="Kishar Ring", -- 4
-		right_ring="Rahab Ring", -- 2
-		back={ name="Andartia's Mantle", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10',}}, -- 10
+		ammo=gear.sapience, -- 2
+		head = gear.herculeanHelmFC, --13
+		body = gear.taeonTabardBFC, -- 9
+		hands = gear.leylineGlovesFCB, -- 8
+		legs = gear.herculeanTrousersFC, -- 6
+		feet = gear.herculeanBootsFC, -- 6
+		neck=gear.voltsurge, -- 4
+		waist=gear.platinumMoogleBelt,
+		left_ear=gear.etiolation, -- 1
+		right_ear=gear.loquacious, -- 2
+		left_ring=gear.kishar, -- 4
+		right_ring=gear.rahabRing, -- 2
+		back = gear.ninFC, -- 10
 	} -- 67
 
 	sets.Precast.Utsusemi = {
-		neck="Magoraga Beads", -- 10 FC (+6)
+		neck=gear.magoragaBeadNecklace, -- 10 FC (+6)
 	}
 
 	sets.Precast.QuickMagic = {
@@ -206,17 +207,17 @@ function get_sets()
 	}
 
 	sets.Enmity = { -- Head and Back upgrade slots
-		ammo="Sapience Orb", --2
-		body="Emet Harness +1", --10
-		hands="Kurys Gloves", --9
+		ammo=gear.sapience, --2
+		body=gear.emetHarnessPlusOne, --10
+		hands=gear.kurysGloves, --9
 		--="Zoar Subligar +1", --6
-		feet="Ahosi Leggings", --7
-		neck="Moonlight Necklace", --15
-		waist="Kasiri Belt", --3
-		left_ear="Cryptic Earring", --4
-		right_ear="Friomisi Earring", --2
-		left_ring="Petrov Ring", --4
-		right_ring="Eihwaz Ring", --5
+		feet=gear.ahosiLeggings, --7
+		neck=gear.moonlightNeck, --15
+		waist=gear.kasiriBelt, --3
+		left_ear=gear.crypticEarring, --4
+		right_ear=gear.friomisi, --2
+		left_ring=gear.petrov, --4
+		right_ring=gear.eihwazRing, --5
 	}
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability
@@ -225,8 +226,8 @@ function get_sets()
 	})
 	-- Utsusemi Set
 	sets.Midcast.Utsusemi = {
-		back={ name="Andartia's Mantle", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10',}},
-		feet="Hattori Kyahan +1",
+		back = gear.ninFC,
+		feet=gear.hattoriFeetPlusOne,
 	}
 	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
 	sets.Midcast.SIRD = {}
@@ -234,43 +235,43 @@ function get_sets()
 	sets.Midcast.Cure = {}
 	-- Enhancing Skill
 	sets.Midcast.Enhancing = {
-		hands={ name="Mochizuki Tekko +3", augments={'Enh. "Ninja Tool Expertise" effect',}},
+		hands = gear.mochizukiTekkoPlusThree,
 	}
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {
-		ammo="Hydrocera",
-		head="Hachiya Hatsu. +3",
-		body="Malignance Tabard",
-		hands={ name="Mochizuki Tekko +3", augments={'Enh. "Ninja Tool Expertise" effect',}},
-		legs="Malignance Tights",
-		feet="Malignance Boots",
-		neck="Moonlight Necklace",
-		waist="Eschan Stone",
-		left_ear="Hermetic Earring",
-		right_ear="Crep. Earring",
-		left_ring={ name="Stikini Ring +1", bag="wardrobe",},
-		right_ring={ name="Stikini Ring +1", bag="wardrobe2",},
-		back={ name="Andartia's Mantle", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10',}},
+		ammo=gear.hydrocera,
+		head=gear.hachiyaHeadPlusThree,
+		body=gear.malignanceBody,
+		hands = gear.mochizukiTekkoPlusThree,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
+		neck=gear.moonlightNeck,
+		waist=gear.eschan,
+		left_ear=gear.hermetic,
+		right_ear=gear.crepuscularEar,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne2,
+		back = gear.ninFC,
 	}
 	-- High MAB for spells
 	sets.Midcast.Nuke = {
-    ammo={ name="Ghastly Tathlum +1", augments={'Path: A',}},
-    head={ name="Mochi. Hatsuburi +3", augments={'Enhances "Yonin" and "Innin" effect',}},
-    body={ name="Nyame Mail", augments={'Path: B',}},
-    hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-    legs={ name="Nyame Flanchard", augments={'Path: B',}},
-    feet={ name="Mpaca's Boots", augments={'Path: A',}},
-    neck="Sanctity Necklace",
-    waist="Orpheus's Sash",
-    left_ear="Hermetic Earring",
-    right_ear="Friomisi Earring",
-	left_ring={ name="Stikini Ring +1", bag="wardrobe",},
-	right_ring={ name="Stikini Ring +1", bag="wardrobe2",},
-    back={ name="Andartia's Mantle", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10',}},
+    ammo = gear.ghastlyTathlumPlusOne,
+    head = gear.mochizukiHeadPlusThree,
+    body = gear.nyameBody,
+    hands = gear.nyameHands,
+    legs = gear.nyameLegs,
+    feet = gear.mpacaFeet,
+    neck=gear.sanctity,
+    waist=gear.orpheusWaist,
+    left_ear=gear.hermetic,
+    right_ear=gear.friomisi,
+	left_ring = gear.stikiniRingPlusOne1,
+	right_ring = gear.stikiniRingPlusOne2,
+    back = gear.ninFC,
 	}
 
 	-- Specific gear for spells
-	sets.Midcast["Stoneskin"] = {waist="Siegel Sash",}
+	sets.Midcast["Stoneskin"] = {waist=gear.siegel,}
 
 	sets.JA = {}
 	sets.JA["Futae"] = {} --hands="Hattori Tekko"
@@ -280,66 +281,66 @@ function get_sets()
 	sets.JA["Aggressor"] = {}
 	sets.JA["Provoke"] = sets.Enmity
 	sets.JA["Mijin Gakure"] = {}
-	sets.JA["Yonin"] = {head={ name="Mochi. Hatsuburi +3", augments={'Enhances "Yonin" and "Innin" effect',}}}
-	sets.JA["Innin"] = {head={ name="Mochi. Hatsuburi +3", augments={'Enhances "Yonin" and "Innin" effect',}}}
+	sets.JA["Yonin"] = {head = gear.mochizukiHeadPlusThree}
+	sets.JA["Innin"] = {head = gear.mochizukiHeadPlusThree}
 	sets.JA["Issekigan"] = {}
 	sets.JA["Mikage"] = {}
 
 	--Default WS set base
 	sets.WS = {
-		ammo="Yetshila +1",
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Ninja Nodowa +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear="Odr Earring",
-		right_ear="Ishvara Earring",
-		left_ring="Gere Ring",
-		right_ring="Epona's Ring",
-		back={ name="Andartia's Mantle", augments={'AGI+20','Accuracy+20 Attack+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+		ammo=gear.yetshilaPlusOne,
+		head = gear.nyameHead,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.ninjaNodowaPlusTwo,
+		waist = gear.sailfi,
+		left_ear=gear.odr,
+		right_ear=gear.ishvara,
+		left_ring=gear.gereRing,
+		right_ring=gear.eponas,
+		back = gear.ninWSD,
 	}
 
 	sets.WS.WSD = set_combine({ sets.WS,
-		left_ring="Epaminondas's Ring",
-		right_ring="Karieyh Ring +1",
+		left_ring=gear.epimanondas,
+		right_ring=gear.karieyhRingPlusOne,
 	})
 
 	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
 	sets.WS.ACC = set_combine({ sets.WS,	    
-		head="Ken. Jinpachi +1",
-		body="Ken. Samue +1",
-		hands="Ken. Tekko +1",
-		legs="Ken. Hakama +1",
-		feet="Ken. Sune-Ate +1",
+		head=gear.kendatsubaJinpachiPlusOne,
+		body=gear.kendatsubaSamuePlusOne,
+		hands=gear.kendatsubaTekkoPlusOne,
+		legs=gear.kendatsubaHakamaPlusOne,
+		feet=gear.kendatsubaFeetPlusOne,
 	})
 
 	sets.WS.CRIT = {
-		ammo="Yetshila +1",
-		head={ name="Adhemar Bonnet +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-		body="Ken. Samue +1",
-		hands={ name="Adhemar Wrist. +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-		legs={ name="Samnuha Tights", augments={'STR+10','DEX+10','"Dbl.Atk."+3','"Triple Atk."+3',}},
-		feet={ name="Herculean Boots", augments={'AGI+6','Crit.hit rate+3','Quadruple Attack +2','Accuracy+6 Attack+6',}},
-		neck={ name="Ninja Nodowa +2", augments={'Path: A',}},
-		waist="Windbuffet Belt +1",
-		left_ear="Ishvara Earring",
-		right_ear="Odr Earring",
-		left_ring="Gere Ring",
-		right_ring="Epona's Ring",
-		back={ name="Andartia's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Damage taken-5%',}},
+		ammo=gear.yetshilaPlusOne,
+		head = gear.adhemarHeadPlusOnePathA,
+		body=gear.kendatsubaSamuePlusOne,
+		hands = gear.adhemarHandsPlusOnePathA,
+		legs = gear.samnuhaTightsDA,
+		feet = gear.herculeanBootsCrit,
+		neck = gear.ninjaNodowaPlusTwo,
+		waist=gear.windbuffetPlusOne,
+		left_ear=gear.ishvara,
+		right_ear=gear.odr,
+		left_ring=gear.gereRing,
+		right_ring=gear.eponas,
+		back = gear.ninDA,
 	}
 	sets.WS.MAB = set_combine({ sets.WS,
-		ammo={ name="Seeth. Bomblet +1", augments={'Path: A',}},
-		neck="Sanctity Necklace",
-		waist="Eschan Stone",
-		left_ear="Friomisi Earring",
-		right_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		left_ring="Epaminondas's Ring",
-		right_ring="Dingir Ring",
-		back={ name="Andartia's Mantle", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','Mag. Acc.+10','"Fast Cast"+10',}},
+		ammo = gear.seethingBombletPlusOne,
+		neck=gear.sanctity,
+		waist=gear.eschan,
+		left_ear=gear.friomisi,
+		right_ear = gear.moonshadeEarringAcc,
+		left_ring=gear.epimanondas,
+		right_ring=gear.dingir,
+		back = gear.ninFC,
 	})
 
 	--WS Sets
@@ -348,7 +349,7 @@ function get_sets()
 	sets.WS["Blade: Teki"] = sets.WS.MAB
 	sets.WS["Blade: To"] = sets.WS.MAB
 	sets.WS["Blade: Chi"] = sets.WS.MAB
-	sets.WS["Blade: Ei"] = set_combine(sets.WS.MAB, {head="Pixie Hairpin +1", left_ring="Archon Ring"})
+	sets.WS["Blade: Ei"] = set_combine(sets.WS.MAB, {head=gear.pixieHead, left_ring=gear.archonRing})
 	sets.WS["Blade: Jin"] = sets.WS.CRIT
 	sets.WS["Blade: Ten"] = {}
 	sets.WS["Blade: Ku"] = {}
@@ -358,41 +359,41 @@ function get_sets()
 	sets.WS["Blade: Shun"] = {}
 
 	sets.WS["Asuran Fists"] = {
-	    ammo="Yetshila +1",
-		head="Ken. Jinpachi +1",
-		body="Ken. Samue +1",
-		hands="Ken. Tekko +1",
-		legs="Ken. Hakama +1",
-		feet="Ken. Sune-Ate +1",
-		neck="Fotia Gorget",
-		waist="Fotia Belt",
-		left_ear="Ishvara Earring",
-		right_ear="Odr Earring",
-		left_ring="Hetairoi Ring",
-		right_ring="Gere Ring",
-		back={ name="Andartia's Mantle", augments={'AGI+20','Accuracy+20 Attack+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+	    ammo=gear.yetshilaPlusOne,
+		head=gear.kendatsubaJinpachiPlusOne,
+		body=gear.kendatsubaSamuePlusOne,
+		hands=gear.kendatsubaTekkoPlusOne,
+		legs=gear.kendatsubaHakamaPlusOne,
+		feet=gear.kendatsubaFeetPlusOne,
+		neck=gear.fotiaNeck,
+		waist=gear.fotiaWaist,
+		left_ear=gear.ishvara,
+		right_ear=gear.odr,
+		left_ring=gear.hetairoi,
+		right_ring=gear.gereRing,
+		back = gear.ninWSD,
 	}
 
 	sets.WS["Savage Blade"] = {
-	    ammo="Oshasha's Treatise",
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Ninja Nodowa +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Ishvara Earring",
-		left_ring="Cornelia's Ring",
-		right_ring="Epaminondas's Ring",
-		back={ name="Andartia's Mantle", augments={'AGI+20','Accuracy+20 Attack+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+	    ammo=gear.oshashaTreatise,
+		head = gear.nyameHead,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.ninjaNodowaPlusTwo,
+		waist = gear.sailfi,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.ishvara,
+		left_ring=gear.corneliaRing,
+		right_ring=gear.epimanondas,
+		back = gear.ninWSD,
 	}
 
 	sets.TreasureHunter = {
-	    head="Volte Cap",
-		body="Volte Jupon",
-		waist="Chaac Belt",
+	    head=gear.volteHead,
+		body=gear.volteJupon,
+		waist=gear.chaac,
 	}
 
 end

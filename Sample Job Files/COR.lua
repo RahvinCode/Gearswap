@@ -1,6 +1,7 @@
 -- Maedhros
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -49,54 +50,54 @@ function get_sets()
 	sets.Weapons = {}
 
 	sets.Weapons['Savage Blade'] = {
-		main="Naegling",
-		sub={ name="Gleti's Knife", augments={'Path: A',}},
-		range={ name="Anarchy +2", augments={'Delay:+60','TP Bonus +1000',}},
+		main=gear.naegling,
+		sub = gear.gleti,
+		range = gear.anarchyPlusTwoB,
 	}
 
 	sets.Weapons['Evisceration'] = {
-		main="Tauret",
-		sub={ name="Gleti's Knife", augments={'Path: A',}},
-		range={ name="Fomalhaut", augments={'Path: A',}},
+		main=gear.tauret,
+		sub = gear.gleti,
+		range = gear.fomalhaut,
 	}
 
 	sets.Weapons['Fomalhaut'] = {
-		main={ name="Rostam", augments={'Path: A'}, bag="Wardrobe 4"},
-		sub={ name="Rostam", augments={'Path: C'}, bag="Wardrobe 2"},
-		range={ name="Fomalhaut", augments={'Path: A',}},
+		main = gear.rostam4,
+		sub = gear.rostam2,
+		range = gear.fomalhaut,
 	}
 
 	sets.Weapons['Death Penalty'] = {
-		main={ name="Rostam", augments={'Path: A'}, bag="Wardrobe 4"},
-		sub="Tauret",
-		range={ name="Death Penalty", augments={'Path: A',}},
+		main = gear.rostam4,
+		sub=gear.tauret,
+		range = gear.deathPenalty,
 	}
 
 	sets.Weapons['Aeolian Edge'] = {
 		ammo=Ammo.Bullet.MAG_WS,
-		main={ name="Rostam", augments={'Path: A'}, bag="Wardrobe 4"},
-		sub="Tauret",
-		range={ name="Anarchy +2", augments={'Delay:+60','TP Bonus +1000',}},
+		main = gear.rostam4,
+		sub=gear.tauret,
+		range = gear.anarchyPlusTwoB,
 	}
 
 	sets.Weapons.Melee = {
-		sub={ name="Gleti's Knife", augments={'Path: A',}},
+		sub = gear.gleti,
 	}
 
 	sets.Weapons['Subtle Blow'] = {
-		sub={ name="Gleti's Knife", augments={'Path: A',}}, -- Used for SB II
+		sub = gear.gleti, -- Used for SB II
 	}
 
 	sets.Weapons.Ranged = {
-		sub={ name="Kustawi +1", augments={'Path: A',}},
+		sub = gear.kustawiPlusOne,
 	}
 
 	sets.Weapons.Shield = {
-		sub={ name="Nusku Shield", priority=1},
+		sub = gear.nusku,
 	}
 
 	sets.Weapons.Sleep = {
-		range="Earp",
+		range=gear.earp,
 	}
 
 	-- Ammo Selection
@@ -113,18 +114,18 @@ function get_sets()
 	-- Standard Idle set with -DT,Refresh,Regen with NO movement gear
 	sets.Idle = {
 		ammo = Ammo.Bullet.RA,
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body="Adamantite Armor",
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Loricate Torque +1", augments={'Path: A',}},
-		waist="Carrier's Sash",
-		left_ear="Sanare Earring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-		right_ring="Shadow Ring",
-		back={ name="Camulus's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Phys. dmg. taken-10%',}},
+		head = gear.nyameHead,
+		body=gear.adamantiteArmor,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.loricatePlusOne,
+		waist=gear.carriers,
+		left_ear=gear.sanareEarring,
+		right_ear = gear.odnowaPlusOne,
+		left_ring = gear.gelatinousPlusOne,
+		right_ring=gear.shadowRing,
+		back = gear.corDAPdt,
     }
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
@@ -136,17 +137,17 @@ function get_sets()
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 
 	sets.Movement = {
-		legs={ name="Carmine Cuisses +1", augments={'HP+80','STR+12','INT+12',}},
-		right_ring="Defending Ring",
+		legs = gear.carmineLegsPlusOnePathA,
+		right_ring=gear.defending,
 	}
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -154,34 +155,34 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	sets.Subtle_Blow = {
-		neck="Bathy Choker +1",
-		right_ring={ name="Chirich Ring +1", bag="wardrobe2"},
+		neck=gear.bathyPlusOne,
+		right_ring = gear.chirichPlusOne2,
 	}
 
 	--The following sets augment the base TP set above for Dual Wielding
 	sets.DualWield = {
-		waist="Reiki Yotai",
-		right_ear="Eabani Earring",
+		waist=gear.reiki,
+		right_ear=gear.eabani,
 	}
 
 	sets.OffenseMode = {
 		ammo = Ammo.Bullet.RA,
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs={ name="Samnuha Tights", augments={'STR+10','DEX+10','"Dbl.Atk."+3','"Triple Atk."+3',}},
-		feet="Malignance Boots",
-		neck="Iskur Gorget",
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear="Telos Earring",
-		right_ear="Crep. Earring",
-		left_ring="Lehko's Ring",
-		right_ring="Epona's Ring",
-		back="Null Shawl",
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs = gear.samnuhaTightsDA,
+		feet=gear.malignanceFeet,
+		neck=gear.iskur,
+		waist = gear.sailfi,
+		left_ear=gear.telos,
+		right_ear=gear.crepuscularEar,
+		left_ring=gear.lehkoHabhokaRing,
+		right_ring=gear.eponas,
+		back=gear.nullShawl,
 	}
 
 	--Base TP set to build off when melee'n
@@ -189,29 +190,29 @@ function get_sets()
 
 	--This set is used when OffenseMode is DT and Enaged
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {
-	    legs="Chas. Culottes +3",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}, priority=2},
+	    legs=gear.chasseurLegsPlusThree,
+		right_ear = gear.odnowaPlusOne,
 	})
 
 	--This set is used when OffenseMode is PDL and Enaged
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {
-		legs="Malignance Tights",
+		legs=gear.malignanceLegs,
 	})
 
 	--This set is used when OffenseMode is CRIT and Enaged
 	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode, {
-	    head="Null Masque",
-		body={ name="Ikenga's Vest", augments={'Path: A',}},
-		hands="Chasseur's Gants +3",
-		legs="Malignance Tights",
-		feet="Osh. Leggings +1",
-		neck="Null Loop",
-		waist="Reiki Yotai",
-		left_ear="Telos Earring",
-		right_ear="Chas. Earring +1",
-		left_ring="Lehko's Ring",
-		right_ring="Epona's Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','Rng.Acc.+10','Crit.hit rate+10','Damage taken-5%',}},
+	    head=gear.nullMasque,
+		body = gear.ikengaBody,
+		hands=gear.chasseurHandsPlusThree,
+		legs=gear.malignanceLegs,
+		feet=gear.oshosiLeggingsPlusOne,
+		neck=gear.nullLoop,
+		waist=gear.reiki,
+		left_ear=gear.telos,
+		right_ear=gear.chasseurEarringPlusOne,
+		left_ring=gear.lehkoHabhokaRing,
+		right_ring=gear.eponas,
+		back = gear.corCrit,
 	})
 
 	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
@@ -219,28 +220,28 @@ function get_sets()
 
 	-- Subtle Blow Set
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode, {
-		body="Adamantite Armor",
-		legs="Chas. Culottes +3",
-		neck="Null Loop",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring={ name="Chirich Ring +1", bag="wardrobe", priority=2},
-		right_ring={ name="Chirich Ring +1", bag="wardrobe2", priority=1},
+		body=gear.adamantiteArmor,
+		legs=gear.chasseurLegsPlusThree,
+		neck=gear.nullLoop,
+		right_ear = gear.odnowaPlusOne,
+		left_ring = gear.chirichPlusOne1,
+		right_ring = gear.chirichPlusOne2,
 	})
 
 	--This set is used when OffenseMode is MEVA and Enaged
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode.DT, {
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Chas. Culottes +3",
-		feet="Malignance Boots",
-		neck="Warder's Charm +1",
-		waist="Carrier's Sash",
-		left_ear="Telos Earring",
-		right_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		left_ring="Lehko's Ring",
-		right_ring="Defending Ring",
-		back={ name="Camulus's Mantle", augments={'DEX+20','Accuracy+20 Attack+20','Accuracy+10','"Dbl.Atk."+10','Phys. dmg. taken-10%',}},
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.chasseurLegsPlusThree,
+		feet=gear.malignanceFeet,
+		neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
+		left_ear=gear.telos,
+		right_ear = gear.odnowaPlusOne,
+		left_ring=gear.lehkoHabhokaRing,
+		right_ring=gear.defending,
+		back = gear.corDAPdt,
 	})
 
 	sets.Precast = {}
@@ -254,44 +255,44 @@ function get_sets()
 	--No flurry - 60 Snapshot needed
 	sets.Precast.RA = {
 		ammo=Ammo.Bullet.RA,
-		head="Chass. Tricorne +3", -- 0/14
-		body="Oshosi Vest +1", -- 14/0
-		hands={ name="Carmine Fin. Ga. +1", augments={'Rng.Atk.+20','"Mag.Atk.Bns."+12','"Store TP"+6',}}, -- 8/11
-		legs={ name="Adhemar Kecks +1", augments={'AGI+12','"Rapid Shot"+13','Enmity-6',}}, -- 10/13
-		feet="Meg. Jam. +2", -- 10/0
-		left_ear={ name="Tuisto Earring", priority=2},
-		right_ear={ name="Etiolation Earring", priority=1},
-		left_ring="Dingir Ring",
-		right_ring="Crepuscular Ring", -- 3/0
-		neck={ name="Comm. Charm +2", augments={'Path: A',}}, -- 4/0
-		waist="Yemaya Belt", -- 0/5
-		back={ name="Camulus's Mantle", augments={'HP+60','HP+20','"Snapshot"+10',}}, -- 10/0
+		head=gear.chasseurHeadPlusThree, -- 0/14
+		body=gear.oshosiVestPlusOne, -- 14/0
+		hands = gear.carmineHandsPlusOnePathD, -- 8/11
+		legs = gear.adhemarLegsPlusOnePathD, -- 10/13
+		feet=gear.meghanadaFeetPlusTwo, -- 10/0
+		left_ear = gear.tuisto,
+		right_ear = gear.etiolation,
+		left_ring=gear.dingir,
+		right_ring=gear.crepuscularRing, -- 3/0
+		neck = gear.commodoreCharm, -- 4/0
+		waist=gear.yemaya, -- 0/5
+		back = gear.corSnapshot, -- 10/0
     } -- Totals 59/43
 
 	-- Flurry - 45 Snapshot Needed
 	sets.Precast.RA.Flurry = set_combine(sets.Precast.RA, {
-		body="Laksa. Frac +4", -- 0/20
+		body=gear.laksamanaBodyPlusFour, -- 0/20
 	}) -- Totals 45/63
 
 	-- Flurry II - 30 Snapshot Needed
 	sets.Precast.RA.Flurry_II = set_combine( sets.Precast.RA.Flurry, { 
-		feet={ name="Pursuer's Gaiters", augments={'Rng.Acc.+10','"Rapid Shot"+10','"Recycle"+15',}} -- 0/10
+		feet = gear.pursuerFeetPathD -- 0/10
     }) -- Totals 35/73
 
 	-- Fast Cast for Magic
 	sets.Precast.FastCast = {
-	    head={ name="Carmine Mask +1", augments={'Accuracy+20','Mag. Acc.+12','"Fast Cast"+4',}}, -- 14
-		body={ name="Taeon Tabard", augments={'"Fast Cast"+5','HP+44',}}, -- 9
-		hands={ name="Leyline Gloves", augments={'Accuracy+14','Mag. Acc.+13','"Mag.Atk.Bns."+13','"Fast Cast"+2',}}, -- 7  Need to update
-		legs={ name="Herculean Trousers", augments={'Mag. Acc.+7','"Fast Cast"+6',}},  -- 6
-		feet={ name="Carmine Greaves +1", augments={'HP+80','MP+80','Phys. dmg. taken -4',}}, -- 8
-		neck="Voltsurge Torque", -- 4
-		waist="Plat. Mog. Belt",
-		left_ear="Loquac. Earring", -- 2
-		right_ear="Etiolation Earring", -- 1
-		left_ring="Lebeche Ring",
-		right_ring="Kishar Ring", -- 4
-		back={ name="Camulus's Mantle", augments={'HP+60','HP+20','"Fast Cast"+10',}}, -- 10
+	    head = gear.carmineHeadPlusOnePathD, -- 14
+		body = gear.taeonTabardFC, -- 9
+		hands = gear.leylineGlovesFC, -- 7  Need to update
+		legs = gear.herculeanTrousersBFC,  -- 6
+		feet = gear.carmineFeetPlusOnePathD, -- 8
+		neck=gear.voltsurge, -- 4
+		waist=gear.platinumMoogleBelt,
+		left_ear=gear.loquacious, -- 2
+		right_ear=gear.etiolation, -- 1
+		left_ring=gear.lebecheRing,
+		right_ring=gear.kishar, -- 4
+		back = gear.corFC, -- 10
 	} -- 65 FC
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability
@@ -300,55 +301,55 @@ function get_sets()
 	-- Ranged Attack Gear (Normal Midshot)
     sets.Midcast.RA = set_combine(sets.Midcast, {
 		ammo=Ammo.Bullet.RA,
-		head="Ikenga's Hat",
-		body="Ikenga's Vest",
-		hands="Ikenga's Gloves",
-		legs="Chas. Culottes +3",
-		feet="Ikenga's Clogs",
-		neck="Iskur Gorget",
-		waist="Yemaya Belt",
-		left_ear="Telos Earring",
-		right_ear="Crep. Earring",
-		left_ring="Ilabrat Ring",
-		right_ring="Crepuscular Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','Rng.Acc.+10','"Store TP"+10','Phys. dmg. taken-10%',}},
+		head=gear.ikengaHead,
+		body=gear.ikengaBody,
+		hands=gear.ikengaHands,
+		legs=gear.chasseurLegsPlusThree,
+		feet=gear.ikengaFeet,
+		neck=gear.iskur,
+		waist=gear.yemaya,
+		left_ear=gear.telos,
+		right_ear=gear.crepuscularEar,
+		left_ring=gear.ilabrat,
+		right_ring=gear.crepuscularRing,
+		back = gear.corSTP,
     })
 
 	sets.Midcast.RA.ACC = set_combine(sets.Midcast.RA, {})
 
 	-- Ranged PDL
 	sets.Midcast.RA.PDL = set_combine(sets.Midcast.RA, {
-		left_ring="Sroda Ring",
+		left_ring=gear.sroda,
     })
 
 	-- Ranged Attack Gear (Critical Build)
     sets.Midcast.RA.SB = set_combine(sets.Midcast.RA, {
 		-- 10 II from gleti's Knife
-		head={ name="Ikenga's Hat", augments={'Path: A',}}, -- 5 II
-		hands={ name="Ikenga's Gloves", augments={'Path: A',}}, -- 15
-		left_ring={ name="Chirich Ring +1",  bag="wardrobe"}, -- 10
-		right_ring={ name="Chirich Ring +1",  bag="wardrobe2"}, -- 10
+		head = gear.ikengaHead, -- 5 II
+		hands = gear.ikengaHands, -- 15
+		left_ring = gear.chirichPlusOne1, -- 10
+		right_ring = gear.chirichPlusOne2, -- 10
     })
 
 	-- Ranged CRIT
 	sets.Midcast.RA.CRIT = set_combine(sets.Midcast.RA, {
-		head={ name="Ikenga's Hat", augments={'Path: A',}},
-		feet="Osh. Leggings +1",
-		legs="Ikenga's Trousers",
-		waist="K. Kachina Belt +1",
-		left_ring="Chirich Ring +1",
-		right_ring="Chirich Ring +1",
-		right_ear="Chas. Earring +1",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','Rng.Acc.+10','Crit.hit rate+10','Damage taken-5%',}},
+		head = gear.ikengaHead,
+		feet=gear.oshosiLeggingsPlusOne,
+		legs=gear.ikengaLegs,
+		waist=gear.kwahuKachinaBeltPlusOne,
+		left_ring=gear.chirichRingPlusOne,
+		right_ring=gear.chirichRingPlusOne,
+		right_ear=gear.chasseurEarringPlusOne,
+		back = gear.corCrit,
     })
 
 	-- Ranged Attack Gear (Triple Shot Midshot)
 	sets.Midcast.RA.TripleShot = set_combine(sets.Midcast.RA, {
-        head="Oshosi Mask +1", -- Missing
-        body="Chasseur's Frac +3", --14
-        hands="Lanun Gants +4", -- Tripple shot becomes Quad shot
-        legs="Osh. Trousers +1", -- Missing
-        feet="Osh. Leggings +1", --3
+        head=gear.oshosiMaskPlusOne, -- Missing
+        body=gear.chasseurBodyPlusThree, --14
+        hands=gear.lanunHandsPlusFour, -- Tripple shot becomes Quad shot
+        legs=gear.oshosiTrousersPlusOne, -- Missing
+        feet=gear.oshosiLeggingsPlusOne, --3
     }) --28
 
 	sets.Midcast.Utsusemi = set_combine(sets.Idle, {})
@@ -358,50 +359,50 @@ function get_sets()
 
 	sets.QuickDraw.ACC = {
 		ammo = Ammo.Bullet.QD,
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
-		neck={ name="Comm. Charm +2", augments={'Path: A',}},
-		waist="Eschan Stone",
-		left_ear="Hermetic Earring",
-		right_ear="Crep. Earring",
-		left_ring="Kishar Ring",
-		right_ring="Crepuscular Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','Rng.Acc.+10','"Store TP"+10','Phys. dmg. taken-10%',}},
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
+		neck = gear.commodoreCharm,
+		waist=gear.eschan,
+		left_ear=gear.hermetic,
+		right_ear=gear.crepuscularEar,
+		left_ring=gear.kishar,
+		right_ring=gear.crepuscularRing,
+		back = gear.corSTP,
 	}
 
 	sets.QuickDraw.DMG = {
 		ammo = Ammo.Bullet.QD,
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Lanun Frac +3", augments={'Enhances "Loaded Deck" effect',}},
-		hands="Nyame Gauntlets",
-		legs="Nyame Flanchard",
-		feet="Chass. Bottes +3",
-		neck={ name="Comm. Charm +2", augments={'Path: A',}},
-		waist="Orpheus's Sash",
-		left_ear="Friomisi Earring",
-		right_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		left_ring="Dingir Ring",
-		right_ring="Ilabrat Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Mag. Acc+20 /Mag. Dmg.+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+		head = gear.nyameHead,
+		body = gear.lanunBodyPlusThree,
+		hands=gear.nyameHands,
+		legs=gear.nyameLegs,
+		feet=gear.chasseurFeetPlusThree,
+		neck = gear.commodoreCharm,
+		waist=gear.orpheusWaist,
+		left_ear=gear.friomisi,
+		right_ear = gear.moonshadeEarringAcc,
+		left_ring=gear.dingir,
+		right_ring=gear.ilabrat,
+		back = gear.corWSDAgi,
 	}
 
 	sets.QuickDraw.STP = {
 		ammo = Ammo.Bullet.QD,
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Chas. Culottes +3",
-		feet="Malignance Boots",
-		neck="Iskur Gorget",
-		waist="Yemaya Belt",
-		left_ear="Telos Earring",
-		right_ear="Crep. Earring",
-		left_ring="Crepuscular Ring",
-		right_ring="Ilabrat Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','Rng.Acc.+10','"Store TP"+10','Phys. dmg. taken-10%',}},
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.chasseurLegsPlusThree,
+		feet=gear.malignanceFeet,
+		neck=gear.iskur,
+		waist=gear.yemaya,
+		left_ear=gear.telos,
+		right_ear=gear.crepuscularEar,
+		left_ring=gear.crepuscularRing,
+		right_ring=gear.ilabrat,
+		back = gear.corSTP,
 	}
 
 	-- Quick Draw 
@@ -413,48 +414,48 @@ function get_sets()
 	sets.QuickDraw["Water Shot"] = set_combine( sets.QuickDraw.DMG, {})
 	sets.QuickDraw["Light Shot"] = set_combine( sets.QuickDraw.DMG, {})
 	sets.QuickDraw["Dark Shot"] = set_combine( sets.QuickDraw.DMG, {
-	    right_ring="Archon Ring",
-	    head="Pixie Hairpin +1",
+	    right_ring=gear.archonRing,
+	    head=gear.pixieHead,
 	})
 
 	-- Job Abilities
 	sets.JA = {}
 	sets.JA["Wild Card"] = {
-	    feet={ name="Lanun Bottes +4", augments={'Enhances "Wild Card" effect',}},
+	    feet = gear.lanunFeetPlusFour,
 	}
 	sets.JA["Phantom Roll"] = {}
 	sets.JA["Random Deal"] = {
-	    body={ name="Lanun Frac +3", augments={'Enhances "Loaded Deck" effect',}},
+	    body = gear.lanunBodyPlusThree,
 	}
 	sets.JA["Snake Eye"] = {
-	    legs={ name="Lanun Trews +3", augments={'Enhances "Snake Eye" effect',}},
+	    legs = gear.lanunLegsPlusThree,
 	}
 	sets.JA["Fold"] = {}			-- Use gloves for bust
 	sets.JA["Triple Shot"] = {}		-- Gear to be worn during Midshot
 	sets.JA["Cutting Cards"] = {}
 	sets.JA["Crooked Cards"] = {}
 	sets.JA["Double-Up"] = {
-		right_ring="Luzaf's Ring", -- 16 yalm range
+		right_ring=gear.luzaf, -- 16 yalm range
 	}
 
 	sets.Waltz = set_combine(sets.OffenseMode.DT, {
-		ammo="Yamarang", -- 5
-		hands="Slither Gloves +1", -- 5
-		legs="Dashing Subligar", -- 10
+		ammo=gear.yamarang, -- 5
+		hands=gear.slitherGlovesPlusOne, -- 5
+		legs=gear.dashingSubligar, -- 10
 	}) -- 20% Potency
 
-	sets.Fold = {hands={ name="Lanun Gants +4", augments={'Enhances "Fold" effect',}}}
+	sets.Fold = {hands = gear.lanunHandsPlusFour}
 
 	--Base Set used for all rolls
 	sets.PhantomRoll = {
-		main={ name="Rostam", augments={'Path: C'}, bag="Wardrobe 2", priority=1}, -- +8 Effect and 60 sec Duration
-		sub={ name="Nusku Shield", priority=2},
-		range="Compensator", -- 20 sec Duration
-		head={ name="Lanun Tricorne +4", augments={'Enhances "Winning Streak" effect',}}, -- 50% Job ability Bonus
-		hands="Chasseur's Gants +3", --60 sec Duration
-		neck="Regal Necklace", -- 20 sec Duration
-		right_ring="Luzaf's Ring", -- 16 yalm range
-		back={ name="Camulus's Mantle", augments={'HP+60','HP+20','"Snapshot"+10',}}, -- 30 sec Duration
+		main = gear.rostam2, -- +8 Effect and 60 sec Duration
+		sub = gear.nusku,
+		range=gear.compensator, -- 20 sec Duration
+		head = gear.lanunHeadPlusFour, -- 50% Job ability Bonus
+		hands=gear.chasseurHandsPlusThree, --60 sec Duration
+		neck=gear.regalNeck, -- 20 sec Duration
+		right_ring=gear.luzaf, -- 16 yalm range
+		back = gear.corSnapshot, -- 30 sec Duration
 	}
 
 	sets.PhantomRoll["Fighter's Roll"] = sets.PhantomRoll
@@ -478,31 +479,31 @@ function get_sets()
 	sets.PhantomRoll["Dancer's Roll"] = sets.PhantomRoll
 	sets.PhantomRoll["Scholar's Roll"] = sets.PhantomRoll
 	sets.PhantomRoll["Bolter's Roll"] = sets.PhantomRoll
-	sets.PhantomRoll["Caster's Roll"] = set_combine(sets.PhantomRoll, {legs="Chas. Culottes +3",})
-	sets.PhantomRoll["Tactician's Roll"] = set_combine(sets.PhantomRoll, {body="Chasseur's Frac +3"})
-	sets.PhantomRoll["Allies' Roll"] = set_combine(sets.PhantomRoll, {hands="Chasseur's Gants +3"})
+	sets.PhantomRoll["Caster's Roll"] = set_combine(sets.PhantomRoll, {legs=gear.chasseurLegsPlusThree,})
+	sets.PhantomRoll["Tactician's Roll"] = set_combine(sets.PhantomRoll, {body=gear.chasseurBodyPlusThree})
+	sets.PhantomRoll["Allies' Roll"] = set_combine(sets.PhantomRoll, {hands=gear.chasseurHandsPlusThree})
 	sets.PhantomRoll["Miser's Roll"] = sets.PhantomRoll
 	sets.PhantomRoll["Companion's Roll"] = sets.PhantomRoll
 	sets.PhantomRoll["Avenger's Roll"] = sets.PhantomRoll
 	sets.PhantomRoll["Naturalist's Roll"] = sets.PhantomRoll
-    sets.PhantomRoll["Courser's Roll"] = set_combine(sets.PhantomRoll, {feet="Chass. Bottes +3"})
-    sets.PhantomRoll["Blitzer's Roll"] = set_combine(sets.PhantomRoll, {head="Chass. Tricorne +3"})
+    sets.PhantomRoll["Courser's Roll"] = set_combine(sets.PhantomRoll, {feet=gear.chasseurFeetPlusThree})
+    sets.PhantomRoll["Blitzer's Roll"] = set_combine(sets.PhantomRoll, {head=gear.chasseurHeadPlusThree})
 
 	-- Melee Base set
 	sets.WS = {
 		ammo=Ammo.Bullet.WS,
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands="Chasseur's Gants +3",
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck={ name="Comm. Charm +2", augments={'Path: A',}},
-		waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Ishvara Earring",
-		left_ring="Regal Ring",
-		right_ring="Epaminondas's Ring",
-		back={ name="Camulus's Mantle", augments={'STR+20','Accuracy+20 Attack+20','STR+10','Weapon skill damage +10%','Damage taken-5%',}},
+		head = gear.nyameHead,
+		body = gear.nyameBody,
+		hands=gear.chasseurHandsPlusThree,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck = gear.commodoreCharm,
+		waist = gear.sailfi,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.ishvara,
+		left_ring=gear.regalRing,
+		right_ring=gear.epimanondas,
+		back = gear.corWSDStr,
 	}
 
 	-- Critical Hit set used in OffenseMode.CRIT
@@ -513,48 +514,48 @@ function get_sets()
 
 	-- Equipment to augment WS for Physical Damage Limit (Capped Attack)
 	sets.WS.PDL = set_combine(sets.WS, {
-		left_ring="Sroda Ring",
+		left_ring=gear.sroda,
 	})
 
 	sets.WS.SB = sets.Subtle_Blow
 
 	sets.WS.MAB = set_combine(sets.WS, {
 		ammo=Ammo.Bullet.MAB,
-		feet={ name="Lanun Bottes +4", augments={'Enhances "Wild Card" effect',}},
-		waist="Eschan Stone",
-		left_ear="Friomisi Earring",
-		right_ear="Crematio Earring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Mag. Acc+20 /Mag. Dmg.+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+		feet = gear.lanunFeetPlusFour,
+		waist=gear.eschan,
+		left_ear=gear.friomisi,
+		right_ear=gear.crematioEarring,
+		back = gear.corWSDAgi,
 	})
 
 	sets.WS.MEVA = set_combine(sets.WS, {
-	    neck="Warder's Charm +1",
-		waist="Carrier's Sash",
+	    neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
 	})
 
 	-- Ranged Base Set (Augments the sets.WS)
 	sets.WS.RA = {
-		head={ name="Lanun Tricorne +4", augments={'Enhances "Winning Streak" effect',}},
-		body={ name="Ikenga's Vest", augments={'Path: A',}},
-		hands="Chasseur's Gants +3",
-		legs={ name="Ikenga's Trousers", augments={'Path: A',}},
-		feet={ name="Ikenga's Clogs", augments={'Path: A',}},
-		neck="Fotia Gorget",
-		waist="Fotia Belt",
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Ishvara Earring",
-		left_ring="Regal Ring",
-		right_ring="Dingir Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+		head = gear.lanunHeadPlusFour,
+		body = gear.ikengaBody,
+		hands=gear.chasseurHandsPlusThree,
+		legs = gear.ikengaLegs,
+		feet = gear.ikengaFeet,
+		neck=gear.fotiaNeck,
+		waist=gear.fotiaWaist,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.ishvara,
+		left_ring=gear.regalRing,
+		right_ring=gear.dingir,
+		back = gear.corWSDDt,
 	}
 
 	sets.WS.RA.ACC = set_combine(sets.WS.RA, {})
 
 	sets.WS.RA.PDL = set_combine(sets.WS.RA, {
-		left_ring="Sroda Ring",
-		head="Ikenga's Hat",
-		legs="Ikenga's Trousers",
-		feet="Ikenga's Clogs",
+		left_ring=gear.sroda,
+		head=gear.ikengaHead,
+		legs=gear.ikengaLegs,
+		feet=gear.ikengaFeet,
 	})
 
 	sets.WS.RA.CRIT = set_combine(sets.WS.RA, { })
@@ -575,11 +576,11 @@ function get_sets()
 	sets.WS.RA.AM3['Armageddon'] = {}
 
 	sets.WS['Aeolian Edge'] = set_combine(sets.WS.MAB, {
-		right_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
+		right_ear = gear.moonshadeEarringAcc,
 	})
 
 	sets.WS["Savage Blade"] = set_combine(sets.WS, {
-		left_ring="Sroda Ring",
+		left_ring=gear.sroda,
 	})
 
 	sets.WS["Fast Blade"] = set_combine(sets.WS, {})
@@ -594,18 +595,18 @@ function get_sets()
 	sets.WS["Hot Shot"] = set_combine(sets.WS, sets.WS.RA, {})
 	sets.WS["Split Shot"] = set_combine(sets.WS, sets.WS.RA, {})
 	sets.WS["Sniper Shot"] = set_combine(sets.WS, sets.WS.RA, { -- MAX ACC for skillchaining
-	    head="Chass. Tricorne +3",
-		body="Chasseur's Frac +3",
-		hands="Chasseur's Gants +3",
-		legs="Chas. Culottes +3",
-		feet={ name="Ikenga's Clogs", augments={'Path: A',}},
-		neck="Iskur Gorget",
-		waist={ name="Tellen Belt", augments={'Path: A',}},
-		left_ear="Telos Earring",
-		right_ear="Crep. Earring",
-		left_ring="Crepuscular Ring",
-		right_ring="Karieyh Ring",
-		back={ name="Camulus's Mantle", augments={'AGI+20','Rng.Acc.+20 Rng.Atk.+20','AGI+10','Weapon skill damage +10%','Damage taken-5%',}},
+	    head=gear.chasseurHeadPlusThree,
+		body=gear.chasseurBodyPlusThree,
+		hands=gear.chasseurHandsPlusThree,
+		legs=gear.chasseurLegsPlusThree,
+		feet = gear.ikengaFeet,
+		neck=gear.iskur,
+		waist = gear.tellenBelt,
+		left_ear=gear.telos,
+		right_ear=gear.crepuscularEar,
+		left_ring=gear.crepuscularRing,
+		right_ring=gear.karieyh,
+		back = gear.corWSDDt,
 	})
 	sets.WS["Numbing Shot"] = set_combine(sets.WS, sets.WS.RA, {})
 	sets.WS["Slug Shot"] = set_combine(sets.WS, sets.WS.RA, {
@@ -621,14 +622,14 @@ function get_sets()
 	})
 
 	sets.WS["Leaden Salute"] = set_combine(sets.WS.MAB, {
-		head="Pixie Hairpin +1",
-		right_ring="Archon Ring",
-		right_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		waist="Svelt. Gouriz +1",   -- Changes based off elemental function
+		head=gear.pixieHead,
+		right_ring=gear.archonRing,
+		right_ear = gear.moonshadeEarringAcc,
+		waist=gear.svelt,   -- Changes based off elemental function
 	})
 
 	sets.TreasureHunter = {
-		waist="Chaac Belt",
+		waist=gear.chaac,
 	}
 end
 

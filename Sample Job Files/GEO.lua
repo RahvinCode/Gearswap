@@ -2,6 +2,7 @@
 -- Morwen
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -41,44 +42,44 @@ function get_sets()
 	sets.Weapons = {}
 
 	sets.Weapons['Idris'] = {
-		main="Idris",
-		sub="Genmei Shield",
+		main=gear.idris,
+		sub=gear.genmeiShield,
 	}
 
 	sets.Weapons['Black Halo'] = {
-		main="Maxentius",
-		sub="Genmei Shield",
+		main=gear.maxentius,
+		sub=gear.genmeiShield,
 	}
 
 	sets.Weapons['Unlocked'] = {
-		main="Daybreak",
-		sub="Genmei Shield",
+		main=gear.daybreak,
+		sub=gear.genmeiShield,
 	}
 
 	sets.Weapons.Sleep = {
-		main="Lorg Mor",
+		main=gear.lorgMor,
 	}
 
 	--Shield used when not dual wield.
 	sets.Weapons.Shield = {
-		sub="Genmei Shield",
+		sub=gear.genmeiShield,
 	}
 
 	-- Standard Idle set with -DT,Refresh,Regen and movement gear
 	sets.Idle = {
-		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head="Azimuth Hood +3", -- 11/11
-		body="Azimuth Coat +3",
-		hands="Azimuth Gloves +3", -- 12/12
-		legs={ name="Agwu's Slops", augments={'Path: A',}}, -- 10/10
-		feet="Azimuth Gaiters +3", -- 10/10
-		neck={ name="Loricate Torque +1", augments={'Path: A',}}, -- 6/6
-		waist="Carrier's Sash",
-		left_ear="Sanare Earring",
-		right_ear="Lugalbanda Earring",
-		left_ring={ name="Stikini Ring +1",  bag="wardrobe"},
-		right_ring={ name="Stikini Ring +1",  bag="wardrobe2"},
-		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
+		range = gear.dunnaFC,
+		head=gear.azimuthHeadPlusThree, -- 11/11
+		body=gear.azimuthBodyPlusThree,
+		hands=gear.azimuthHandsPlusThree, -- 12/12
+		legs = gear.agwuLegs, -- 10/10
+		feet=gear.azimuthFeetPlusThree, -- 10/10
+		neck = gear.loricatePlusOne, -- 6/6
+		waist=gear.carriers,
+		left_ear=gear.sanareEarring,
+		right_ear=gear.lugalbanda,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne2,
+		back = gear.geoPetRegen,
     } -- 50 PDT / 52 MDT (including shield)
 
 	sets.Idle.TP = set_combine(sets.Idle, {})
@@ -91,27 +92,27 @@ function get_sets()
 
 	-- Sets for Idle when player has a pet
 	sets.Idle.Pet = set_combine( sets.Idle, { --2278/1482
-		head="Azimuth Hood +3", -- 11/11
-		neck={ name="Bagua Charm +2", augments={'Path: A',}},
-		body="Adamantite Armor",
-		feet={ name="Bagua Sandals +4", augments={'Enhances "Radial Arcana" effect',}},
-		left_ring="Defending Ring",
-		hands="Geo. Mitaines +4",
+		head=gear.azimuthHeadPlusThree, -- 11/11
+		neck = gear.baguaCharm,
+		body=gear.adamantiteArmor,
+		feet = gear.baguaArmorFeetPlusFour,
+		left_ring=gear.defending,
+		hands=gear.geomancyHandsPlusFour,
     }) -- 54 PDT / 45 MDT (with shield)
 
 	--Used to swap into movement gear when the player is moving and not engaged
 	sets.Movement = {
-		left_ring="Defending Ring",
-		feet="Geo. Sandals +4",
+		left_ring=gear.defending,
+		feet=gear.geomancyFeetPlusFour,
 	}
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -119,28 +120,28 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	sets.TreasureHunter = {
-		ammo="Per. Lucky Egg",
-		waist="Chaac Belt",
-		hands={ name="Merlinic Dastanas", augments={'Accuracy+20','"Conserve MP"+4','"Treasure Hunter"+2','Accuracy+18 Attack+18','Mag. Acc.+16 "Mag.Atk.Bns."+16',}},
+		ammo=gear.perfectEgg,
+		waist=gear.chaac,
+		hands = gear.merlinicDastanasNukeB,
 	}
 
 	sets.OffenseMode = {
-		head="Azimuth Hood +3",
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet="Azimuth Gaiters +3",
-		neck="Warder's Charm +1",
-		waist="Carrier's Sash",
-		left_ear="Crep. Earring",
-		right_ear="Telos Earring",
-		left_ring="Chirich Ring +1",
-		right_ring="Chirich Ring +1",
-		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
+		head=gear.azimuthHeadPlusThree,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet=gear.azimuthFeetPlusThree,
+		neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
+		left_ear=gear.crepuscularEar,
+		right_ear=gear.telos,
+		left_ring=gear.chirichRingPlusOne,
+		right_ring=gear.chirichRingPlusOne,
+		back = gear.geoPetRegen,
 	}
 
 	sets.OffenseMode.TP = set_combine(sets.OffenseMode,{})
@@ -150,7 +151,7 @@ function get_sets()
 
 	--Swap in when dual wielding
 	sets.DualWield = {
-		left_ear="Eabani Earring",
+		left_ear=gear.eabani,
 	}
 
 	-- Precast Sets
@@ -158,20 +159,20 @@ function get_sets()
 
 	-- Used for Magic Spells
 	sets.Precast.FastCast = {
-		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}}, -- 3
-		head={ name="Merlinic Hood", augments={'"Mag.Atk.Bns."+22','"Fast Cast"+7','STR+6',}}, -- 15
-		body="Zendik Robe", -- 13
-		hands={ name="Agwu's Gages", augments={'Path: A',}}, -- 6
-		legs="Geomancy Pants +4", -- 15
-		feet={ name="Merlinic Crackows", augments={'Mag. Acc.+12','"Fast Cast"+7','INT+9','"Mag.Atk.Bns."+8',}}, -- 12
-		neck="Voltsurge Torque", -- 4
-		waist="Witful Belt", -- 3 and 3 Quick Magic
-		left_ear="Etiolation Earring", -- 1
-		right_ear="Malignance Earring", -- 4
-		left_ring="Lebeche Ring", -- 2 Quick Magic
-		right_ring="Kishar Ring", -- 4
+		range = gear.dunnaFC, -- 3
+		head = gear.merlinicHoodFC, -- 15
+		body=gear.zendikRobe, -- 13
+		hands = gear.agwuHands, -- 6
+		legs=gear.geomancyLegsPlusFour, -- 15
+		feet = gear.merlinicCrackowsFC, -- 12
+		neck=gear.voltsurge, -- 4
+		waist=gear.witful, -- 3 and 3 Quick Magic
+		left_ear=gear.etiolation, -- 1
+		right_ear=gear.malignanceEar, -- 4
+		left_ring=gear.lebecheRing, -- 2 Quick Magic
+		right_ring=gear.kishar, -- 4
 		-- Have to use Fast Cast due to Head Locked out with Pet above 67%
-		back={ name="Nantosuelta's Cape", augments={'HP+60','HP+20','"Fast Cast"+10',}},
+		back = gear.geoFCB,
 		--back="Perimede Cape", -- 4 Quick Magic
 	} -- 80% Fast Cast with 9% Quick Magic
 
@@ -179,7 +180,7 @@ function get_sets()
 	sets.Precast.Enhancing = {}
 	sets.Precast.Elemental = {}
 	sets.Precast.Utsusemi = {}
-	sets.Precast.Blue_Magic = {}
+	sets.Precast.BlueMagic = {}
 	sets.Precast.Songs = {}
 
 
@@ -193,21 +194,21 @@ function get_sets()
 
 	-- Cure Set
 	sets.Midcast.Cure = {
-		main="Daybreak", -- 30
-		sub="Genmei Shield",
-		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head={ name="Vanya Hood", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}}, -- 10
-		body={ name="Vanya Robe", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}},
-		hands="Azimuth Gloves +3",
-		legs={ name="Vanya Slops", augments={'Healing magic skill +20','"Cure" spellcasting time -7%','Magic dmg. taken -3',}},
-		feet="Azimuth Gaiters +3",
-		neck={ name="Loricate Torque +1", augments={'Path: A',}},
-		waist="Luminary Sash",
-		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		right_ear="Etiolation Earring",
-		left_ring={ name="Stikini Ring +1",  bag="wardrobe2"},
-		right_ring={ name="Stikini Ring +1",  bag="wardrobe3"},
-		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','"Cure" potency +10%','Phys. dmg. taken-10%',}}, -- 10
+		main=gear.daybreak, -- 30
+		sub=gear.genmeiShield,
+		range = gear.dunnaFC,
+		head = gear.vanyaHeadPathB, -- 10
+		body = gear.vanyaBodyPathB,
+		hands=gear.azimuthHandsPlusThree,
+		legs = gear.vanyaLegsPathB,
+		feet=gear.azimuthFeetPlusThree,
+		neck = gear.loricatePlusOne,
+		waist=gear.luminarySash,
+		left_ear = gear.odnowaPlusOne,
+		right_ear=gear.etiolation,
+		left_ring = gear.stikiniRingPlusOne2,
+		right_ring = gear.stikiniRingPlusOne3,
+		back = gear.geoCure, -- 10
     }
 
 	-- CuragaSet
@@ -215,20 +216,20 @@ function get_sets()
 
 	-- Enhancing Skill
 	sets.Midcast.Enhancing = {
-		sub="Ammurapi Shield",
-		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head={ name="Telchine Cap", augments={'Enh. Mag. eff. dur. +10',}},
-		body={ name="Telchine Chas.", augments={'Enh. Mag. eff. dur. +10',}},
-		hands={ name="Telchine Gloves", augments={'Enh. Mag. eff. dur. +10',}},
-		legs={ name="Telchine Braconi", augments={'Enh. Mag. eff. dur. +10',}},
-		feet={ name="Telchine Pigaches", augments={'Song spellcasting time -6%',}},
-		neck="Loricate Torque +1",
-		waist="Embla Sash",
-		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		right_ear="Etiolation Earring",
-		left_ring="Defending Ring",
-		right_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
+		sub=gear.ammurapi,
+		range = gear.dunnaFC,
+		head = gear.telchineCapBEnhDur,
+		body = gear.telchineChasubleBEnhDur,
+		hands = gear.telchineGlovesCEnhDur,
+		legs = gear.telchineBraconiBEnhDur,
+		feet = gear.telchinePigachesC,
+		neck=gear.loricatePlusOne,
+		waist=gear.embla,
+		left_ear = gear.odnowaPlusOne,
+		right_ear=gear.etiolation,
+		left_ring=gear.defending,
+		right_ring = gear.gelatinousPlusOne,
+		back = gear.geoPetRegen,
 	}
 
 	--'Barfire','Barblizzard','Baraero','Barstone','Barthunder','Barwater','Barfira','Barblizzara','Baraera','Barstonra','Barthundra','Barwatera'
@@ -244,40 +245,40 @@ function get_sets()
 
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {
-		main={ name="Idris", augments={'Path: A',}},
-		sub="Ammurapi Shield",
-		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head="Geo. Galero +4",
-		body="Geomancy Tunic +4",
-		hands="Azimuth Gloves +3",
-		legs="Geomancy Pants +4",
-		feet="Geo. Sandals +4",
-		neck={ name="Bagua Charm +2", augments={'Path: A',}},
-		waist="Luminary Sash",
-		left_ear="Regal Earring",
-		right_ear="Malignance Earring",
-		left_ring={ name="Stikini Ring +1",  bag="wardrobe2"},
-		right_ring={ name="Stikini Ring +1",  bag="wardrobe3"},
-		back={ name="Nantosuelta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','INT+10','"Mag.Atk.Bns."+10','Phys. dmg. taken-10%',}},
+		main = gear.idris,
+		sub=gear.ammurapi,
+		range = gear.dunnaFC,
+		head=gear.geomancyHeadPlusFour,
+		body=gear.geomancyBodyPlusFour,
+		hands=gear.azimuthHandsPlusThree,
+		legs=gear.geomancyLegsPlusFour,
+		feet=gear.geomancyFeetPlusFour,
+		neck = gear.baguaCharm,
+		waist=gear.luminarySash,
+		left_ear=gear.regalEarring,
+		right_ear=gear.malignanceEar,
+		left_ring = gear.stikiniRingPlusOne2,
+		right_ring = gear.stikiniRingPlusOne3,
+		back = gear.geoNukePdt,
 	}
 
 	-- Free Nuke
 	sets.Midcast.Nuke = {
-		main={ name="Idris", augments={'Path: A',}},
-		sub="Ammurapi Shield",
-		ammo={ name="Ghastly Tathlum +1", augments={'Path: A',}},
-		head="Ea Hat +1",
-		body="Ea Houppe. +1",
-		hands="Azimuth Gloves +3",
-		legs="Azimuth Tights +3",
-		feet="Azimuth Gaiters +3",
-		neck="Mizu. Kubikazari",
-		waist={ name="Acuity Belt +1", augments={'Path: A',}},
-		left_ear="Regal Earring",
-		right_ear="Malignance Earring",
-		left_ring="Freke Ring",
-		right_ring={ name="Metamor. Ring +1", augments={'Path: A',}},
-		back={ name="Nantosuelta's Cape", augments={'INT+20','Mag. Acc+20 /Mag. Dmg.+20','INT+10','"Mag.Atk.Bns."+10','Phys. dmg. taken-10%',}},
+		main = gear.idris,
+		sub=gear.ammurapi,
+		ammo = gear.ghastlyTathlumPlusOne,
+		head=gear.eaHatPlusOne,
+		body=gear.eaHouppelandePlusOne,
+		hands=gear.azimuthHandsPlusThree,
+		legs=gear.azimuthLegsPlusThree,
+		feet=gear.azimuthFeetPlusThree,
+		neck=gear.mizukageNoKubikazari,
+		waist = gear.acuityBeltPlusOne,
+		left_ear=gear.regalEarring,
+		right_ear=gear.malignanceEar,
+		left_ring=gear.freke,
+		right_ring = gear.metamorphPlusOne,
+		back = gear.geoNukePdt,
 	}
 
 	-- Used for Burst Mode
@@ -285,21 +286,21 @@ function get_sets()
 
 	-- Cursna Set
 	sets.Midcast.Cursna = set_combine( sets.Midcast.Cure, {
-	    left_ring="Menelaus's Ring",
-		right_ring="Haoma's Ring",
+	    left_ring=gear.menelausRing,
+		right_ring=gear.haomaRing,
 	})
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		left_ring={ name="Stikini Ring +1",  bag="wardrobe"},
-		right_ring={ name="Stikini Ring +1",  bag="wardrobe3"},
-		waist="Siegel Sash",
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne3,
+		waist=gear.siegel,
 	})
 
 	-- Aquaveil Set
 	sets.Midcast["Aquaveil"] = set_combine(sets.Midcast.Enhancing, {
-		head={ name="Amalric Coif +1", augments={'MP+80','Mag. Acc.+20','"Mag.Atk.Bns."+20',}},
-		hands="Regal Cuffs",
+		head = gear.amalricHeadPlusOnePathA,
+		hands=gear.regalCuffs,
 	})
 
 	-- Stun Set
@@ -308,7 +309,7 @@ function get_sets()
 	sets.Midcast["Diaga"] = set_combine (sets.Midcast.Enfeebling, sets.TreasureHunter)
 
 	sets.Midcast["Dispelga"] = set_combine (sets.Midcast.Enfeebling.MACC, sets.TreasureHunter,{
-		main="Daybreak"
+		main=gear.daybreak
 	})
 
 	sets.Midcast.Refresh = {}
@@ -323,38 +324,38 @@ function get_sets()
 
 	-- Indi Duration
 	sets.Geomancy.Indi = {
-		main={ name="Idris", augments={'Path: A',}},
-		sub="Genmei Shield",
-		range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head={ name="Bagua Galero +4", augments={'Enhances "Primeval Zeal" effect',}},
-		body="Azimuth Coat +3",
-		hands="Geo. Mitaines +4",
-		legs={ name="Bagua Pants +4", augments={'Enhances "Mending Halation" effect',}}, -- 21
-		feet="Azimuth Gaiters +3", -- 30
-		neck={ name="Bagua Charm +2", augments={'Path: A',}},
-		waist="Luminary Sash",
-		left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-		right_ear="Etiolation Earring",
-		left_ring="Defending Ring",
-		right_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-		back={ name="Lifestream Cape", augments={'Geomancy Skill +8','Indi. eff. dur. +20','Pet: Damage taken -3%',}},
+		main = gear.idris,
+		sub=gear.genmeiShield,
+		range = gear.dunnaFC,
+		head = gear.baguaArmorHeadPlusFour,
+		body=gear.azimuthBodyPlusThree,
+		hands=gear.geomancyHandsPlusFour,
+		legs = gear.baguaArmorLegsPlusFour, -- 21
+		feet=gear.azimuthFeetPlusThree, -- 30
+		neck = gear.baguaCharm,
+		waist=gear.luminarySash,
+		left_ear = gear.odnowaPlusOne,
+		right_ear=gear.etiolation,
+		left_ring=gear.defending,
+		right_ring = gear.gelatinousPlusOne,
+		back = gear.lifestreamCape,
 	}
 
 	sets.Geomancy.Indi.Entrust = set_combine(sets.Geomancy.Indi, {
-		main={ name="Gada", augments={'Indi. eff. dur. +11','Mag. Acc.+2','"Mag.Atk.Bns."+13',}},
+		main = gear.gadaNuke,
 	})
 
 	-- Geo Potency
 	sets.Geomancy.Geo = set_combine( sets.Geomancy.Indi, {
-		legs={ name="Nyame Flanchard", augments={'Path: B',}}, -- 8/8
-		feet="Azimuth Gaiters +3", -- 11/11
+		legs = gear.nyameLegs, -- 8/8
+		feet=gear.azimuthFeetPlusThree, -- 11/11
 	})
 
 	sets.Pet_Midcast = {}
 
 	-- Will be used to keep max HP of Luopan when casting spells but switches when below 70% to the Idle.Pet set.
 	sets.Luopan = {
-		head={ name="Bagua Galero +4", augments={'Enhances "Primeval Zeal" effect',}},
+		head = gear.baguaArmorHeadPlusFour,
 	}
 
 	-- Job Abilities
@@ -362,46 +363,46 @@ function get_sets()
 	sets.JA["Collimated Fervor"] = {}
 	sets.JA["Convert"] = {}
 	sets.JA["Bolster"] = {
-	    body={ name="Bagua Tunic +4", augments={'Enhances "Bolster" effect',}}, 
+	    body = gear.baguaArmorBodyPlusFour, 
 	}
 	sets.JA["Full Circle"] = {
-		head="Azimuth Hood +3", -- 3
-		hands={ name="Bagua Mitaines +4", augments={'Enhances "Curative Recantation" effect',}},
+		head=gear.azimuthHeadPlusThree, -- 3
+		hands = gear.baguaArmorHandsPlusFour,
 	}
 	sets.JA["Lasting Emanation"] = {}
 	sets.JA["Ecliptic Attrition"] = {} 
 	sets.JA["Life Cycle"] = {
-		body="Geomancy Tunic +4",
-		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
+		body=gear.geomancyBodyPlusFour,
+		back = gear.geoPetRegen,
 	}
 	sets.JA["Blaze of Glory"] = {}
 	sets.JA["Dematerialzie"] = {}
 	sets.JA["Theurgic Focus"] = {}
 	sets.JA["Concentric Pulse"] = {}
 	sets.JA["Mending Halation"] = {
-	    legs={ name="Bagua Pants +4", augments={'Enhances "Mending Halation" effect',}},
+	    legs = gear.baguaArmorLegsPlusFour,
 	}
 	sets.JA["Radial Arcana"] = {
-	    feet={ name="Bagua Sandals +4", augments={'Enhances "Radial Arcana" effect',}},
+	    feet = gear.baguaArmorFeetPlusFour,
 	}
 	sets.JA["Widened Compass"] = {}
 	sets.JA["Entrust"] = {}
 
 	-- Base WS set
 	sets.WS = {
-	    range={ name="Dunna", augments={'MP+20','Mag. Acc.+10','"Fast Cast"+3',}},
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-		neck="Warder's Charm +1",
-		waist="Carrier's Sash",
-		left_ear={ name="Moonshade Earring", augments={'Accuracy+4','TP Bonus +250',}},
-		right_ear="Telos Earring",
-		left_ring="Epaminondas's Ring",
-		right_ring="Cornelia's Ring",
-		back={ name="Nantosuelta's Cape", augments={'HP+60','Eva.+20 /Mag. Eva.+20','Mag. Evasion+10','Pet: "Regen"+10','Pet: "Regen"+5',}},
+	    range = gear.dunnaFC,
+		head = gear.nyameHead,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+		neck=gear.warderCharmPlusOne,
+		waist=gear.carriers,
+		left_ear = gear.moonshadeEarringAcc,
+		right_ear=gear.telos,
+		left_ring=gear.epimanondas,
+		right_ring=gear.corneliaRing,
+		back = gear.geoPetRegen,
 	}
 
 	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)

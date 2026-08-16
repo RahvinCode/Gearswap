@@ -39,7 +39,7 @@
 -- SECTION 1 - VERSION AND SHARED GLOBALS
 ----------------------------------------------------------------------------------------------------
 -- The version string, the Modes library, and globals the job file may read.
-Mirdain_GS = '1.7.0'
+Mirdain_GS = '1.7.1'
 
 -- Modes supplies the M{} mode-tracking class used by every state variable below.
 include('Modes')
@@ -93,9 +93,10 @@ sets.DualWield = {}
 -- Precast: fast cast and ability openers.
 sets.Precast = {}
 sets.Precast.FastCast = {}
-sets.Precast.Blue_Magic = {}
+sets.Precast.BlueMagic = {}
 sets.Precast.Enhancing = {}
 sets.Precast.Cure = {}
+sets.Precast.Healing = {}
 sets.Precast.Utsusemi = {}
 sets.Precast.Songs = {}
 
@@ -123,6 +124,7 @@ sets.Midcast.Burst = {}
 sets.Midcast.Cure = {}
 sets.Midcast.Curaga = {}
 sets.Midcast.Cura = {}
+sets.Midcast.Cursna = {}
 sets.Midcast.Regen = {}
 sets.Midcast.Refresh = {}
 sets.Midcast.Enhancing = {}
@@ -441,7 +443,7 @@ BlueACC = S { '1000 Needles', 'Absolute Terror', 'Auroral Drape', 'Awful Eye',
 -- Elemental and healing magic ---------------------------------------------------------------------
 Elemental_Enfeeble = S { 'Burn', 'Frost', 'Choke', 'Rasp', 'Shock', 'Drown' }
 
-Healing_Magic = S { 'Arise', 'Blinda', 'Esuna', 'Paralyna', 'Poisona', 'Raise', 'Raise II', 'Raise III', 'Reraise', 'Reraise II', 'Reraise III', 'Reraise IV', 'Sacrifice', 'Silena', 'Stona', 'Viruna', 'Cursna' }
+Healing_Magic = S { 'Arise', 'Blindna', 'Esuna', 'Paralyna', 'Poisona', 'Raise', 'Raise II', 'Raise III', 'Reraise', 'Reraise II', 'Reraise III', 'Reraise IV', 'Sacrifice', 'Silena', 'Stona', 'Viruna', 'Cursna' }
 
 
 -- Summoner blood pacts ----------------------------------------------------------------------------
@@ -698,6 +700,27 @@ do
         [768] = { id = 768, english = 'Umbra', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
         [769] = { id = 769, english = 'Radiance', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
         [770] = { id = 770, english = 'Umbra', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
+    }
+
+    -- Action types with no midcast build: precast chooses their final gear, and
+    -- midcastequip returns immediately for them.
+    local PRECAST_FINAL = {
+        WeaponSkill = true,
+        JobAbility  = true,
+        Item        = true,
+        Scholar     = true,
+        Ward        = true,
+        Rune        = true,
+        Effusion    = true,
+        CorsairRoll = true,
+        CorsairShot = true,
+        Waltz       = true,
+        Jig         = true,
+        Samba       = true,
+        Step        = true,
+        Flourish1   = true,
+        Flourish2   = true,
+        Flourish3   = true,
     }
 
     -- Equipment slots -----------------------------------------------------------------------------
@@ -1143,17 +1166,49 @@ do
 
     -- The section 2 placeholders, keyed by table identity, recorded before the job
     -- file declares anything. A gearless set still keyed here was never declared; a
-    -- gearless set not keyed here was declared and left empty.
+    -- gearless set not keyed here was declared and left empty. PLACEHOLDER_LIST
+    -- keeps the same names in parent-first order.
     local PLACEHOLDER_NAME = {}
+    local PLACEHOLDER_LIST = {}
     do
         local function record(tbl, name)
             PLACEHOLDER_NAME[tbl] = name
+            PLACEHOLDER_LIST[#PLACEHOLDER_LIST + 1] = name
             for k, v in pairs(tbl) do
                 if type(v) == 'table' then record(v, name .. '.' .. tostring(k)) end
             end
         end
         record(sets, 'sets')
         record(Instrument, 'Instrument')
+    end
+
+    -- Job files replace whole parents (sets.Midcast = { ... }), which removes every
+    -- engine placeholder beneath them. Re-create any placeholder path the job file
+    -- dropped, so the merge guards see the tree section 2 promised. Runs once, on
+    -- the first set build after a load.
+    local placeholders_ensured = false
+    local function ensure_placeholders()
+        if placeholders_ensured then return end
+        placeholders_ensured = true
+        local created = false
+        for i = 1, #PLACEHOLDER_LIST do
+            local name = PLACEHOLDER_LIST[i]
+            local segs = {}
+            for seg in name:gmatch('[^%.]+') do segs[#segs + 1] = seg end
+            if #segs >= 2 then
+                local node = segs[1] == 'sets' and sets or segs[1] == 'Instrument' and Instrument
+                for j = 2, #segs - 1 do
+                    node = type(node) == 'table' and node[segs[j]] or nil
+                end
+                if type(node) == 'table' and node[segs[#segs]] == nil then
+                    local fresh = {}
+                    node[segs[#segs]] = fresh
+                    PLACEHOLDER_NAME[fresh] = name
+                    created = true
+                end
+            end
+        end
+        if created then invalidate_set_index() end
     end
 
     -- True when a set table carries at least one wearable slot key.
@@ -1172,6 +1227,7 @@ do
     -- a declared gearless table that only holds child sets is structure, not a set,
     -- and is not reported.
     function set_diagnostics()
+        ensure_placeholders()
         local gear, empty, undeclared = {}, {}, {}
         local seen = {}
         local function visit(t, name)
@@ -1203,11 +1259,53 @@ do
         return gear, empty, undeclared
     end
 
+    -- Empty-set warnings, throttled per set ---------------------------------------------------------
+
+    -- Each set warns at most once per window and reports what it held back.
+    -- Must stay above warn_if_empty, which routes through it.
+    local SET_WARN_WINDOW = 60
+    local set_warn_until, set_warn_held = {}, {}
+    local set_warn_hinted = false
+
+    -- Forget the throttle, so the next use of every set reports again.
+    local function reset_set_warnings()
+        set_warn_until, set_warn_held = {}, {}
+        set_warn_hinted = false
+    end
+
+    -- Warn that a chosen set wore nothing, naming whether it was never declared
+    -- or declared and left empty. Silent while that set's window is open.
+    local function warn_empty_set(name, undeclared)
+        local now = os.clock()
+        if (set_warn_until[name] or 0) > now then
+            set_warn_held[name] = (set_warn_held[name] or 0) + 1
+            return
+        end
+        set_warn_until[name] = now + SET_WARN_WINDOW
+
+        local msg = '[' .. name .. (undeclared and '] not found!' or '] is empty!')
+        -- The trace hint is worth saying once a load, not on every warning.
+        if not set_warn_hinted then
+            set_warn_hinted = true
+            msg = msg .. '  Use gs c gearreporting to trace fallback pattern.'
+        end
+        local held = set_warn_held[name]
+        set_warn_held[name] = nil
+        if held then
+            msg = msg .. ('  Silencing warnings for %ds (%d silenced since the last).')
+                :format(SET_WARN_WINDOW, held)
+        else
+            msg = msg .. ('  Silencing warnings for %ds.'):format(SET_WARN_WINDOW)
+        end
+        warn(msg)
+    end
+
     -- Warn when a set about to be worn carries no gear, naming it and whether it was
-    -- never declared or declared [Empty]. Returns true when it warned.
+    -- never declared or declared empty. Returns true when the set was empty, whether
+    -- or not the throttle let anything print.
     local function warn_if_empty(t, name)
         if type(t) ~= 'table' or set_has_gear(t) then return false end
-        warn(name .. (PLACEHOLDER_NAME[t] and ' not found!' or ' [Empty] - nothing to equip.'))
+        warn_empty_set(name, PLACEHOLDER_NAME[t] ~= nil)
         return true
     end
 
@@ -1244,11 +1342,9 @@ do
         return SET_NAME[t]
     end
 
-    -- merge_into plus fallback-path tracking. Each build records every merged set
-    -- in order, bracketed by two marks: the base layers merged into every action,
-    -- then the spell-type branch, then the trailing common merges. The flush reads
-    -- the branch's path - the set it chose, each gearless set it fell through, and
-    -- the gear that finally covered.
+    -- merge_into plus fallback-path tracking. Each build records every merged set in
+    -- order, bracketed by two marks that separate the base layers, the chosen-set
+    -- branch, and the trailing merges. The flush reads the branch's path.
     local mr_history, mr_count, mr_mark, mr_branch_end = {}, 0, 0, nil
 
     -- Reset the tracking. Builders call this once at entry.
@@ -1280,15 +1376,24 @@ do
         return PLACEHOLDER_NAME[t] or set_name_of(t)
     end
 
-    -- Report the finished build. The midcast hook runs this after its build.
-    -- warn() names a chosen set that held no gear; gear_report() traces
-    -- every cast head to tail, and is off unless the user turned it on.
-    local function merge_report_flush()
+    -- Report the finished build; the precast, midcast and aftercast hooks each
+    -- call this after theirs. warn() and info() speak only for the phase that
+    -- chose the action's final gear, gear_report() for every phase.
+    local function merge_report_flush(phase, spell)
         local mark, last = mr_mark, mr_branch_end or mr_count
         mr_count, mr_mark, mr_branch_end = 0, 0, nil
 
+        -- Warnings and the info summary belong to the phase that chose the
+        -- action's final gear: midcast for spells, precast for abilities, items
+        -- and weaponskills. The trace covers every phase.
+        local final_phase = phase == nil or phase == 'midcast'
+            or (phase == 'precast' and spell ~= nil and PRECAST_FINAL[spell.type] ~= nil)
+        local can_warn = final_phase and settings.warn
+        local can_info = final_phase and settings.info
         -- Nothing can be printed: skip the naming work entirely.
-        if not settings.warn and not settings.gear_reporting then return end
+        if not can_warn and not can_info and not settings.gear_reporting then return end
+        local label = phase == 'precast' and 'Precast: '
+            or phase == 'aftercast' and 'Aftercast: ' or ''
 
         -- The set the branch chose: the most specific nameable layer it merged.
         -- Inline literals are unnameable and are stepped over.
@@ -1303,35 +1408,33 @@ do
         end
         if not head then return end
 
+        -- The build wore the set it reached for: name it as the one it used.
         if set_has_gear(head) then
+            if can_info then info('[' .. name .. '][Used]') end
             if settings.gear_reporting then
-                gear_report('Using ' .. name .. ' [Filled]')
+                gear_report(label .. 'Using ' .. name .. ' [Filled]')
             end
             return
         end
 
         -- The chosen set wore nothing. Name it, distinguishing a set that does
         -- not exist from one the job file declared and left empty.
-        if PLACEHOLDER_NAME[head] then
-            warn('[' .. name .. '] not found!  Use gs c gearreporting to trace fallback pattern.')
-        else
-            warn('[' .. name .. '] is empty!  Use gs c gearreporting to trace fallback pattern.')
-        end
+        if can_warn then warn_empty_set(name, PLACEHOLDER_NAME[head] ~= nil) end
 
-        -- The trace is off: the warning above was all that was needed.
-        if not settings.gear_reporting then return end
+        -- Both remaining outputs need the walk; stop when neither can print.
+        if not settings.gear_reporting and not can_info then return end
 
         -- Gearless: one step per layer the branch fell through, ending on the gear
         -- that covered. Base layers can only be that ending.
         local steps = { 'Attempted to use ' .. name .. ' [Empty]' }
-        local covered = false
+        local covered, cover_name = false, nil
         i = i - 1
         while i > 0 do
             local t = mr_history[i]
             local n = mr_name(t)
             if set_has_gear(t) then
                 if n then steps[#steps + 1] = 'Using ' .. n .. ' [Filled]' end
-                covered = true
+                covered, cover_name = true, n
                 break
             end
             if i > mark and n then
@@ -1340,7 +1443,18 @@ do
             i = i - 1
         end
         if not covered then steps[#steps + 1] = 'nothing to equip.' end
-        gear_report(table.concat(steps, ' falling back -> '))
+
+        -- The compressed fallback: intended set and final cover only.
+        if can_info then
+            if covered then
+                info('[' .. name .. '][Not Usable] -> [' .. (cover_name or 'unnamed set') .. '][Used]')
+            else
+                info('[' .. name .. '][Not Usable] -> nothing to equip.')
+            end
+        end
+        if settings.gear_reporting then
+            gear_report(label .. table.concat(steps, ' falling back -> '))
+        end
     end
 
     -- Hoxne Ampulla slot hold ---------------------------------------------------------------------
@@ -1942,13 +2056,9 @@ do
         end
     end
 
-    -- Free a stranded Ampulla, one step per call. GearSwap drops equip requests that
-    -- match its own equipment model, and after a reload that model can disagree with the
-    -- gear actually worn, which silently swallows both the unequip and the idle set's
-    -- instrument. Step one re-equips what is truly worn: a visible change to a desynced
-    -- model, a no-op to the server, and the server's responses rewrite the model to the
-    -- truth. Step two then releases through the honest model. Worn state is settled from
-    -- the bag copy's status, which stays correct throughout. Call from a wrapped event.
+    -- Free a stranded Ampulla, one step per call. Step one re-asserts the truly worn
+    -- gear to resync GearSwap's equipment model; step two releases through it. Worn
+    -- state comes from the bag copy's status. Call from a wrapped event.
     local function hoxne_release_step()
         local _, _, carried, equipped = find_enchantment(HOXNE_AMPULLA)
         if carried and not equipped then return 'done' end
@@ -2065,19 +2175,22 @@ do
     -- builder, called on movement, buff changes, status changes and 'gs c update',
     -- so it must stay cheap and must never write to chat.
     function choose_set()
+        merge_report_begin()
         if buffactive['Sleep'] then return {} end
         local built_set = {}
         -- Combat Checks
         if player.status == "Engaged" then
             if sets.OffenseMode then
-                merge_into(built_set, sets.OffenseMode)
+                merge_report(built_set, sets.OffenseMode)
+                merge_report_mark()
                 if sets.OffenseMode[state.OffenseMode.value] then
-                    merge_into(built_set, sets.OffenseMode[state.OffenseMode.value])
+                    merge_report(built_set, sets.OffenseMode[state.OffenseMode.value])
+                    merge_report_branch_end()
                     -- Check the weapons
                     if state.WeaponMode.value ~= "Locked" then
                         if sets.Weapons then
                             if sets.Weapons[state.WeaponMode.value] then
-                                merge_into(built_set, sets.Weapons[state.WeaponMode.value])
+                                merge_report(built_set, sets.Weapons[state.WeaponMode.value])
                             else
                                 warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
                             end
@@ -2087,13 +2200,13 @@ do
                         -- Equip sub weapon based off mode
                         if not DualWield and not TwoHand then
                             if sets.Weapons.Shield then
-                                merge_into(built_set, sets.Weapons.Shield)
+                                merge_report(built_set, sets.Weapons.Shield)
                             else
                                 warn('sets.Weapons.Shield not found!')
                             end
                         elseif DualWield then
                             if sets.DualWield then
-                                merge_into(built_set, sets.DualWield)
+                                merge_report(built_set, sets.DualWield)
                             else
                                 warn('sets.DualWield not found!')
                             end
@@ -2103,35 +2216,35 @@ do
                     if state.JobMode.value == "Ranged" then
                         log('Ranged Mode')
                         if sets.Idle and sets.Idle[state.OffenseMode.value] then
-                            merge_into(built_set, sets.Idle[state.OffenseMode.value])
+                            merge_report(built_set, sets.Idle[state.OffenseMode.value])
                         else
                             warn('sets.Idle.' .. state.OffenseMode.value .. ' not found!')
                         end
                     end
                     -- Check if AM3 is active
                     if buffactive['Aftermath: Lv.3'] and sets.OffenseMode.AM3 and sets.OffenseMode.AM3[state.WeaponMode.value] then
-                        merge_into(built_set, sets.OffenseMode.AM3[state.WeaponMode.value])
+                        merge_report(built_set, sets.OffenseMode.AM3[state.WeaponMode.value])
                     elseif buffactive['Aftermath: Lv.2'] and sets.OffenseMode.AM2 and sets.OffenseMode.AM2[state.WeaponMode.value] then
-                        merge_into(built_set, sets.OffenseMode.AM2[state.WeaponMode.value])
+                        merge_report(built_set, sets.OffenseMode.AM2[state.WeaponMode.value])
                     elseif buffactive['Aftermath: Lv.1'] and sets.OffenseMode.AM1 and sets.OffenseMode.AM1[state.WeaponMode.value] then
-                        merge_into(built_set, sets.OffenseMode.AM1[state.WeaponMode.value])
+                        merge_report(built_set, sets.OffenseMode.AM1[state.WeaponMode.value])
                     elseif buffactive['Aftermath'] and sets.OffenseMode.AM and sets.OffenseMode.AM[state.WeaponMode.value] then
-                        merge_into(built_set, sets.OffenseMode.AM[state.WeaponMode.value])
+                        merge_report(built_set, sets.OffenseMode.AM[state.WeaponMode.value])
                     end
                     -- Check if TreasureMode is activew
                     if state.TreasureMode.value ~= 'None' then
                         if sets.TreasureHunter then
                             -- Equip TH gear if mob is not marked as tagged
                             if not th_info.tagged_mobs[player.target.id] then
-                                merge_into(built_set, sets.TreasureHunter)
+                                merge_report(built_set, sets.TreasureHunter)
 
                                 -- Equip TH gear if TreasureMode is Full Time
                             elseif state.TreasureMode.value == 'Full Time' then
-                                merge_into(built_set, sets.TreasureHunter)
+                                merge_report(built_set, sets.TreasureHunter)
 
                                 -- Equip TH gear if TreasureMode is SATA and either SA, TA or Feint is active
                             elseif state.TreasureMode.value == 'SATA' and (buffactive['Sneak Attack'] or buffactive['Trick Attack'] or buffactive['Feint']) then
-                                merge_into(built_set, sets.TreasureHunter)
+                                merge_report(built_set, sets.TreasureHunter)
                             end
                         else
                             warn('sets.TreasureHunter not found!')
@@ -2146,11 +2259,12 @@ do
             -- Idle sets
         else
             if sets.Idle then
-                merge_into(built_set, sets.Idle)
+                merge_report(built_set, sets.Idle)
+                merge_report_mark()
 
                 -- Idle state
                 if sets.Idle[state.OffenseMode.value] then
-                    merge_into(built_set, sets.Idle[state.OffenseMode.value])
+                    merge_report(built_set, sets.Idle[state.OffenseMode.value])
                 else
                     warn('sets.Idle.' .. state.OffenseMode.value .. ' not found!')
                 end
@@ -2158,21 +2272,22 @@ do
                 -- Resting condition
                 if player.status == "Resting" then
                     if sets.Idle.Resting then
-                        merge_into(built_set, sets.Idle.Resting)
+                        merge_report(built_set, sets.Idle.Resting)
                     else
                         warn('sets.Idle.Resting not found!')
                     end
                 end
+                merge_report_branch_end()
 
                 -- Check the weapons
                 if state.WeaponMode.value == "Locked" then
-                    merge_into(built_set,
+                    merge_report(built_set,
                         { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
                     log(built_set)
                 else
                     if sets.Weapons then
                         if sets.Weapons[state.WeaponMode.value] then
-                            merge_into(built_set, sets.Weapons[state.WeaponMode.value])
+                            merge_report(built_set, sets.Weapons[state.WeaponMode.value])
                         else
                             warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
                         end
@@ -2183,7 +2298,7 @@ do
                     -- Check for sub weapon
                     if not TwoHand and not DualWield then
                         if sets.Weapons.Shield then
-                            merge_into(built_set, sets.Weapons.Shield)
+                            merge_report(built_set, sets.Weapons.Shield)
                         else
                             warn('sets.Weapons.Shield not found!')
                         end
@@ -2193,7 +2308,7 @@ do
                 --Pet specific checks
                 if pet.isvalid then
                     if sets.Idle.Pet then
-                        merge_into(built_set, sets.Idle.Pet)
+                        merge_report(built_set, sets.Idle.Pet)
                     else
                         warn('sets.Idle.Pet not found!')
                     end
@@ -2201,7 +2316,7 @@ do
                 -- Equip Sublimation gear
                 if buffactive[187] then
                     if sets.Idle.Sublimation then
-                        merge_into(built_set, sets.Idle.Sublimation)
+                        merge_report(built_set, sets.Idle.Sublimation)
                     else
                         warn('sets.Idle.Sublimation not found!')
                     end
@@ -2209,7 +2324,7 @@ do
                 -- Equip movement gear
                 if is_moving then
                     if sets.Movement then
-                        merge_into(built_set, sets.Movement)
+                        merge_report(built_set, sets.Movement)
                     else
                         warn('sets.Movement not found!')
                     end
@@ -2221,7 +2336,7 @@ do
 
         -- Variable Ammo
         if Ammo and Ammo[state.OffenseMode.value] then
-            merge_into(built_set,
+            merge_report(built_set,
                 { ammo = Ammo[state.OffenseMode.value] })
         end
 
@@ -2232,6 +2347,7 @@ do
     -- weaponskill gear.
     function precastequip(spell)
         log('precastequip Called')
+        ensure_placeholders()
         merge_report_begin()
         if settings.debug then
             debug("spell.type = " ..
@@ -2245,6 +2361,7 @@ do
         local built_set = {}
         -- Merge the Idle incase a midcast is not set
         if sets.Idle then merge_report(built_set, sets.Idle) end
+        merge_report_mark()
         -- WeaponSkill
         if spell.type == 'WeaponSkill' then
             if sets.WS then
@@ -2264,43 +2381,15 @@ do
                         -- Example would be WS[Savage Blade]['PDL']
                         if sets.WS[spell.english][state.OffenseMode.value] then
                             merge_report(built_set, sets.WS[spell.english][state.OffenseMode.value])
-                            message = '[' .. spell.english .. '] Set (Augmented)'
                             -- Example would be WS.RA.ACC
                         elseif state.OffenseMode.value ~= 'TP' and sets.WS.RA and sets.WS.RA[state.OffenseMode.value] then
                             merge_report(built_set, sets.WS.RA[state.OffenseMode.value])
-                            -- Augment the specified WS
-                            if state.OffenseMode.value == 'ACC' then
-                                message = '[' .. spell.english .. '] Set with Accuracy'
-                            elseif state.OffenseMode.value == 'PDL' then
-                                message = '[' .. spell.english .. '] Set with Physical Damage Limit'
-                            elseif state.OffenseMode.value == 'SB' then
-                                message = '[' .. spell.english .. '] Set with Subtle Blow'
-                            elseif state.OffenseMode.value == 'MEVA' then
-                                message = '[' .. spell.english .. '] Set with Magic Evasion'
-                            elseif state.OffenseMode.value == 'CRIT' then
-                                message = '[' .. spell.english .. '] Set with Critical Hit'
-                            end
-                        else
-                            message = '[' .. spell.english .. '] Set'
                         end
 
                         -- Generic
                     else
                         if state.OffenseMode.value ~= 'TP' and sets.WS.RA and sets.WS.RA[state.OffenseMode.value] then
                             merge_report(built_set, sets.WS.RA[state.OffenseMode.value])
-                            if state.OffenseMode.value == 'ACC' then
-                                message = 'Using Default WS Set with Accuracy'
-                            elseif state.OffenseMode.value == 'PDL' then
-                                message = 'Using Default WS Set with Physical Damage Limit'
-                            elseif state.OffenseMode.value == 'SB' then
-                                message = 'Using Default WS Set with Subtle Blow'
-                            elseif state.OffenseMode.value == 'MEVA' then
-                                message = 'Using Default WS Set with Magic Evasion'
-                            elseif state.OffenseMode.value == 'CRIT' then
-                                message = 'Using Default WS Set with Critical Hit'
-                            end
-                        else
-                            message = 'Using Default WS Set'
                         end
                     end
 
@@ -2308,16 +2397,16 @@ do
                     if sets.WS.RA then
                         if buffactive['Aftermath: Lv.3'] and sets.WS.RA.AM3 and sets.WS.RA.AM3[state.WeaponMode.value] then
                             merge_report(built_set, sets.WS.RA.AM3[state.WeaponMode.value])
-                            message = message .. ' and Level 3 Aftermath [' .. state.WeaponMode.value .. ']'
+                            message = 'Level 3 Aftermath [' .. state.WeaponMode.value .. ']'
                         elseif buffactive['Aftermath: Lv.2'] and sets.WS.RA.AM2 and sets.WS.RA.AM2[state.WeaponMode.value] then
                             merge_report(built_set, sets.WS.RA.AM2[state.WeaponMode.value])
-                            message = message .. ' and Level 2 Aftermath [' .. state.WeaponMode.value .. ']'
+                            message = 'Level 2 Aftermath [' .. state.WeaponMode.value .. ']'
                         elseif buffactive['Aftermath: Lv.1'] and sets.WS.RA.AM1 and sets.WS.RA.AM1[state.WeaponMode.value] then
                             merge_report(built_set, sets.WS.RA.AM1[state.WeaponMode.value])
-                            message = message .. ' and Level 1 Aftermath [' .. state.WeaponMode.value .. ']'
+                            message = 'Level 1 Aftermath [' .. state.WeaponMode.value .. ']'
                         elseif buffactive['Aftermath'] and sets.WS.RA.AM and sets.WS.RA.AM[state.WeaponMode.value] then
                             merge_report(built_set, sets.WS.RA.AM[state.WeaponMode.value])
-                            message = message .. ' and Aftermath [' .. state.WeaponMode.value .. ']'
+                            message = 'Aftermath [' .. state.WeaponMode.value .. ']'
                         end
                     end
 
@@ -2330,7 +2419,8 @@ do
                             { ammo = Ammo[state.OffenseMode.value] })
                     end
 
-                    message = message .. ' [' .. available_bullets .. 'x]'
+                    message = (message ~= '' and message .. ' ' or '')
+                        .. '[' .. available_bullets .. 'x]'
                 else
                     -- Set is defined
                     if sets.WS[spell.english] then
@@ -2338,67 +2428,39 @@ do
                         -- Example would be WS[Savage Blade]['PDL']
                         if sets.WS[spell.english][state.OffenseMode.value] then
                             merge_report(built_set, sets.WS[spell.english][state.OffenseMode.value])
-                            message = '[' .. spell.english .. '] Set (Augmented)'
                             -- Example would be WS.ACC
                         elseif state.OffenseMode.value ~= 'TP' and sets.WS[state.OffenseMode.value] then
                             merge_report(built_set, sets.WS[state.OffenseMode.value])
-                            -- Augment the specified WS
-                            if state.OffenseMode.value == 'ACC' then
-                                message = '[' .. spell.english .. '] Set with Accuracy'
-                            elseif state.OffenseMode.value == 'PDL' then
-                                message = '[' .. spell.english .. '] Set with Physical Damage Limit'
-                            elseif state.OffenseMode.value == 'SB' then
-                                message = '[' .. spell.english .. '] Set with Subtle Blow'
-                            elseif state.OffenseMode.value == 'MEVA' then
-                                message = '[' .. spell.english .. '] Set with Magic Evasion'
-                            elseif state.OffenseMode.value == 'CRIT' then
-                                message = '[' .. spell.english .. '] Set with Critical Hit'
-                            end
-                        else
-                            message = '[' .. spell.english .. '] Set'
                         end
 
                         -- Generic
                     else
                         if state.OffenseMode.value ~= 'TP' and sets.WS[state.OffenseMode.value] then
                             merge_report(built_set, sets.WS[state.OffenseMode.value])
-                            -- Augment the specified WS
-                            if state.OffenseMode.value == 'ACC' then
-                                message = 'Using Default WS Set with Accuracy'
-                            elseif state.OffenseMode.value == 'PDL' then
-                                message = 'Using Default WS Set with Physical Damage Limit'
-                            elseif state.OffenseMode.value == 'SB' then
-                                message = 'Using Default WS Set with Subtle Blow'
-                            elseif state.OffenseMode.value == 'MEVA' then
-                                message = 'Using Default WS Set with Magic Evasion'
-                            elseif state.OffenseMode.value == 'CRIT' then
-                                message = 'Using Default WS Set with Critical Hit'
-                            end
-                        else
-                            message = 'Using Default WS Set'
                         end
                     end
 
                     -- Check if Aftermath is active
                     if buffactive['Aftermath: Lv.3'] and sets.WS.AM3 and sets.WS.AM3[state.WeaponMode.value] then
                         merge_report(built_set, sets.WS.AM3[state.WeaponMode.value])
-                        message = message .. ' and Level 3 Aftermath'
+                        message = 'Level 3 Aftermath'
                     elseif buffactive['Aftermath: Lv.2'] and sets.WS.AM2 and sets.WS.AM2[state.WeaponMode.value] then
                         merge_report(built_set, sets.WS.AM2[state.WeaponMode.value])
-                        message = message .. ' and Level 2 Aftermath'
+                        message = 'Level 2 Aftermath'
                     elseif buffactive['Aftermath: Lv.1'] and sets.WS.AM1 and sets.WS.AM1[state.WeaponMode.value] then
                         merge_report(built_set, sets.WS.AM1[state.WeaponMode.value])
-                        message = message .. ' and Level 1 Aftermath'
+                        message = 'Level 1 Aftermath'
                     elseif buffactive['Aftermath'] and sets.WS.AM and sets.WS.AM[state.WeaponMode.value] then
                         merge_report(built_set, sets.WS.AM[state.WeaponMode.value])
-                        message = message .. ' and Aftermath'
+                        message = 'Aftermath'
                     end
                 end
 
                 -- Check if an Obi or Orpheus is to be Equiped
                 if Elemental_WS:contains(spell.name) then built_set = elemental_check(spell, built_set) end
 
-                info(message)
+                -- Aftermath and ammo only; the set itself is named by the build report.
+                if message ~= '' then info(message) end
             else
                 warn('sets.WS not found!')
             end
@@ -2449,7 +2511,6 @@ do
                 if spell.name == 'Double-Up' then -- Double Up for distance
                     if sets.PhantomRoll then
                         merge_report(built_set, sets.PhantomRoll)
-                        info('[' .. spell.english .. '] Set')
                     else
                         warn('sets.PhantomRoll not found!')
                     end
@@ -2463,9 +2524,6 @@ do
                             warn('sets.Jugs.' .. state.JobMode.value .. ' not found!')
                         end
                     end
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('JA not set for [' .. spell.english .. ']')
                 end
                 -- Check for bounty shot ammo
                 if spell.name == 'Bounty Shot' then
@@ -2482,7 +2540,6 @@ do
         elseif spell.action_type == 'Item' or spell.prefix == '/item' then
             log('Item Use - Precast')
             if spell.english == "Holy Water" or spell.english == "Hallowed Water" then
-                info("Holy Water set")
                 if sets.Holy_Water then
                     if sets.Idle then
                         merge_report(built_set, sets.Holy_Water)
@@ -2509,9 +2566,6 @@ do
                 merge_report(built_set, sets.JA)
                 if sets.JA[spell.english] then
                     merge_report(built_set, sets.JA[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Scholar Set')
                 end
             else
                 warn('sets.JA not found!')
@@ -2522,9 +2576,6 @@ do
                 merge_report(built_set, sets.JA)
                 if sets.JA[spell.english] then
                     merge_report(built_set, sets.JA[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Ward Set')
                 end
             else
                 warn('sets.JA not found!')
@@ -2535,9 +2586,6 @@ do
                 merge_report(built_set, sets.JA)
                 if sets.JA[spell.english] then
                     merge_report(built_set, sets.JA[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Rune Set')
                 end
             else
                 warn('sets.JA not found!')
@@ -2548,9 +2596,6 @@ do
                 merge_report(built_set, sets.JA)
                 if sets.JA[spell.english] then
                     merge_report(built_set, sets.JA[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Effusion Set')
                 end
             else
                 warn('sets.JA not found!')
@@ -2562,9 +2607,6 @@ do
                 merge_report(built_set, sets.PhantomRoll)
                 if sets.PhantomRoll[spell.english] then
                     merge_report(built_set, sets.PhantomRoll[spell.english])
-                    info('[' .. spell.english .. '] Set ')
-                else
-                    info('Roll not set')
                 end
             else
                 warn('sets.PhantomRoll not found!')
@@ -2575,9 +2617,6 @@ do
                 merge_report(built_set, sets.QuickDraw)
                 if sets.QuickDraw[spell.english] then
                     merge_report(built_set, sets.QuickDraw[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Quick Draw Set')
                 end
             else
                 warn('sets.QuickDraw not found!')
@@ -2588,9 +2627,6 @@ do
                 merge_report(built_set, sets.Waltz)
                 if sets.Waltz[spell.english] then
                     merge_report(built_set, sets.Waltz[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Waltz Set')
                 end
             else
                 warn('sets.Waltz not found!')
@@ -2630,9 +2666,6 @@ do
                 merge_report(built_set, sets.Jig)
                 if sets.Jig[spell.english] then
                     merge_report(built_set, sets.Jig[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Jig Set')
                 end
             else
                 warn('sets.Jig not found!')
@@ -2643,9 +2676,6 @@ do
                 merge_report(built_set, sets.Samba)
                 if sets.Samba[spell.english] then
                     merge_report(built_set, sets.Samba[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Samba Set')
                 end
             else
                 warn('sets.Samba not found!')
@@ -2656,9 +2686,6 @@ do
                 merge_report(built_set, sets.Step)
                 if sets.Step[spell.english] then
                     merge_report(built_set, sets.Step[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Step Set')
                 end
             else
                 warn('sets.Step not found!')
@@ -2669,9 +2696,6 @@ do
                 merge_report(built_set, sets.Flourish)
                 if sets.Flourish[spell.english] then
                     merge_report(built_set, sets.Flourish[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                else
-                    info('Using Default Flourish Set')
                 end
             else
                 warn('sets.Flourish not found!')
@@ -2817,6 +2841,8 @@ do
             end
         end
 
+        merge_report_branch_end()
+
         -- Weapon Checks for precast
         -- If it set to unlocked it will not swap the weapons even if defined in the built_set job lua
         if state.WeaponMode.value ~= "Unlocked" and spell.type ~= 'CorsairRoll' and spell.name ~= 'Double-Up' then
@@ -2887,60 +2913,10 @@ do
     -- Build the set applied while an action is in flight, which is what determines its
     -- potency.
     function midcastequip(spell)
+        ensure_placeholders()
         merge_report_begin()
-        if spell.type == 'WeaponSkill' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'JobAbility' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Item' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Scholar' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Ward' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Rune' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Effusion' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'CorsairRoll' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'CorsairShot' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Waltz' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Jig' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Samba' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Step' then
-            log('abort midcast')
-            return
-        end
-        if spell.type == 'Flourish1' or spell.type == 'Flourish2' or spell.type == 'Flourish3' then
+        -- Abilities and items have no midcast build; precast chose their gear.
+        if PRECAST_FINAL[spell.type] then
             log('abort midcast')
             return
         end
@@ -3033,12 +3009,10 @@ do
                 -- Defined Gear Set
                 if sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
-                    info('[' .. spell.english .. '] Set')
                     -- Utsusemi Spells
                 elseif UtsusemiSpell:contains(spell.name) then
                     if sets.Midcast.Utsusemi then
                         merge_report(built_set, sets.Midcast.Utsusemi)
-                        info('[' .. spell.english .. '] Utsusemi Set')
                     else
                         warn('sets.Midcast.Utsusemi not found!')
                     end
@@ -3046,7 +3020,6 @@ do
                 elseif spell.target.type == 'SELF' then
                     if sets.Midcast.Enhancing then
                         merge_report(built_set, sets.Midcast.Enhancing)
-                        info('Enhancing set')
                     else
                         warn('sets.Midcast.Enhancing not found!')
                     end
@@ -3054,7 +3027,6 @@ do
                 elseif Enfeebling_Ninjitsu:contains(spell.english) then
                     if sets.Midcast.Enfeebling then
                         merge_report(built_set, sets.Midcast.Enfeebling)
-                        info('Enfeebling set')
                     else
                         warn('sets.Midcast.Enfeebling not found!')
                     end
@@ -3062,7 +3034,6 @@ do
                 else
                     if sets.Midcast.Nuke then
                         merge_report(built_set, sets.Midcast.Nuke)
-                        info('Nuke set')
                     else
                         warn('sets.Midcast.Nuke not found!')
                     end
@@ -3075,7 +3046,6 @@ do
                 if spell.name:contains('Cure') then
                     if sets.Midcast.Cure then
                         merge_report(built_set, sets.Midcast.Cure)
-                        info('Cure Set')
                     else
                         warn('sets.Midcast.Cure not found!')
                     end
@@ -3085,7 +3055,6 @@ do
                 elseif spell.name:contains('Curaga') then
                     if sets.Midcast.Curaga then
                         merge_report(built_set, sets.Midcast.Curaga)
-                        info('Curaga Set')
                     else
                         warn('sets.Midcast.Curaga not found!')
                     end
@@ -3095,19 +3064,34 @@ do
                 elseif spell.name:contains('Cura') then
                     if sets.Midcast.Cura then
                         merge_report(built_set, sets.Midcast.Cura)
-                        info('Cura Set')
                     else
                         warn('sets.Midcast.Cura not found!')
                     end
                     -- Check if an Obi or Orpheus is to be Equiped
                     built_set = elemental_check(spell, built_set)
+                    -- Cursna: its own set layered over the Enhancing base
+                elseif spell.name == 'Cursna' then
+                    if sets.Midcast.Enhancing then
+                        merge_report(built_set, sets.Midcast.Enhancing)
+                    else
+                        warn('sets.Midcast.Enhancing not found!')
+                    end
+                    if sets.Midcast.Cursna then
+                        merge_report(built_set, sets.Midcast.Cursna)
+                    else
+                        warn('sets.Midcast.Cursna not found!')
+                    end
                     -- Defined Gear Set
                 elseif sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
-                    info('[' .. spell.english .. '] Set')
-                    -- Healing Magic
-                elseif spell.name:contains('Raise') or spell.name == "Arise" or spell.name:contains('Reraise') then
-                    log('No Swap Defined (Raise)')
+                    -- All other Healing Magic - Raise, Reraise, status cures - uses the
+                    -- plain Enhancing set, no subcategories
+                elseif spell.skill == 'Healing Magic' then
+                    if sets.Midcast.Enhancing then
+                        merge_report(built_set, sets.Midcast.Enhancing)
+                    else
+                        warn('sets.Midcast.Enhancing not found!')
+                    end
                     -- Enhancing
                 elseif spell.skill == 'Enhancing Magic' then
                     if sets.Midcast.Enhancing then
@@ -3124,7 +3108,6 @@ do
                         if spell.name:contains('Refresh') then
                             if sets.Midcast.Refresh then
                                 merge_report(built_set, sets.Midcast.Refresh)
-                                info('Refresh Set')
                             else
                                 warn('sets.Midcast.Refresh not found!')
                             end
@@ -3132,14 +3115,12 @@ do
                         elseif spell.name:contains('Regen') then
                             if sets.Midcast.Regen then
                                 merge_report(built_set, sets.Midcast.Regen)
-                                info('Regen Set')
                             else
                                 warn('sets.Midcast.Regen not found!')
                             end
                         elseif Storms:contains(spell.name) then
                             if sets.Storms then
                                 merge_report(built_set, sets.Storms)
-                                info('Storms Set')
                             else
                                 warn('sets.Storms not found!')
                             end
@@ -3147,7 +3128,6 @@ do
                         elseif spell.name:contains('Gain') then
                             if sets.Midcast.Enhancing.Gain then
                                 merge_report(built_set, sets.Midcast.Enhancing.Gain)
-                                info('Gain Set')
                             else
                                 warn('sets.Midcast.Enhancing.Gain not found!')
                             end
@@ -3155,7 +3135,6 @@ do
                         elseif spell.name:contains('Phalanx') then
                             if sets.Midcast.Phalanx then
                                 merge_report(built_set, sets.Midcast.Phalanx)
-                                info('Phalanx Set')
                             else
                                 warn('sets.Midcast.Phalanx not found!')
                             end
@@ -3163,7 +3142,6 @@ do
                         elseif Elemental_Bar:contains(spell.name) then
                             if sets.Midcast.Enhancing.Elemental then
                                 merge_report(built_set, sets.Midcast.Enhancing.Elemental)
-                                info('Elemental Bar Element Set')
                             else
                                 warn('sets.Midcast.Enhancing.Elemental not found!')
                             end
@@ -3171,7 +3149,6 @@ do
                         elseif Status_Bar:contains(spell.name) then
                             if sets.Midcast.Enhancing.Status then
                                 merge_report(built_set, sets.Midcast.Enhancing.Status)
-                                info('Status Bar Status Set')
                             else
                                 warn('sets.Midcast.Enhancing.Status not found!')
                             end
@@ -3179,13 +3156,9 @@ do
                         elseif Enhancing_Skill:contains(spell.name) then
                             if sets.Midcast.Enhancing.Skill then
                                 merge_report(built_set, sets.Midcast.Enhancing.Skill)
-                                info('Enhancing Skill Set')
                             else
                                 warn('sets.Midcast.Enhancing.Skill not found!')
                             end
-                            -- Enhancing
-                        else
-                            info('Enhancing Magic Set')
                         end
                     else
                         warn('sets.Midcast.Enhancing not found!')
@@ -3194,7 +3167,6 @@ do
                 elseif Divine_Skill:contains(spell.name) then
                     if sets.Midcast.Divine then
                         merge_report(built_set, sets.Midcast.Divine)
-                        info('Divine Skill Set')
                     else
                         warn('sets.Midcast.Divine not found!')
                     end
@@ -3206,7 +3178,6 @@ do
                         if Enfeeble_Acc:contains(spell.name) then
                             if sets.Midcast.Enfeebling.MACC then
                                 merge_report(built_set, sets.Midcast.Enfeebling.MACC)
-                                info('Enfeebling Magic Set - Magic Accuracy')
                             else
                                 warn('sets.Midcast.Enfeebling.MACC not found!')
                             end
@@ -3214,7 +3185,6 @@ do
                         elseif Enfeeble_Potency:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Potency then
                                 merge_report(built_set, sets.Midcast.Enfeebling.Potency)
-                                info('Enfeebling Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Enfeebling.Potency not found!')
                             end
@@ -3222,13 +3192,9 @@ do
                         elseif Enfeeble_Duration:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Duration then
                                 merge_report(built_set, sets.Midcast.Enfeebling.Duration)
-                                info('Enfeebling Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Enfeebling.Duration not found!')
                             end
-                            -- Default
-                        else
-                            info('Enfeebling Magic Set')
                         end
                     else
                         info('No sets.Midcast.Enfeebling defined!')
@@ -3244,12 +3210,10 @@ do
                         built_set =
                             elemental_check(spell, built_set)
                     end
-                    info('[' .. spell.english .. '] Set')
                     -- Aspir Gear
                 elseif spell.name:contains('Aspir') then
                     if sets.Midcast.Aspir then
                         merge_report(built_set, sets.Midcast.Aspir)
-                        info('Aspir Set')
                     else
                         warn('sets.Midcast.Aspir not found!')
                     end
@@ -3257,7 +3221,6 @@ do
                 elseif spell.name:contains('Drain') then
                     if sets.Midcast.Drain then
                         merge_report(built_set, sets.Midcast.Drain)
-                        info('Drain Set')
                     else
                         warn('sets.Midcast.Drain not found!')
                     end
@@ -3269,7 +3232,6 @@ do
                         if Enfeeble_Acc:contains(spell.name) then
                             if sets.Midcast.Enfeebling.MACC then
                                 merge_report(built_set, sets.Midcast.Enfeebling.MACC)
-                                info('Enfeebling Magic Set - Magic Accuracy')
                             else
                                 warn('sets.Midcast.Enfeebling.MACC not found!')
                             end
@@ -3277,7 +3239,6 @@ do
                         elseif Enfeeble_Potency:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Potency then
                                 merge_report(built_set, sets.Midcast.Enfeebling.Potency)
-                                info('Enfeebling Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Enfeebling.Potency not found!')
                             end
@@ -3285,13 +3246,9 @@ do
                         elseif Enfeeble_Duration:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Duration then
                                 merge_report(built_set, sets.Midcast.Enfeebling.Duration)
-                                info('Enfeebling Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Enfeebling.Duration not found!')
                             end
-                            -- Default
-                        else
-                            info('Enfeebling Magic Set')
                         end
                     else
                         info('No sets.Midcast.Enfeebling not found!')
@@ -3304,7 +3261,6 @@ do
                         if Dark_Acc:contains(spell.name) then
                             if sets.Midcast.Dark.MACC then
                                 merge_report(built_set, sets.Midcast.Dark.MACC)
-                                info('Dark Magic Set - Magic Accuracy')
                             else
                                 warn('sets.Midcast.Dark.MACC not found!')
                             end
@@ -3312,7 +3268,6 @@ do
                         elseif Dark_Absorb:contains(spell.name) then
                             if sets.Midcast.Dark.Absorb then
                                 merge_report(built_set, sets.Midcast.Dark.Absorb)
-                                info('Absorb Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Dark.Absorb not found!')
                             end
@@ -3320,7 +3275,6 @@ do
                         elseif Dark_Enhancing:contains(spell.name) then
                             if sets.Midcast.Dark.Enhancing then
                                 merge_report(built_set, sets.Midcast.Dark.Enhancing)
-                                info('Dark Enhancing Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Dark.Enhancing not found!')
                             end
@@ -3328,7 +3282,6 @@ do
                         elseif Enfeeble_Potency:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Potency then
                                 merge_report(built_set, sets.Midcast.Enfeebling.Potency)
-                                info('Enfeebling Magic Set - Potency')
                             else
                                 warn('sets.Midcast.Enfeebling.Potency not found!')
                             end
@@ -3336,13 +3289,9 @@ do
                         elseif Enfeeble_Duration:contains(spell.name) then
                             if sets.Midcast.Enfeebling.Duration then
                                 merge_report(built_set, sets.Midcast.Enfeebling.Duration)
-                                info('Enfeebling Magic Set - Duration')
                             else
                                 warn('sets.Midcast.Enfeebling.Duration not found!')
                             end
-                            -- Default
-                        else
-                            info('Dark Magic Set')
                         end
                     else
                         info('No sets.Midcast.Dark not found!')
@@ -3351,7 +3300,6 @@ do
                 elseif spell.skill == 'Enhancing Magic' then
                     if sets.Midcast.Enhancing then
                         merge_report(built_set, sets.Midcast.Enhancing)
-                        info('Enhancing Magic Set')
                     else
                         warn('sets.Midcast.Enhancing not found!')
                     end
@@ -3361,7 +3309,6 @@ do
                         merge_report(built_set, sets.Midcast.Enfeebling)
                         if sets.Midcast.Enfeebling.MACC then
                             merge_report(built_set, sets.Midcast.Enfeebling.MACC)
-                            info('Enfeebling Magic Set - Magic Accuracy')
                         else
                             warn('sets.Midcast.Enfeebling.MACC not found!')
                         end
@@ -3382,7 +3329,6 @@ do
                     else
                         if sets.Midcast.Nuke then
                             merge_report(built_set, sets.Midcast.Nuke)
-                            info('Nuke Set')
                         else
                             warn('sets.Midcast.Nuke not found!')
                         end
@@ -3422,7 +3368,6 @@ do
                 if SongCount:contains(spell.name) then
                     if sets.Midcast.DummySongs then
                         merge_report(built_set, sets.Midcast.DummySongs)
-                        info('[' .. spell.english .. '] Set (Song Count)')
                     else
                         warn('sets.Midcast.DummySongs not found!')
                     end
@@ -3432,7 +3377,6 @@ do
                     -- Defined Gear Set
                     if sets.Midcast[spell.english] then
                         merge_report(built_set, sets.Midcast[spell.english])
-                        info('[' .. spell.english .. '] Set')
                         -- Equip Harp
                     elseif spell.name:contains('Horde') then
                         if sets.Midcast.Enfeebling then
@@ -3441,7 +3385,6 @@ do
                             warn('sets.Midcast.Enfeebling not found!')
                         end
                         merge_report(built_set, { range = Instrument.AOE_Sleep })
-                        info('[' .. spell.english .. '] Set (AOE Sleep)')
                         -- Normal Enfeebles
                     elseif Enfeebling_Song:contains(spell.english) then
                         if sets.Midcast.Enfeebling then
@@ -3450,10 +3393,8 @@ do
                             warn('sets.Midcast.Enfeebling not found!')
                         end
                         merge_report(built_set, { range = Instrument.Enfeebling })
-                        info('[' .. spell.english .. '] Set (Enfeebling)')
                         -- Augment the buff songs
                     else
-                        info('[' .. spell.english .. '] Set (Potency)')
                         merge_report(built_set, { range = Instrument.Potency })
                     end
                     -- Augment the specific Song if set
@@ -3466,7 +3407,6 @@ do
                     merge_report(built_set, sets.Midcast[spell.english])
                     -- Check for an elemental set
                     if BlueNuke:contains(spell.english) then built_set = elemental_check(spell, built_set) end
-                    info('[' .. spell.english .. '] Set')
                 else
                     if sets.Midcast.BlueMagic then
                         -- Physical blue magic: damage comes from mainhand weapon
@@ -3475,7 +3415,6 @@ do
                         if BluePhysical:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Physical then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Physical)
-                                info('Blue Physical set')
                             else
                                 warn('sets.Midcast.BlueMagic.Physical not found!')
                             end
@@ -3485,7 +3424,6 @@ do
                         elseif BlueBreath:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Breath then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Breath)
-                                info('Blue Breath set')
                             else
                                 warn('sets.Midcast.BlueMagic.Breath not found!')
                             end
@@ -3493,7 +3431,6 @@ do
                         elseif BlueNuke:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Nuke then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Nuke)
-                                info('Blue Nuke set')
                             else
                                 warn('sets.Midcast.BlueMagic.Nuke not found!')
                             end
@@ -3502,7 +3439,6 @@ do
                         elseif BlueSkill:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Skill then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Skill)
-                                info('Blue Skill set')
                             else
                                 warn('sets.Midcast.BlueMagic.Skill not found!')
                             end
@@ -3511,34 +3447,27 @@ do
                         elseif BlueBuff:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Buff then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Buff)
-                                info('Blue Buff set')
                             else
                                 warn('sets.Midcast.BlueMagic.Buff not found!')
                             end
                         elseif BlueTank:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Enmity then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Enmity)
-                                info('Blue Enmity set')
                             else
                                 warn('sets.Midcast.BlueMagic.Enmity not found!')
                             end
                         elseif BlueHealing:contains(spell.english) then
                             if sets.Midcast.BlueMagic.Healing then
                                 merge_report(built_set, sets.Midcast.BlueMagic.Healing)
-                                info('Blue Cure set')
                             else
                                 warn('sets.Midcast.BlueMagic.Healing not found!')
                             end
                         elseif BlueACC:contains(spell.english) then
                             if sets.Midcast.BlueMagic.ACC then
                                 merge_report(built_set, sets.Midcast.BlueMagic.ACC)
-                                info('Blue Magic Accuracy set')
                             else
                                 warn('sets.Midcast.BlueMagic.ACC not found!')
                             end
-                            -- Default Spell set
-                        else
-                            info('Midcast not set')
                         end
                         if buffactive["Diffusion"] then
                             if sets.Diffusion then
@@ -3558,7 +3487,6 @@ do
                     -- Defined Set
                     if sets.Geomancy[spell.english] then
                         merge_report(built_set, sets.Geomancy[spell.english])
-                        info('[' .. spell.english .. '] Set')
                         -- Indi Equipment
                     elseif Indicolure_List:contains(spell.english) then
                         if sets.Geomancy.Indi then
@@ -3570,8 +3498,6 @@ do
                                 else
                                     warn('sets.Geomancy.Indi.Entrust not found!')
                                 end
-                            else
-                                info('Indicolure set')
                             end
                         else
                             warn('sets.Geomancy.Indi not found!')
@@ -3580,13 +3506,9 @@ do
                     elseif Geomancy_List:contains(spell.english) then
                         if sets.Geomancy.Geo then
                             merge_report(built_set, sets.Geomancy.Geo)
-                            info('Geomancy set')
                         else
                             warn('sets.Geomancy.Geo not found!')
                         end
-                        -- Default set
-                    else
-                        info('Midcast not set')
                     end
                 else
                     warn('sets.Geomancy not found!')
@@ -3600,10 +3522,8 @@ do
                 if not buffactive["Astral Conduit"] then
                     if sets.Midcast[spell.english] then
                         merge_report(built_set, sets.Midcast[spell.english])
-                        info('[' .. spell.english .. '] Set')
                     elseif sets.Midcast.BP then
                         merge_report(built_set, sets.Midcast.BP)
-                        info('Blood Pact Set')
                     else
                         warn('sets.Midcast.BP not found!')
                     end
@@ -3615,7 +3535,6 @@ do
             elseif spell.type == 'Monster' then
                 if sets.Ready then
                     merge_report(built_set, sets.Ready)
-                    info('[Ready] Set')
                 else
                     warn('sets.Ready not found!')
                 end
@@ -3623,11 +3542,9 @@ do
             elseif spell.name == "Elemental Siphon" then
                 if sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
-                    info('[' .. spell.english .. '] Set')
                 else
                     if sets.Midcast.SummoningMagic then
                         merge_report(built_set, sets.Midcast.SummoningMagic)
-                        info('Summoning Magic Set')
                     else
                         warn('sets.Midcast.SummoningMagic not found!')
                     end
@@ -3636,11 +3553,9 @@ do
             elseif spell.type == "SummonerPact" then
                 if sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
-                    info('[' .. spell.english .. '] Set')
                 else
                     if sets.Midcast.Summon then
                         merge_report(built_set, sets.Midcast.Summon)
-                        info('Summon Magic Set')
                     else
                         warn('sets.Midcast.Summon not found!')
                     end
@@ -3738,6 +3653,7 @@ do
     function aftercastequip(spell)
         -- Dont change gear as the pet is still performing an action
         if pet_midaction() then
+            merge_report_begin()
             return
         else
             local built_set = choose_set()
@@ -4379,6 +4295,7 @@ do
 
         --Generate the correct set from the include file and custom function
         local built_set = precastequip(spell)
+        merge_report_flush('precast', spell)
         -- Process a custom set if enabled
         if precast_custom then
             built_set = set_combine(built_set, precast_custom(spell))
@@ -4396,7 +4313,7 @@ do
     function midcast(spell)
         --Generate the correct set from the include file and custom function
         local built_set = midcastequip(spell)
-        merge_report_flush()
+        merge_report_flush('midcast')
         -- Process a custom set if enabled
         if midcast_custom then
             built_set = set_combine(built_set, midcast_custom(spell))
@@ -4438,6 +4355,7 @@ do
         end
         --Generate the correct set from the include file and custom function
         local built_set = aftercastequip(spell)
+        merge_report_flush('aftercast')
         if aftercast_custom then
             built_set = set_combine(built_set, aftercast_custom(spell))
         else
@@ -4607,49 +4525,42 @@ do
         if s_info.equip == "cure_set" then
             if sets.Cure_Received then
                 spell_received_set = sets.Cure_Received
-                info("Cure Received set")
             else
                 warn("sets.Cure_Received not found!")
             end
         elseif s_info.equip == "cursna_set" then
             if sets.Cursna_Received then
                 spell_received_set = sets.Cursna_Received
-                info("Cursna Received set")
             else
                 warn("sets.Cursna_Received not found!")
             end
         elseif s_info.equip == "phalanx_set" then
             if sets.Phalanx_Received then
                 spell_received_set = sets.Phalanx_Received
-                info("Phalanx Received set")
             else
                 warn("sets.Phalanx_Received not found!")
             end
         elseif s_info.equip == "protect_shell_set" then
             if sets.Protect_Shell_Received then
                 spell_received_set = sets.Protect_Shell_Received
-                info("Protect and Shell Received set")
             else
                 warn("sets.Protect_Shell_Received not found!")
             end
         elseif s_info.equip == "regen_set" then
             if sets.Regen_Received then
                 spell_received_set = sets.Regen_Received
-                info("Regen Received set")
             else
                 warn("sets.Regen_Received not found!")
             end
         elseif s_info.equip == "refresh_set" then
             if sets.Refresh_Received then
                 spell_received_set = sets.Refresh_Received
-                info("Refresh Received set")
             else
                 warn("sets.Refresh_Received not found!")
             end
         elseif s_info.equip == "waltz_set" then
             if sets.Waltz_Received then
                 spell_received_set = sets.Waltz_Received
-                info("Waltz Received set")
             else
                 warn("sets.Waltz_Received not found!")
             end
@@ -4658,8 +4569,16 @@ do
         end
 
         if type(spell_received_set) == 'table' then
+            -- Report the chosen set the way a cast does. There is no fallback
+            -- chain here: the set either dresses the slots or nothing does.
             local set_name = SR_SET_NAME[s_info.equip]
-            if set_name then warn_if_empty(spell_received_set, set_name) end
+            if set_name then
+                if warn_if_empty(spell_received_set, set_name) then
+                    info('[' .. set_name .. '][Not Usable] -> nothing to equip.')
+                else
+                    info('[' .. set_name .. '][Used]')
+                end
+            end
             equip(spell_received_set)
             if state.SpellReceived.value == "ON" then
                 --Lock the slots of items from the spell received set to prevent other
@@ -5501,6 +5420,7 @@ do
     -- Diagnostic: classify every gear set, read-only. Usage: gs c checksets
     command_handlers["checksets"] = function(cmd, command)
         invalidate_set_index()
+        reset_set_warnings()
         local gear, empty, undeclared = set_diagnostics()
         info(('Sets with gear: %d.  Engine placeholders left undeclared: %d.'):format(#gear, #undeclared))
         if #empty == 0 then
@@ -6056,6 +5976,7 @@ do
     function sub_job_change(new, old)
         invalidate_layout()
         invalidate_set_index()
+        reset_set_warnings()
         coroutine.schedule(dual_wield_check, 2)
         coroutine.schedule(two_hand_check, 2.1)
         coroutine.schedule(equip_set_command, 2.2)
@@ -6456,3 +6377,4 @@ do
     hoxne.release_tries = 10
     hoxne.release_next  = os.clock() + 3
 end
+

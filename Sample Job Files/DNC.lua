@@ -1,6 +1,7 @@
 -- Salidar
 
 -- Load and initialize the include file.
+include('GearSets-Include')
 include('Mirdain-Include')
 
 --Set to ingame lockstyle and Macro Book/Set
@@ -35,68 +36,68 @@ function get_sets()
 	sets.Weapons = {}
 	sets.Weapons['Terpsichore'] = {}
 	sets.Weapons['Twashtar'] = {}
-	sets.Weapons['Aeneas'] = {main="Aeneas", sub="Gleti's Knife",}
-	sets.Weapons['Karambit'] = {main="Karambit",}
+	sets.Weapons['Aeneas'] = {main=gear.aeneas, sub=gear.gleti,}
+	sets.Weapons['Karambit'] = {main=gear.karambit,}
 
 	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {}
 
 	sets.Idle.DT = {
-		ammo="Staunch Tathlum +1",
-    	head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
-    	neck={ name="Loricate Torque +1", augments={'Path: A',}},
-    	waist="Flume Belt +1",
-    	left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-    	right_ear="Infused Earring",
-    	left_ring="Chirich Ring +1",
-    	right_ring="Chirich Ring +1",
-    	back="Sacro Mantle",}
+		ammo=gear.staunchPlusOne,
+    	head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
+    	neck = gear.loricatePlusOne,
+    	waist=gear.flumeBeltPlusOne,
+    	left_ear = gear.odnowaPlusOne,
+    	right_ear=gear.infusedEarring,
+    	left_ring=gear.chirichRingPlusOne,
+    	right_ring=gear.chirichRingPlusOne,
+    	back=gear.sacroMantle,}
 
 	sets.Idle.TP = {
-		ammo="Staunch Tathlum +1",
-    	head="Gleti's Mask",
-    	body="Gleti's Cuirass",
-    	hands="Gleti's Gauntlets",
-    	legs="Gleti's Breeches",
-    	feet="Gleti's Boots",
-    	neck={ name="Loricate Torque +1", augments={'Path: A',}},
-    	waist="Flume Belt +1",
-    	left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-    	right_ear="Infused Earring",
-    	left_ring="Chirich Ring +1",
-    	right_ring="Chirich Ring +1",
-    	back="Sacro Mantle",}
+		ammo=gear.staunchPlusOne,
+    	head=gear.gletiHead,
+    	body=gear.gletiBody,
+    	hands=gear.gletiHands,
+    	legs=gear.gletiLegs,
+    	feet=gear.gletiFeet,
+    	neck = gear.loricatePlusOne,
+    	waist=gear.flumeBeltPlusOne,
+    	left_ear = gear.odnowaPlusOne,
+    	right_ear=gear.infusedEarring,
+    	left_ring=gear.chirichRingPlusOne,
+    	right_ring=gear.chirichRingPlusOne,
+    	back=gear.sacroMantle,}
 	
 	sets.Idle.SB = sets.Idle.DT
 
 	sets.Idle.Farm = {
-		ammo="Staunch Tathlum +1",
-    	head="Nyame Helm",
-    	body={ name="Nyame Mail", augments={'Path: B',}},
-    	hands="Nyame Gauntlets",
-    	legs="Nyame Flanchard",
-    	feet="Nyame Sollerets",
-    	neck={ name="Unmoving Collar +1", augments={'Path: A',}},
-    	waist="Silver Mog. Belt",
-    	left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-    	right_ear="Tuisto Earring",
-    	left_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-    	right_ring="Moonlight Ring",
-    	back="Moonlight Cape",}
+		ammo=gear.staunchPlusOne,
+    	head=gear.nyameHead,
+    	body = gear.nyameBody,
+    	hands=gear.nyameHands,
+    	legs=gear.nyameLegs,
+    	feet=gear.nyameFeet,
+    	neck = gear.unmovingPlusOne,
+    	waist=gear.silverMoogleBelt,
+    	left_ear = gear.odnowaPlusOne,
+    	right_ear=gear.tuisto,
+    	left_ring = gear.gelatinousPlusOne,
+    	right_ring=gear.moonlightRing,
+    	back=gear.moonlightCape,}
 
-	sets.Movement = {right_ring="Shneddick Ring",}
+	sets.Movement = {right_ring=gear.shneddickRing,}
 
 	--Spell Received Sets
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck="Nicander's Necklace",
-	    left_ring={ name="Eshmun's Ring", bag="wardrobe", priority=2},
-		right_ring={ name="Eshmun's Ring", bag="wardrobe2", priority=1},
-		waist="Gishdubar Sash",
+	    neck=gear.nicander,
+	    left_ring = gear.eshmun1,
+		right_ring = gear.eshmun2,
+		waist=gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -104,75 +105,75 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck="Nicander's Necklace",
+	    neck=gear.nicander,
 	}
 
 	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
 	sets.OffenseMode = {}
 
 	sets.OffenseMode.DT = {
-		ammo="Yamarang",
-		head="Malignance Chapeau",
-		body="Malignance Tabard",
-		hands="Malignance Gloves",
-		legs="Malignance Tights",
-		feet="Malignance Boots",
-		neck="Anu Torque",
-		waist="Reiki Yotai",
-		left_ear="Sherida Earring",
-		right_ear="Telos Earring",
-		left_ring="Moonlight Ring",
-		right_ring="Moonlight Ring",
-		back="Sacro Mantle",
+		ammo=gear.yamarang,
+		head=gear.malignanceHead,
+		body=gear.malignanceBody,
+		hands=gear.malignanceHands,
+		legs=gear.malignanceLegs,
+		feet=gear.malignanceFeet,
+		neck=gear.anu,
+		waist=gear.reiki,
+		left_ear=gear.sherida,
+		right_ear=gear.telos,
+		left_ring=gear.moonlightRing,
+		right_ring=gear.moonlightRing,
+		back=gear.sacroMantle,
 	}
 	--Base TP set to build off
 	sets.OffenseMode.TP = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-    	head={ name="Adhemar Bonnet +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-    	body={ name="Adhemar Jacket +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-    	hands={ name="Adhemar Wrist. +1", augments={'DEX+12','AGI+12','Accuracy+20',}},
-    	legs={ name="Samnuha Tights", augments={'STR+8','DEX+9','"Dbl.Atk."+3','"Triple Atk."+2',}},
-    	feet="Malignance Boots",
-    	neck="Anu Torque",
-    	waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-    	left_ear="Sherida Earring",
-    	right_ear="Telos Earring",
-    	left_ring="Gere Ring",
-    	right_ring="Epona's Ring",
-    	back="Sacro Mantle",
+		ammo = gear.coiste,
+    	head = gear.adhemarHeadPlusOnePathA,
+    	body = gear.adhemarBodyPlusOnePathA,
+    	hands = gear.adhemarHandsPlusOnePathA,
+    	legs = gear.samnuhaTightsDAB,
+    	feet=gear.malignanceFeet,
+    	neck=gear.anu,
+    	waist = gear.sailfi,
+    	left_ear=gear.sherida,
+    	right_ear=gear.telos,
+    	left_ring=gear.gereRing,
+    	right_ring=gear.eponas,
+    	back=gear.sacroMantle,
 	}
 	-- Subtle Blow Cap at 50 and II at 25 for a Total of 75.
 	-- DNC Subtle Blow = 20/50 w/ Traits. Need +30 in Gear for SBI Cap.
 	-- Subtle Blow I: 50/50 | Subtle Blow II:05/25 | DT:50/50 | ACC: High
 	sets.OffenseMode.SB = {
-		ammo="Yamarang",
-    	head="Malignance Chapeau",
-    	body="Malignance Tabard",
-    	hands="Malignance Gloves",
-    	legs="Malignance Tights",
-    	feet="Malignance Boots",
-    	neck="Anu Torque",
-    	waist="Reiki Yotai",
-    	left_ear="Sherida Earring", -- SBII+5
-    	right_ear="Telos Earring",
-    	left_ring="Chirich Ring +1", -- SB+10
-    	right_ring="Chirich Ring +1", -- SB+10
-    	back="Sacro Mantle", -- Ambu Cape has SB+10
+		ammo=gear.yamarang,
+    	head=gear.malignanceHead,
+    	body=gear.malignanceBody,
+    	hands=gear.malignanceHands,
+    	legs=gear.malignanceLegs,
+    	feet=gear.malignanceFeet,
+    	neck=gear.anu,
+    	waist=gear.reiki,
+    	left_ear=gear.sherida, -- SBII+5
+    	right_ear=gear.telos,
+    	left_ring=gear.chirichRingPlusOne, -- SB+10
+    	right_ring=gear.chirichRingPlusOne, -- SB+10
+    	back=gear.sacroMantle, -- Ambu Cape has SB+10
 	}
 	sets.OffenseMode.Farm = {
-		ammo="Staunch Tathlum +1",
-    	head="Nyame Helm",
-    	body={ name="Nyame Mail", augments={'Path: B',}},
-    	hands="Nyame Gauntlets",
-    	legs="Nyame Flanchard",
-    	feet="Nyame Sollerets",
-    	neck={ name="Unmoving Collar +1", augments={'Path: A',}},
-    	waist="Silver Mog. Belt",
-    	left_ear={ name="Odnowa Earring +1", augments={'Path: A',}},
-    	right_ear="Tuisto Earring",
-    	left_ring={ name="Gelatinous Ring +1", augments={'Path: A',}},
-    	right_ring="Moonlight Ring",
-    	back="Moonlight Cape",
+		ammo=gear.staunchPlusOne,
+    	head=gear.nyameHead,
+    	body = gear.nyameBody,
+    	hands=gear.nyameHands,
+    	legs=gear.nyameLegs,
+    	feet=gear.nyameFeet,
+    	neck = gear.unmovingPlusOne,
+    	waist=gear.silverMoogleBelt,
+    	left_ear = gear.odnowaPlusOne,
+    	right_ear=gear.tuisto,
+    	left_ring = gear.gelatinousPlusOne,
+    	right_ring=gear.moonlightRing,
+    	back=gear.moonlightCape,
 	}
 
 	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
@@ -182,14 +183,14 @@ function get_sets()
 
 	sets.Precast = {}
 	sets.Precast.FastCast = {
-		ammo="Sapience Orb",
-		head={ name="Herculean Helm", augments={'"Subtle Blow"+1','STR+3','"Treasure Hunter"+2','Mag. Acc.+10 "Mag.Atk.Bns."+10',}},
-    	hands={ name="Leyline Gloves", augments={'Accuracy+15','Mag. Acc.+15','"Mag.Atk.Bns."+15','"Fast Cast"+3',}},
-    	neck="Baetyl Pendant",
-    	waist="Hachirin-no-Obi",
-    	left_ear="Etiolation Earring",
-    	right_ear="Enchntr. Earring +1",
-    	right_ring="Rahab Ring",
+		ammo=gear.sapience,
+		head = gear.herculeanHelmNuke,
+    	hands = gear.leylineGlovesFCB,
+    	neck=gear.baetylPendant,
+    	waist=gear.hachirinNoObi,
+    	left_ear=gear.etiolation,
+    	right_ear=gear.enchanterEarringPlusOne,
+    	right_ring=gear.rahabRing,
 	}
 	sets.Enmity = {}
 	sets.Midcast = {}
@@ -215,36 +216,36 @@ function get_sets()
 	-------------------------------------------------------------------------------
 	-- Flourishes provide buffs to the Dancer and debuffs to the target monster. --
 	-------------------------------------------------------------------------------
-	sets.Flourish = set_combine(sets.Idle.DT, {head="Nyame Helm",})
+	sets.Flourish = set_combine(sets.Idle.DT, {head=gear.nyameHead,})
 																					-- Flourishes I : Monster Control
 	sets.Flourish["Animated Flourish"] = set_combine(sets.Flourish, sets.Enmity) 	-- Volatile Enmity spike like Provoke
 	sets.Flourish["Desperate Flourish"] = {} 										-- Gravity effect 
 	sets.Flourish["Violent Flourish"] = {} 											-- Stun effect 
 																					-- Flourishes II : Skillchain Enhancers
 	sets.Flourish["Reverse Flourish"] = {} 											-- Returns TP in exchange for Finishing Moves
-	sets.Flourish["Building Flourish"] = {head="Nyame Helm",}						-- Increases the strength of the next Weapon Skill
+	sets.Flourish["Building Flourish"] = {head=gear.nyameHead,}						-- Increases the strength of the next Weapon Skill
 	sets.Flourish["Wild Flourish"] = {}												-- Readies target for Skillchain
 																					-- Flourishes III : Weapon Skill Buffs
 	sets.Flourish["Climactic Flourish"] = {}										-- Forces Critical Hit(s) on the next attack(s) 
-	sets.Flourish["Striking Flourish"] = {head="Nyame Helm",}						-- Forces a Double Attack on the next swing 
+	sets.Flourish["Striking Flourish"] = {head=gear.nyameHead,}						-- Forces a Double Attack on the next swing 
 	sets.Flourish["Ternary Flourish"] = {}											-- Forces a Triple Attack on the next swing
 	-------------------------------------------------------------------------------
 	-- Waltz Potency gear caps at 50%, while Waltz received potency caps at 30%. -- 
 	-------------------------------------------------------------------------------
 	sets.Waltz = {    
-		ammo="Yamarang",
-    	head={ name="Horos Tiara +1", augments={'Enhances "Trance" effect',}},
-    	body="Maxixi Casaque",
-    	hands={ name="Horos Bangles +1", augments={'Enhances "Fan Dance" effect',}},
-    	legs="Dashing Subligar",
-    	feet="Maxixi Toe Shoes",
-    	neck={ name="Unmoving Collar +1", augments={'Path: A',}},
-    	waist="Chaac Belt",
-    	left_ear="Enchntr. Earring +1",
-    	right_ear="Cryptic Earring",
-    	left_ring="Metamorph Ring",
-    	right_ring="Carb. Ring +1",
-    	back="Moonlight Cape",
+		ammo=gear.yamarang,
+    	head = gear.horosHeadPlusOne,
+    	body=gear.maxixiBody,
+    	hands = gear.horosHandsPlusOne,
+    	legs=gear.dashingSubligar,
+    	feet=gear.maxixiFeet,
+    	neck = gear.unmovingPlusOne,
+    	waist=gear.chaac,
+    	left_ear=gear.enchanterEarringPlusOne,
+    	right_ear=gear.crypticEarring,
+    	left_ring=gear.metamorphRing,
+    	right_ring=gear.carbuncleRingPlusOne,
+    	back=gear.moonlightCape,
 	}
 	sets.Waltz["Curing Waltz"] = sets.Waltz
 	sets.Waltz["Curing Waltz II"] = sets.Waltz
@@ -257,7 +258,7 @@ function get_sets()
 	-------------------------------------------------------------------------------
 	---------- Samba duration can be increased using various equipment. -----------
 	-------------------------------------------------------------------------------
-	sets.Samba = set_combine(sets.Idle.DT, {head="Maxixi Tiara",}) --  Missing Ambu Cape for +15
+	sets.Samba = set_combine(sets.Idle.DT, {head=gear.maxixiHead,}) --  Missing Ambu Cape for +15
 	
 	sets.Samba["Haste Samba"] = {}
 	sets.Samba["Aspir Samba"] = {}
@@ -268,7 +269,7 @@ function get_sets()
 	-------------------------------------------------------------------------------
 	----------- Jigs duration can be increased using various equipment. ----------- 
 	-------------------------------------------------------------------------------
-	sets.Jig = set_combine(sets.Idle.DT, {feet="Maxixi Toe Shoes",}) -- Horos Tights +3 and Maxixi Toe Shoes +3
+	sets.Jig = set_combine(sets.Idle.DT, {feet=gear.maxixiFeet,}) -- Horos Tights +3 and Maxixi Toe Shoes +3
 
 	sets.Jig["Spectral Jig"] = sets.Jig
 	sets.Jig["Chocobo Jig"] = sets.Jig
@@ -280,19 +281,19 @@ function get_sets()
 	----------------------------- merits, and Presto. -----------------------------
 	-------------------------------------------------------------------------------
 	sets.Step = {
-		ammo="Yamarang",
-    	head="Malignance Chapeau",
-    	body="Malignance Tabard",
-    	hands="Malignance Gloves",
-    	legs="Malignance Tights",
-    	feet="Malignance Boots",
-    	neck="Etoile Gorget +1",
-    	waist="Reiki Yotai",
-    	left_ear="Odr Earring",
-    	right_ear="Telos Earring",
-    	left_ring="Chirich Ring +1",
-    	right_ring="Chirich Ring +1",
-    	back="Sacro Mantle",
+		ammo=gear.yamarang,
+    	head=gear.malignanceHead,
+    	body=gear.malignanceBody,
+    	hands=gear.malignanceHands,
+    	legs=gear.malignanceLegs,
+    	feet=gear.malignanceFeet,
+    	neck=gear.etoileGorgetPlusOne,
+    	waist=gear.reiki,
+    	left_ear=gear.odr,
+    	right_ear=gear.telos,
+    	left_ring=gear.chirichRingPlusOne,
+    	right_ring=gear.chirichRingPlusOne,
+    	back=gear.sacroMantle,
 	}
 	
 	sets.JA["Quickstep"] = sets.Step
@@ -302,19 +303,19 @@ function get_sets()
 
 	--Default WS set base
 	sets.WS = {
-		ammo={ name="Coiste Bodhar", augments={'Path: A',}},
-		head={ name="Nyame Helm", augments={'Path: B',}},
-		body={ name="Nyame Mail", augments={'Path: B',}},
-		hands={ name="Nyame Gauntlets", augments={'Path: B',}},
-		legs={ name="Nyame Flanchard", augments={'Path: B',}},
-		feet={ name="Nyame Sollerets", augments={'Path: B',}},
-    	neck="Anu Torque",
-    	waist={ name="Sailfi Belt +1", augments={'Path: A',}},
-    	left_ear="Sherida Earring",
-    	right_ear={ name="Moonshade Earring", augments={'Attack+4','TP Bonus +250',}},
-    	left_ring="Gere Ring",
-    	right_ring="Epona's Ring",
-    	back="Sacro Mantle",
+		ammo = gear.coiste,
+		head = gear.nyameHead,
+		body = gear.nyameBody,
+		hands = gear.nyameHands,
+		legs = gear.nyameLegs,
+		feet = gear.nyameFeet,
+    	neck=gear.anu,
+    	waist = gear.sailfi,
+    	left_ear=gear.sherida,
+    	right_ear = gear.moonshadeEarringBAtt,
+    	left_ring=gear.gereRing,
+    	right_ring=gear.eponas,
+    	back=gear.sacroMantle,
 	}
 
 	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
@@ -331,32 +332,32 @@ function get_sets()
 	sets.WS["Dancing Edge"] = {}
 	sets.WS["Shark Bite"] = {}
 	sets.WS["Evisceration"] = {
-		ammo="Ginsen",
-		head={ name="Blistering Sallet +1", augments={'Path: A',}},
-    	body="Gleti's Cuirass",
-    	hands="Gleti's Gauntlets",
-    	legs="Gleti's Breeches",
-    	feet="Gleti's Boots",
-		neck="Fotia Gorget",
-		waist="Fotia Belt",
-		left_ear="Sherida Earring",
-		right_ear="Odr Earring",
-		left_ring="Regal Ring",
-		right_ring="Epona's Ring",}
+		ammo=gear.ginsen,
+		head = gear.blisteringSalletPlusOne,
+    	body=gear.gletiBody,
+    	hands=gear.gletiHands,
+    	legs=gear.gletiLegs,
+    	feet=gear.gletiFeet,
+		neck=gear.fotiaNeck,
+		waist=gear.fotiaWaist,
+		left_ear=gear.sherida,
+		right_ear=gear.odr,
+		left_ring=gear.regalRing,
+		right_ring=gear.eponas,}
 	sets.WS["Aeolian Edge"] = {
-		ammo="Yamarang",
-    	head="Nyame Helm",
-    	body={ name="Nyame Mail", augments={'Path: B',}},
-    	hands="Nyame Gauntlets",
-    	legs="Nyame Flanchard",
-    	feet="Nyame Sollerets",
-    	neck="Baetyl Pendant",
-    	waist="Fotia Belt",
-   		left_ear={ name="Moonshade Earring", augments={'Attack+4','TP Bonus +250',}},
-    	right_ear="Friomisi Earring",
-    	left_ring="Regal Ring",
-    	right_ring="Ilabrat Ring",
-    	back="Sacro Mantle",}
+		ammo=gear.yamarang,
+    	head=gear.nyameHead,
+    	body = gear.nyameBody,
+    	hands=gear.nyameHands,
+    	legs=gear.nyameLegs,
+    	feet=gear.nyameFeet,
+    	neck=gear.baetylPendant,
+    	waist=gear.fotiaWaist,
+   		left_ear = gear.moonshadeEarringBAtt,
+    	right_ear=gear.friomisi,
+    	left_ring=gear.regalRing,
+    	right_ring=gear.ilabrat,
+    	back=gear.sacroMantle,}
 	sets.WS["Rudra's Storm"] = {}
 
 	-- Hand to Hand WS
@@ -370,9 +371,9 @@ function get_sets()
 	sets.WS["Tornado Kick"] = {} 	-- Must Sub MNK
 
 	sets.TreasureHunter = {
-		head={ name="Herculean Helm", augments={'"Subtle Blow"+1','STR+3','"Treasure Hunter"+2','Mag. Acc.+10 "Mag.Atk.Bns."+10',}}, 
-		legs={ name="Herculean Trousers", augments={'Enmity-2','Pet: Haste+3','"Treasure Hunter"+1','Accuracy+9 Attack+9',}},
-		waist="Chaac Belt",}
+		head = gear.herculeanHelmNuke, 
+		legs = gear.herculeanTrousersAccEnmityDown,
+		waist=gear.chaac,}
 end
 
 -------------------------------------------------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 # Mirdain-Include Enhanced by Rahvin
 
-**Version 1.7.0** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 1.7.1** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
-Enhanced version of Mirdain-Include, created by Rahvin. Check your running version in game with `//gs c version`.
+Enhanced version of Mirdain-Include, created by Rahvin. Everything from 1.6.0 forward is Rahvin's work; credit to Mirdain for the original concept and scaffolding. Check your running version in game with `//gs c version`.
 
 ---
 
@@ -17,23 +17,26 @@ Enhanced version of Mirdain-Include, created by Rahvin. Check your running versi
 7. [Commands](#7-commands)
 8. [Job File Settings](#8-job-file-settings)
 9. [Gear Sets Reference](#9-gear-sets-reference)
-10. [Automatic Engine Checks](#10-automatic-engine-checks)
-11. [Action and Spell Tracking](#11-action-and-spell-tracking)
-12. [Customization Hooks](#12-customization-hooks)
-13. [Troubleshooting](#13-troubleshooting)
+10. [The Gear Library (GearSets-Include)](#10-the-gear-library-gearsets-include)
+11. [Automatic Engine Checks](#11-automatic-engine-checks)
+12. [Action and Spell Tracking](#12-action-and-spell-tracking)
+13. [Customization Hooks](#13-customization-hooks)
+14. [Troubleshooting](#14-troubleshooting)
 
 ---
 
-# New in 1.7.0
+# New in 1.7
 
-The first public release since 1.6.5, and it carries the 1.6.6 work with it. Nothing here requires a change to your job files — every existing job file, custom command and keybind keeps working as-is.
+What the 1.7 line adds over 1.6.5, including the 1.6.6 work that shipped inside 1.7.0. Nothing here requires a change to your job files — every existing job file, custom command and keybind keeps working as-is.
+
+Release-by-release detail, back to the original, is in [PATCH NOTES.md](PATCH%20NOTES.md).
 
 ## Performance Simulation Results
 
 Measured, not guessed: a simulated Dynamis Divergence alliance fight — a six-client multibox party inside an 18-player alliance with a full mob wave, every entity acting every one to three seconds — puts this engine and the original Mirdain-Include 1.5.12 side by side on identical timelines.
 
-- **1.7.0 runs at roughly 70% of 1.5.12's CPU cost and 72% of its allocation rate**, with Hoxne, spell-received tracking, enchanted-item automation and the gear diagnostics all running. With every chat channel on, 1.7.0 costs what 1.5.12 costs running silent.
-- **Frame rate is never at risk from the engine.** The worst single frame in twenty minutes of simulated combat is about 1% of a 60 fps frame budget on 1.5.12, and about half that on 1.7.0. Both engines together, across all six clients, use under 0.03% of one CPU core.
+- **1.7 runs at roughly 70% of 1.5.12's CPU cost and 72% of its allocation rate**, with Hoxne, spell-received tracking, enchanted-item automation and the gear diagnostics all running. With every chat channel on, it costs what 1.5.12 costs running silent.
+- **Frame rate is never at risk from the engine.** The worst single frame in twenty minutes of simulated combat is about 1% of a 60 fps frame budget on 1.5.12, and about half that on 1.7. Both engines together, across all six clients, use under 0.03% of one CPU core.
 - **Chat volume is the one load that scales with settings rather than engine**: with every channel on, six clients emit about 1,400 lines a minute; with chat off, effectively none. For long fights, keep `debug` off — it is worth three orders of magnitude more rendered chat than any other choice.
 
 The full write-up — per-cast costs, frame-budget analysis, allocation, chat volume, and methodology — is in the repository at https://github.com/RahvinCode/Gearswap/blob/master/Performance%20Impact%20Report.md
@@ -58,11 +61,19 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 
 - **`gs c tomahawk` and `gs c angon`** equip the throwing item, then use the ability on your target. Use these in macros in place of a raw `/ja` line, which the game refuses while the item is not worn. The ability's recast is checked before any gear moves.
 
-#### Gear diagnostics
+#### Gear reporting and diagnostics
 
-- **A cast that finds no gear says so**, naming the set and why: `[sets.Midcast.Cure] not found!` if you never declared it, `[sets.Midcast.Regen] is empty!` if you declared it and left it bare.
-- **`gs c checksets`** audits a job file: how many sets carry gear, how many engine sets you never declared, and — named individually — any set you declared but left empty.
-- **`gs c gearreporting`** traces which set each cast actually used, and the whole fallback path when the set it reached for was bare. Off by default.
+- **Every action names the set it used**, on the info channel: `[sets.Midcast.Cure][Used]`. When the set it reached for holds nothing, the same line shows both ends of the fallback: `[sets.Midcast.Cure][Not Usable] -> [sets.Midcast][Used]`.
+- **Everything reports, not just spells.** Job abilities, weaponskills, stratagems, Corsair rolls and shots, Dancer steps, Waltzes, Runes and item uses each report at the point their gear is chosen — one line per action, whatever the action is. Gear equipped for an incoming spell reports the same way.
+- **A set that holds no gear is named, with the reason**: `[sets.Midcast.Cure] not found!` if you never declared it, `[sets.Midcast.Regen] is empty!` if you declared it and left it bare.
+- **Warnings stay readable in a long fight.** Each set warns at most once a minute and says so — `Silencing warnings for 60s` — and when it speaks again it reports what it held back, `(4 silenced since the last)`, so quiet never means fixed.
+- **`gs c checksets`** audits a job file: how many sets carry gear, how many engine sets you never declared, and — named individually — any set you declared but left empty. It also clears the warning silences.
+- **`gs c gearreporting`** traces precast, midcast and aftercast, one labelled line each, including the whole fallback path when a set was bare. Off by default.
+
+#### Healing magic
+
+- **Raise, Arise, Reraise, the -na spells, Esuna and Sacrifice** use `sets.Midcast.Enhancing`.
+- **Cursna has its own set**, `sets.Midcast.Cursna`, layered over `sets.Midcast.Enhancing` — declare either, both, or neither.
 
 #### The status box
 
@@ -77,7 +88,16 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - Item names that contain command words — `gs c use hoxne ampulla` — reach the right command.
 - A use that succeeds is not reported as "not accepted".
 - Slots left locked by a previous load are released at startup.
-- Sample job files for all 22 jobs are included. is in the repository at https://github.com/RahvinCode/Gearswap/blob/master/Performance%20Impact%20Report.md
+- Reporting covers every set the engine can choose, including sets your job file leaves undeclared, and names the set that actually dressed you.
+- Weaponskill chat shows the Aftermath tier and ammunition count alongside the set line, rather than folded into it.
+- Blindna is recognised by the precast healing-magic set.
+- Blue magic precast reads `sets.Precast.BlueMagic`. If your job file declares `sets.Precast.Blue_Magic`, rename it — the underscored spelling is inert.
+- Sample job files for all 22 jobs are included.
+
+#### If you see warnings you do not want
+
+A warning means a set **exists and is empty**, not that a set is missing — the engine never asks for a set you have not declared. To silence one for an ability you do not want special gear for, delete the `sets.JA["Name"] = {}` line rather than leaving it blank; put gear in `sets.JA` to cover everything you have not given a specific set. `gs c checksets` lists every empty set at once, and `gs c warn` turns the channel off entirely.
+
 ---
 # Mirdain Gearswap Enhanced by Rahvin User Manual
 
@@ -94,7 +114,7 @@ If you have never used GearSwap before: you only need to fill in gear sets in yo
 ## 2. Installation
 
 1. Install Windower 4 and enable the **GearSwap** addon.
-2. Copy `Mirdain-Include.lua` into:
+2. Copy `Mirdain-Include.lua` and `GearSets-Include.lua` into:
    ```
    Windower4/addons/GearSwap/data/
    ```
@@ -109,17 +129,20 @@ If you have never used GearSwap before: you only need to fill in gear sets in yo
 
 Verify it worked by typing `//gs c version` — you should see the include version echoed back.
 
-> **Upgrading?** Replace `Mirdain-Include.lua` only. Your job files are yours and are not overwritten. If you are upgrading from 1.5.X to any later version, delete the settings.xml file within Windower4/addons/GearSwap/data and reload GearSwap in game with `lua r gearswap`
+> **Upgrading?** Replace `Mirdain-Include.lua` and `GearSets-Include.lua` only. Your job files are yours and are not overwritten. If you are upgrading from 1.5.X to any later version, delete the settings.xml file within Windower4/addons/GearSwap/data and reload GearSwap in game with `lua r gearswap`
 
 ---
 
 ## 3. How It Works
 
-Every job file begins by loading the engine:
+Every job file begins by loading the gear library and the engine:
 
 ```lua
+include('GearSets-Include')
 include('Mirdain-Include')
 ```
+
+The gear library is a catalogue of items with swap priorities — see [The Gear Library](#10-the-gear-library-gearsets-include). The engine is everything else below.
 
 From that point the engine drives everything, calling into your job file at specific moments. The flow for any action looks like this:
 
@@ -139,9 +162,9 @@ You press a macro
    aftercast ──► engine returns you to idle or melee gear
 ```
 
-At each step the engine builds a gear set from its own rules, then calls **your** matching `_custom` function so you can add or override anything. See [Customization Hooks](#12-customization-hooks).
+At each step the engine builds a gear set from its own rules, then calls **your** matching `_custom` function so you can add or override anything. See [Customization Hooks](#13-customization-hooks).
 
-Separately, a background loop (the "engine") runs about ten times a second to handle things that are not tied to an action — movement gear, auto-buffing, weapon checks. See [Automatic Engine Checks](#10-automatic-engine-checks).
+Separately, a background loop (the "engine") runs about ten times a second to handle things that are not tied to an action — movement gear, auto-buffing, weapon checks. See [Automatic Engine Checks](#11-automatic-engine-checks).
 
 ---
 
@@ -277,7 +300,7 @@ When on, the engine checks roughly ten times a second whether you are missing a 
 - **Options:** `OFF` `ON`
 - **Command:** `//gs c AutoBuff ON`
 - Automatically switched **off** when you zone.
-- What gets buffed is defined by you — see [`check_buff_JA` / `check_buff_SP`](#12-customization-hooks).
+- What gets buffed is defined by you — see [`check_buff_JA` / `check_buff_SP`](#13-customization-hooks).
 
 ### SpellReceived — multibox spell-received gear
 
@@ -516,12 +539,12 @@ These answer questions about what the engine is doing. All are safe to run at an
 
 | Command | Description |
 |---|---|
-| `gs c checksets` | Audit your job file: how many sets carry gear, how many you never declared, and which declared sets are empty |
-| `gs c gearreporting` | Toggle a running trace of which set each cast used, and what it fell back through |
+| `gs c checksets` | Audit your job file: how many sets carry gear, how many you never declared, and which declared sets are empty. Also clears warning silences |
+| `gs c gearreporting` | Toggle a running trace of precast, midcast and aftercast, and what each fell back through |
 | `gs c enchinfo <item>` | Print an enchanted item's live charges, equip delay and cooldown |
 | `gs c hoxneinfo` | Print what the Hoxne subsystem sees: mode, slots, buff, cooldown, retries |
 | `gs c warn` | Toggle warnings about sets that hold no gear |
-| `gs c info` | Toggle informational messages (skillchains, set changes) |
+| `gs c info` | Toggle informational messages, including the set each action wears |
 | `gs c debug` | Toggle the debug box and verbose engine logging |
 
 **`gs c checksets`** is the one to run after writing a job file. It separates a set you never declared from one you declared and left empty — the second is almost always a set you meant to fill in:
@@ -532,14 +555,31 @@ Sets with gear: 63.  Engine placeholders left undeclared: 88.
 Declared [Empty] sets: sets.Midcast.Enhancing, sets.Precast.Enhancing
 ```
 
-**`gs c gearreporting`** answers "which set did that cast actually use?" A successful cast names the set it wore; a cast whose set held nothing traces the whole fallback path:
+Running it also clears any warning silences, so the next use of each set reports again.
+
+**The three channels answer three different questions.** Leave `info` on for a running commentary, `warn` on to hear only about problems, and turn `gearreporting` on when you want to see why:
 
 ```
-Using sets.Midcast.Curaga [Filled]
+info   [sets.Midcast.Cure][Used]
+info   [sets.Midcast.Curaga][Not Usable] -> [sets.Midcast][Used]
+warn   [sets.Midcast.Curaga] is empty!  Silencing warnings for 60s.
+```
+
+**`gs c gearreporting`** answers "why that set?" It traces all three phases of a swap, and the whole fallback path when a set it reached for was bare:
+
+```
+Precast: Using sets.Precast.Cure [Filled]
 Attempted to use sets.Midcast.Regen [Empty] falling back -> Using sets.Midcast [Filled]
+Aftercast: Using sets.OffenseMode.DT [Filled]
 ```
 
-It is off by default, and worth turning off again once you have your answer — it prints a line for every cast.
+It is off by default, and worth turning off again once you have your answer — it prints three lines for every action.
+
+**Warnings silence themselves per set** for 60 seconds so a long fight stays readable, and tell you when they do. A set that speaks again reports what it held back:
+
+```
+[sets.JA.Light Arts] is empty!  Silencing warnings for 60s (4 silenced since the last).
+```
 
 **`gs c enchinfo <item>`** shows why an item use is waiting:
 
@@ -664,9 +704,10 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Precast` | Base precast |
 | `sets.Precast.FastCast` | Magic precast |
 | `sets.Precast.Cure` | Cure precast |
+| `sets.Precast.Healing` | Precast for Raise, Reraise, the -na spells, Esuna and Sacrifice |
 | `sets.Precast.Enhancing` | Enhancing magic precast |
 | `sets.Precast.Utsusemi` | Utsusemi precast |
-| `sets.Precast.Blue_Magic` | Blue magic precast |
+| `sets.Precast.BlueMagic` | Blue magic precast |
 | `sets.Precast.Songs` | Song precast |
 | `sets.Precast.RA` | Ranged attack precast (Snapshot) |
 | `sets.Precast.RA.Flurry` / `.Flurry_II` | With Flurry active |
@@ -692,8 +733,9 @@ All sets go inside `function get_sets()` in your job file.
 | Set | When used |
 |---|---|
 | `sets.Midcast.Cure` / `.Curaga` / `.Cura` | Cure family |
+| `sets.Midcast.Cursna` | Cursna, layered over `sets.Midcast.Enhancing` |
 | `sets.Midcast.Regen` / `.Refresh` | Regen and Refresh |
-| `sets.Midcast.Enhancing` | Base enhancing magic |
+| `sets.Midcast.Enhancing` | Base enhancing magic. Also used by Raise, Arise, Reraise, the -na spells, Esuna and Sacrifice |
 | `sets.Midcast.Enhancing.Others` | Cast on party members |
 | `sets.Midcast.Enhancing.Skill` | Skill-scaling buffs (Temper, En-spells, Boost-*) |
 | `sets.Midcast.Enhancing.Elemental` | Barfire, Barblizzard, … |
@@ -757,7 +799,74 @@ Only needed if you use `SpellReceived`.
 
 ---
 
-## 10. Automatic Engine Checks
+## 10. The Gear Library (GearSets-Include)
+
+`GearSets-Include.lua` is a companion library of pre-built item entries. Instead of typing item names into your sets, you reference entries by key:
+
+```lua
+sets.Idle = {
+    head = gear.nyameHead,
+    body = gear.sakpataBody,
+    left_ring = gear.moonlightRing,
+    right_ring = gear.gelatinousPlusOne,
+}
+```
+
+Every entry carries the item's name, any augments, an optional wardrobe pin, and a **priority** — and the priority is the point of the whole system.
+
+### Why priorities matter
+
+When GearSwap performs a rapid chain of swaps — precast, midcast, aftercast, back to idle — your maximum HP and MP are gated to the **lowest combined total that occurs at any moment during the chain**. Equip low-HP gear before high-HP gear and your max HP dips mid-swap; the game clamps you to that dip, and the loss endures after the swap completes.
+
+GearSwap equips the pieces of a set in priority order, highest first. The library sets each item's priority to its total HP (including augments), so higher-HP gear always lands first and the dip never happens: max HP rises before it falls, and you keep the highest enduring HP and MP through every swap chain.
+
+**This strategy has been through extensive in-game testing by Rahvin.** Side-by-side comparison against unprioritized swapping shows prioritized swaps reliably preserving higher enduring HP and MP. A third strategy — computing the HP delta between the incoming set and the gear currently worn, and prioritizing by that delta — was also built and tested, and it performed markedly worse in practice: lower HP at aftercast, plus heavy calculation cost at load and cast time. Raw total-HP priorities win on both reliability and cost, which is why the library uses them.
+
+Items with MP but no HP get a small priority (scaled 1–10) so they sort below anything carrying real HP. Weapons mostly use **ordering tokens** instead of HP: a main-hand weapon's priority is set high enough that it always equips before any offhand, which forces the offhand slot to empty and be available when you switch between one-handed and two-handed weapon sets.
+
+### Using it in your job file
+
+The library loads with one line at the top of your job file (the samples already have it):
+
+```lua
+include('GearSets-Include')
+include('Mirdain-Include')
+```
+
+Then use `gear.<key>` anywhere you would write an item name. Plain item-name strings still work everywhere — they just swap without a priority.
+
+### Finding the key you need
+
+Keys follow consistent conventions:
+
+| Kind of item | Convention | Examples |
+|---|---|---|
+| Ordinary gear | Item name in camelCase | `gear.moonlightRing`, `gear.warderCharm` |
+| Quality tiers | `PlusOne` … `PlusFour` spelled out | `gear.odnowaPlusOne`, `gear.reverenceBodyPlusFour` |
+| AF / Relic / Empyrean | Family + slot + tier | `gear.ebersHeadPlusThree`, `gear.agogeBody` |
+| Escha sets with Nolan paths | Name + slot + path letter | `gear.souveranHeadPlusOnePathC`, `gear.amalricHandsPathD` |
+| JSE back capes | Job + purpose | `gear.rngSnapshot`, `gear.drkFC`, `gear.corWSD` |
+| Wardrobe copies of one item | Number for the wardrobe | `gear.rostam1` (Wardrobe), `gear.rostam2` (Wardrobe 2) |
+
+The library covers the full Artifact, Relic and Empyrean catalogue for every job (original era and all reforge tiers), every Nolan augment path for the Escha and Geas Fete sets at maximum rank, and the endgame gear the sample files reference. Each entry carries an inline comment with the item's highlight stats, and armor set categories note their set bonus.
+
+Duplicate copies of one item (rings especially) are separate entries pinned to different wardrobes, which is the reliable way to equip both copies at once — ask for `gear.chirich1` and `gear.chirich2` rather than the same name twice.
+
+### Adding your own entries
+
+Three builders are available after the include line, so you can define personal items in your job file the same way the library does:
+
+```lua
+gear.myCape = hp_gear("Aptitude Mantle +1", 0)              -- priority = total HP
+gear.myOrb  = mp_gear("Sapience Orb", 0)                    -- MP-only item
+gear.mySword = rank_gear("Excalibur", 101)                  -- ordering token, not HP
+```
+
+Give an augmented item its `augments` list in a third argument, exactly as `//gs export` prints it, and the entry will match only that copy.
+
+---
+
+## 11. Automatic Engine Checks
 
 These run without you asking. Most produce a chat message explaining what happened.
 
@@ -810,7 +919,7 @@ Sleep and Doom locks are released automatically when the status wears off.
 
 ---
 
-## 11. Action and Spell Tracking
+## 12. Action and Spell Tracking
 
 ### Treasure Hunter tracking
 
@@ -836,7 +945,7 @@ A failsafe timer releases any locked gear if a completion message never arrives,
 
 ---
 
-## 12. Customization Hooks
+## 13. Customization Hooks
 
 The engine builds a gear set, then calls your function and merges whatever you return. Define only the hooks you need — the engine will tell you which are missing when `warn` is on.
 
@@ -936,18 +1045,18 @@ jobsetup(LockStylePallet, MacroBook, MacroSet)
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### A set warning in chat
 
-Two messages mean a cast reached for gear and found none:
+Two messages mean an action reached for gear and found none:
 
 ```
-[sets.Midcast.Cure] not found!  Use gs c gearreporting to trace fallback pattern.
-[sets.Midcast.Regen] is empty!  Use gs c gearreporting to trace fallback pattern.
+[sets.Midcast.Cure] not found!  Use gs c gearreporting to trace fallback pattern.  Silencing warnings for 60s.
+[sets.Midcast.Regen] is empty!  Silencing warnings for 60s.
 ```
 
-**"not found!"** means your job file never declared that set. If the spell should have its own gear, add it in `get_sets()`. If it should not, nothing is wrong — the cast used a more general set instead, and `gs c gearreporting` will show you which one.
+**"not found!"** means your job file never declared that set. If the action should have its own gear, add it in `get_sets()`. If it should not, nothing is wrong — a more general set dressed you instead, and the info line names which one.
 
 **"is empty!"** means you declared the set but it holds no gear. This is the one that usually indicates a mistake, and the most common cause is building a set from a parent that is itself empty:
 
@@ -956,7 +1065,11 @@ sets.Midcast.Enhancing = {}                                    -- nothing in her
 sets.Midcast.Aquaveil = set_combine(sets.Midcast.Enhancing, {}) -- so nothing here either
 ```
 
-Run **`gs c checksets`** to see every such set in one list. To silence a set you deliberately leave bare, delete the declaration rather than emptying it — an undeclared set merges silently, an empty declared one is reported.
+Run **`gs c checksets`** to see every such set in one list.
+
+**Each set warns at most once a minute**, and says so, so a long fight stays readable. When the same set speaks again it reports what it held back — `(4 silenced since the last)`. The trace hint appears on the first warning after a load, not on every one. `gs c checksets` clears the silences if you want everything reported again immediately.
+
+**To stop a warning for a set you deliberately leave bare, delete the declaration rather than emptying it.** The engine never asks for a set you have not declared, so `sets.JA["Light Arts"] = {}` is noisier than no line at all: deleting it moves the report up to `sets.JA`, which collapses many per-ability warnings into one. Put gear in `sets.JA` and it goes quiet entirely, while the info line still confirms what you wore. Note this works for ability and named-spell sets, which are yours to declare; the engine's own category sets — `sets.Midcast.Cure` and the like — always exist, so for those the answer is gear or `gs c warn`.
 
 A third message, `Chosen set is [Empty]`, means no set at all produced gear for your current state. It repeats at most once every 30 seconds.
 
