@@ -24,17 +24,7 @@ Enhanced version of Mirdain-Include, created by Rahvin. Check your running versi
 
 ---
 
-## 1. What This Is
-
-GearSwap is a Windower addon that changes your equipment automatically as you play. Normally you would write all of that swapping logic yourself, for every job. This suite does it for you.
-
-**Mirdain-Include.lua** is the engine. It contains all the rules: which gear to wear while idle, while fighting, while casting, while moving, and so on. It is the same file for every job and you should not need to edit it.
-
-**Job files** (`WAR.lua`, `WHM.lua`, `BLM.lua`, …) are yours. They contain your gear, your modes, and your preferences. You will spend all of your time in these.
-
-If you have never used GearSwap before: you only need to fill in gear sets in your job file. The engine handles the rest.
-
-### New in 1.7.0
+# New in 1.7.0
 
 The first public release since 1.6.5, and it carries the 1.6.6 work with it. Nothing here requires a change to your job files — every existing job file, custom command and keybind keeps working as-is.
 
@@ -89,6 +79,17 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - Slots left locked by a previous load are released at startup.
 - Sample job files for all 22 jobs are included. is in the repository at https://github.com/RahvinCode/Gearswap/blob/master/Performance%20Impact%20Report.md
 ---
+# Mirdain Gearswap Enhanced by Rahvin User Manual
+
+## 1. What This Is
+
+GearSwap is a Windower addon that changes your equipment automatically as you play. Normally you would write all of that swapping logic yourself, for every job. This suite does it for you.
+
+**Mirdain-Include.lua** is the engine. It contains all the rules: which gear to wear while idle, while fighting, while casting, while moving, and so on. It is the same file for every job and you should not need to edit it.
+
+**Job files** (`WAR.lua`, `WHM.lua`, `BLM.lua`, …) are yours. They contain your gear, your modes, and your preferences. You will spend all of your time in these.
+
+If you have never used GearSwap before: you only need to fill in gear sets in your job file. The engine handles the rest.
 
 ## 2. Installation
 
