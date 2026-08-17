@@ -1,7 +1,7 @@
 # Mirdain Gearswap Enhanced by Rahvin
 ## Now including GearSets-Include by Rahvin
 
-**Version 1.7.1** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 1.7.2** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
 Enhanced version of Mirdain-Include, created by Rahvin. Everything from 1.6.0 forward is Rahvin's work; credit to Mirdain for the original concept and scaffolding. Check your running version in game with `//gs c version`.
 
@@ -28,7 +28,7 @@ Enhanced version of Mirdain-Include, created by Rahvin. Everything from 1.6.0 fo
 
 # New in 1.7
 
-What the 1.7 line adds over 1.6.5, including the 1.6.6 work that shipped inside 1.7.0. Nothing here requires a change to your job files — every existing job file, custom command and keybind keeps working as-is.
+What the 1.7 line adds over 1.6.5, including the 1.6.6 work that shipped inside 1.7.0. Every existing job file, custom command and keybind keeps working as-is; a few improvements live in the sample job files and take effect in your own only if you copy them — the **Notices** in [PATCH NOTES.md](PATCH%20NOTES.md) list those.
 
 Release-by-release detail, back to the original, is in [PATCH NOTES.md](PATCH%20NOTES.md).
 
@@ -65,7 +65,7 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 #### Gear reporting and diagnostics
 
 - **Every action names the set it used**, on the info channel: `[sets.Midcast.Cure][Used]`. When the set it reached for holds nothing, the same line shows both ends of the fallback: `[sets.Midcast.Cure][Not Usable] -> [sets.Midcast][Used]`.
-- **Everything reports, not just spells.** Job abilities, weaponskills, stratagems, Corsair rolls and shots, Dancer steps, Waltzes, Runes and item uses each report at the point their gear is chosen — one line per action, whatever the action is. Gear equipped for an incoming spell reports the same way.
+- **Everything reports, not just spells.** Job abilities, weaponskills, stratagems, Corsair rolls and shots, Dancer steps, Waltzes, Runes, item uses, bard songs and pet actions — a wyvern breath or blood pact reports `[sets.Pet_Midcast.Flame Breath][Used]` — each report at the point their gear is chosen — one line per action, whatever the action is. Gear equipped for an incoming spell reports the same way.
 - **A set that holds no gear is named, with the reason**: `[sets.Midcast.Cure] not found!` if you never declared it, `[sets.Midcast.Regen] is empty!` if you declared it and left it bare.
 - **Warnings stay readable in a long fight.** Each set warns at most once a minute and says so — `Silencing warnings for 60s` — and when it speaks again it reports what it held back, `(4 silenced since the last)`, so quiet never means fixed.
 - **`gs c checksets`** audits a job file: how many sets carry gear, how many engine sets you never declared, and — named individually — any set you declared but left empty. It also clears the warning silences.
@@ -93,7 +93,16 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - Weaponskill chat shows the Aftermath tier and ammunition count alongside the set line, rather than folded into it.
 - Blindna is recognised by the precast healing-magic set.
 - Blue magic precast reads `sets.Precast.BlueMagic`. If your job file declares `sets.Precast.Blue_Magic`, rename it — the underscored spelling is inert.
+- A macro aimed at an open subtarget cursor — `/ma "Cure IV" <stpt>`, `/ws "Aeolian Edge" <stnpc>` — completes without a Lua error.
+- Geo-Refresh wears `sets.Geomancy.Geo`; Breakga and Bindga wear the enfeebling duration set.
+- Every castable bard song has a family set — Fugue, Hum, Hymnus, Virelai and Nocturne join the family list — and casting a song leaves your song sets exactly as you declared them.
 - Sample job files for all 22 jobs are included.
+
+#### Cheaper hot paths
+
+- **Weapon-mode changes answer from memory.** Whether a weapon is two-handed is resolved once per weapon name and remembered, instead of scanning the full item database on every press of the weapon-mode key.
+- **Auto-buff checks are paced to once a second**, resuming immediately after each action so a buff chain keeps its pace, at a tenth of the recast queries.
+- **Big fights cost less per event.** AoE broadcast expansion reads the party data already in hand, a skillchain closed by someone else's weaponskill is recognized without fetching the mob, and the movement poll skips its position read while mounted or mid-action.
 
 #### If you see warnings you do not want
 
@@ -632,7 +641,7 @@ Plain variables you set near the top of your job file.
 | `UI_Short` | string | `''` | Optional status box label for JobMode; derived from `UI_Name` when empty |
 | `UI_Short2` | string | `''` | Optional status box label for JobMode2 |
 
-> **Performance tip:** `Buff_Delay` matters. Without it, AutoBuff queries every ability and spell recast about ten times a second for the whole session. One check per second is plenty — job ability recasts are minutes long. The PLD and RUN sample files show the pattern.
+> **Note:** the engine paces the buff checks to once a second on its own, resuming immediately after each action. `Buff_Delay` remains useful for pacing them slower still — the PLD and RUN sample files show the pattern — but is not needed for performance.
 
 ### Ammunition
 
@@ -757,6 +766,7 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Midcast.BP` | Blood Pacts |
 | `sets.Midcast.Summon` / `.SummoningMagic` | Summoning |
 | `sets.Pet_Midcast` | Pet actions |
+| `sets.Pet_Midcast['<Action Name>']` | A specific pet action — e.g. `sets.Pet_Midcast['Flame Breath']` |
 
 ### Weaponskills
 
@@ -780,7 +790,7 @@ Named weaponskill sets layer on top of the generic ones, so you only specify wha
 | `sets.Geomancy`, `.Geo`, `.Indi`, `.Indi.Entrust` | GEO |
 | `sets.Storms` | SCH |
 | `sets.Diffusion` | BLU |
-| `sets.Midcast.DummySongs`, `.Lullaby`, `.Madrigal`, `.March`, … | BRD (one per song family) |
+| `sets.Midcast.DummySongs`, `.Lullaby`, `.Madrigal`, `.March`, … | BRD (one per song family — every castable song belongs to one, including `.Fugue`, `.Hum`, `.Hymnus`, `.Virelai` and `.Nocturne`) |
 | `sets.TreasureHunter` | THF and anyone using TH modes |
 
 ### Spell-received (multibox)
@@ -876,7 +886,7 @@ These run without you asking. Most produce a chat message explaining what happen
 Runs about ten times a second:
 
 - **Movement detection** — compares your position frame to frame; more than half a yalm of movement swaps in `sets.Movement`, stopping swaps it back.
-- **Auto-buff** — if AutoBuff is on and you are not in a town, asleep, stunned, terrorized, paralyzed, silenced or muddled, calls your buff-check functions.
+- **Auto-buff** — if AutoBuff is on and you are not in a town, asleep, stunned, terrorized, paralyzed, silenced or muddled, calls your buff-check functions. The checks are paced to once a second, resuming immediately after each action so a buff chain keeps its pace.
 - **Spell timeout** — clears the busy flag if an action never reported completion, so the engine cannot get stuck.
 - **Every 2 seconds** — calls your `Cycle_Timer()` if you defined one.
 - **Every 30 seconds** — re-checks the Dual Wield trait and expires stale Treasure Hunter entries.
@@ -1024,14 +1034,19 @@ end
 | `Cycle_Timer()` | Every 2 seconds, for periodic work |
 | `user_file_unload()` | Job file unloading — clean up anything you created |
 
-`Cycle_Timer` is useful for time-of-day gear:
+`Cycle_Timer` is useful for time-of-day gear. Keep the period sets **beside** the set you rebuild, not nested inside it — `set_combine` keeps only equipment slots, so rebuilding a set from its own children deletes them on the first tick:
 
 ```lua
+-- In get_sets():
+sets.Movement_Base  = {}
+sets.Movement_Day   = { feet = "Danzo Sune-Ate" }
+sets.Movement_Night = { feet = "Hachi. Kyahan +1" }
+
 function Cycle_Timer()
     if world.time >= 17*60 or world.time <= 7*60 then
-        sets.Movement = set_combine(sets.Movement, sets.Movement.Night)
+        sets.Movement = set_combine(sets.Movement_Base, sets.Movement_Night)
     else
-        sets.Movement = set_combine(sets.Movement, sets.Movement.Day)
+        sets.Movement = set_combine(sets.Movement_Base, sets.Movement_Day)
     end
 end
 ```
@@ -1122,7 +1137,7 @@ Dragging a box saves silently, so no chat message on release is normal — confi
 
 ### The status box shows blank squares or the columns are ragged
 
-The box uses circle and triangle characters that exist in Consolas, Lucida Console and Courier New. If you have changed `font` in `settings.xml` to a font lacking them, Windows substitutes a glyph from another font at a different width, which knocks the columns out of alignment. Switch back to a monospaced font that covers them.
+The box uses square and triangle characters that exist in Consolas, Lucida Console and Courier New. If you have changed `font` in `settings.xml` to a font lacking them, Windows substitutes a glyph from another font at a different width, which knocks the columns out of alignment. Switch back to a monospaced font that covers them.
 
 ### Auto-buff is not working
 

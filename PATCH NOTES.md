@@ -21,6 +21,7 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 
 | Version | Summary |
 |---|---|
+| [1.7.2](#172) | Crash fixes for subtarget macros; reporting reaches pet actions and songs; weapon-mode and auto-buff costs cut |
 | [1.7.1](#171) | Per-action gear reporting and warning throttle; status box redesign; the HP-priority gear library |
 | [1.7.0](#170) | Thrown-item job abilities; cancel and override for item use; reload recovery; `gs c enchinfo` and `gs c hoxneinfo` |
 | [1.6.6](#166) | Enchanted item engine rebuilt around live cooldowns; Hoxne split into two on states |
@@ -31,13 +32,84 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 
 ---
 
+## 1.7.2
+
+A hardening release: crash fixes reported from the field, gear reporting extended to
+the last actions outside it, and the two remaining per-action stalls removed.
+
+### Notices
+
+- **Five song family sets are new and ship empty**: `sets.Midcast.Fugue`, `.Hum`,
+  `.Hymnus`, `.Virelai` and `.Nocturne`. Cactuar Fugue, Chocobo Hum, Goddess's Hymnus,
+  Maiden's Virelai and Pining Nocturne route to them, so every castable song now has a
+  family set. Declare gear in them if you want it; left alone, those songs fall back to
+  `sets.Midcast` like any other song whose family set is bare.
+- **NIN sample: the time-of-day movement sets are siblings of `sets.Movement`, not
+  children.** Declare `sets.Movement_Day`, `sets.Movement_Night` and
+  `sets.Movement_Dusk` beside a `sets.Movement_Base`, and rebuild from the base in
+  `Cycle_Timer` as the sample shows. Rebuilding `sets.Movement` from sets nested inside
+  it deletes those sets on the first tick and freezes the feet on whichever period was
+  active at load — if your NIN file follows the old sample's pattern, copy the new one.
+- **GEO sample: the idle Luopan check performs the swap now.** When the Luopan crosses
+  its HP threshold while you stand idle, the head swap happens within about two
+  seconds. If your GEO file carries its own copy of `Luopan()` and `Cycle_Timer`, take
+  the sample's new pair to get the same behaviour.
+
+### New and Changed Features
+
+- **Pet actions report their gear.** A wyvern breath, blood pact or jug-pet move names
+  the set it wore — `[sets.Pet_Midcast.Flame Breath][Used]` — with the same fallback
+  line, empty-set warning and trace as a spell.
+- **Songs report their family set the same way.** A song names the family set it used;
+  one that is declared and empty shows both ends of the fallback —
+  `[sets.Midcast.Paeon][Not Usable] -> [sets.Midcast][Used]` — and `gs c gearreporting`
+  carries the full path.
+- **Bindga** routes to `sets.Midcast.Enfeebling.Duration`, beside Bind.
+
+### Optimizations
+
+- **Weapon-mode changes answer from memory.** Whether a weapon is two-handed is
+  resolved once per weapon name and remembered, instead of scanning the full item
+  database on every press — about two milliseconds off every weapon-mode macro, paid in
+  the same frame as the swap.
+- **Auto-buff checks are paced to once a second**, resuming immediately after each
+  action so a buff chain keeps its pace. With AutoBuff on, the recast queries this
+  saves are about ninety percent of what the hooks were paying.
+- **Less work per event in a large fight.** Expanding an AoE broadcast to nearby party
+  members reads the party data already in hand; a weaponskill from elsewhere in the
+  alliance closing a skillchain compares ids without fetching the mob; the movement
+  poll skips its position read while mounted or mid-action; auto-buff ability and spell
+  names are resolved once per name; multibox messages parse in a single pass.
+
+### Bug Fixes
+
+- A macro aimed at an open subtarget cursor — `/ma "Cure IV" <stpt>`,
+  `/ws "Aeolian Edge" <stnpc>` — completes without a Lua error. This covers every
+  tracked spell and every elemental weaponskill.
+- Geo-Refresh wears `sets.Geomancy.Geo`.
+- Breakga wears the enfeebling duration set.
+- Casting a song leaves your song sets exactly as you declared them: a set you left
+  empty keeps warning as empty, and `gs c checksets` stays accurate however many songs
+  you cast.
+- After an Accession or Divine Seal charge is spent, the next single-target cast is
+  announced to your other characters as single-target.
+- Multibox target matching is exact, so a character whose name contains another
+  character's name cannot take gear swaps meant for them.
+- Turning SpellReceived `OFF` during an incoming cast releases the borrowed slots at
+  once.
+- A tracked cast at a target outside render range equips gear and announces to your
+  other characters normally.
+- The earth-element, day-bonus and weather-bonus gear notices honour `gs c info`.
+- Tzee Xicu's Blade carries the two-handed ordering token in the gear library, so
+  entering a weapon mode built on it orders the swap correctly.
+
+---
+
 ## 1.7.1
 
-Know what your gear sets are doing. Every action names the set it wore, in one
+Knowing what your gear sets are doing. Every action names the set it wore, in one
 consistent format, and the warnings that tell you a set is empty stay readable through a
-long fight.  GearSets-Include.lua introduces a full library of HP, MP and rank prioritized gear to be used 
-for automatic hp-saving ordering of gear swaps for any set, any action.  You will save hundreds of hp per
-cast by not accidentally dropping your Max HP for no reason.
+long fight.
 
 ### Notices
 

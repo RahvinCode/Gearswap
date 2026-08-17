@@ -347,7 +347,6 @@ function get_sets()
 
 	-- Max duration
 	sets.Midcast.Lullaby = set_combine(sets.Midcast.Enfeebling, {
-		range=Instrument.Honor,
 		body=gear.filiBodyPlusThree,
 		legs=gear.inyangaLegsPlusTwo,
 	})

@@ -100,16 +100,21 @@ function get_sets()
 		waist=gear.carriers,
 	})
 
-	--Defined below based off time of day
+	--Rebuilt below based off time of day.  The three period sets are siblings of
+	--sets.Movement, not children of it: Cycle_Timer rebuilds sets.Movement, and a
+	--rebuilt set keeps only equipment slots, so children would not survive it.
 	sets.Movement = {}
 
-	sets.Movement.Day = {
+	--Worn while moving whatever the hour; the period set is layered on top.
+	sets.Movement_Base = {}
+
+	sets.Movement_Day = {
 		feet=gear.danzoSuneAte,
 	}
-	sets.Movement.Night = {
+	sets.Movement_Night = {
 		feet=gear.hachiyaFeetPlusOne,
 	}
-	sets.Movement.Dusk = {
+	sets.Movement_Dusk = {
 		feet=gear.hachiyaFeetPlusOne,
 	}
 
@@ -478,14 +483,14 @@ Cycle_Time = 1
 function Cycle_Timer()
 	if world.time >= 17*60 or world.time <= 7*60 then
 		if world.time >= (18*60) or world.time <= (6*60) then
-			sets.Movement = set_combine(sets.Movement, sets.Movement.Night)
+			sets.Movement = set_combine(sets.Movement_Base, sets.Movement_Night)
 			log('Night Feet')
 		else
-			sets.Movement = set_combine(sets.Movement, sets.Movement.Dusk)
+			sets.Movement = set_combine(sets.Movement_Base, sets.Movement_Dusk)
 			log('Dusk Feet')
 		end
 	else
-		sets.Movement = set_combine(sets.Movement, sets.Movement.Day)
+		sets.Movement = set_combine(sets.Movement_Base, sets.Movement_Day)
 		log('Day Feet')
 	end
 end

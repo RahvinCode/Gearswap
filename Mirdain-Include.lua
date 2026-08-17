@@ -39,7 +39,7 @@
 -- SECTION 1 - VERSION AND SHARED GLOBALS
 ----------------------------------------------------------------------------------------------------
 -- The version string, the Modes library, and globals the job file may read.
-Mirdain_GS = '1.7.1'
+Mirdain_GS = '1.7.2'
 
 -- Modes supplies the M{} mode-tracking class used by every state variable below.
 include('Modes')
@@ -168,6 +168,11 @@ sets.Midcast.Prelude = {}
 sets.Midcast.Dirge = {}
 sets.Midcast.Sirvente = {}
 sets.Midcast.Aria = {}
+sets.Midcast.Fugue = {}
+sets.Midcast.Hum = {}
+sets.Midcast.Hymnus = {}
+sets.Midcast.Virelai = {}
+sets.Midcast.Nocturne = {}
 
 -- Midcast under Aftermath.
 sets.Midcast.AM = {}
@@ -258,9 +263,8 @@ state.OffenseMode:options('TP', 'ACC', 'DT')
 state.OffenseMode:set('TP')
 
 -- Multibox spell-received gear. ON wears the received set the moment another local
--- character starts casting and holds those slots until the spell lands.
---those slots locked until the caster's spell completes, unlocking at completion
---or after the configured delay as a failsafe.
+-- character starts casting and holds those slots until the spell lands, or until
+-- the configured failsafe delay releases them.
 state.SpellReceived = M { ['description'] = "Spell-Received" }
 state.SpellReceived:options('OFF', 'ON')
 state.SpellReceived:set('ON')
@@ -360,7 +364,7 @@ Geomancy_List = M('Geo-Acumen', 'Geo-Attunement', 'Geo-Barrier', 'Geo-STR', 'Geo
     'Geo-MND', 'Geo-CHR', 'Geo-Fade',
     'Geo-Fend', 'Geo-Focus', 'Geo-Frailty', 'Geo-Fury', 'Geo-Gravity', 'Geo-Haste', 'Geo-Languor', 'Geo-Malaise',
     'Geo-Paralysis',
-    'Geo-Poison', 'Geo-Precision', 'Geosettings.Dis-Refresh', 'Geo-Regen', 'Geo-Slip', 'Geo-Slow', 'Geo-Torpor',
+    'Geo-Poison', 'Geo-Precision', 'Geo-Refresh', 'Geo-Regen', 'Geo-Slip', 'Geo-Slow', 'Geo-Torpor',
     'Geo-Vex',
     'Geo-Voidance', 'Geo-Wilt')
 
@@ -377,7 +381,7 @@ Enfeebling_Song = S { 'Foe Requiem', 'Foe Requiem II', 'Foe Requiem III', 'Foe R
 
 Enfeeble_Acc = S { 'Dispel', 'Aspir', 'Aspir II', 'Aspir III', 'Drain', 'Drain II', 'Drain III', 'Frazzle', 'Frazzle II', 'Stun', 'Poison', 'Poison II', 'Poisonga' }
 Enfeeble_Potency = S { 'Paralyze', 'Paralyze II', 'Slow', 'Slow II', 'Addle', 'Addle II', 'Distract', 'Distract II', 'Distract III', 'Frazzle III', 'Blind', 'Blind II', 'Gravity', 'Gravity II' }
-Enfeeble_Duration = S { 'Sleep', 'Sleep II', 'Sleepga', 'Sleepga II', 'Diaga', 'Dia', 'Dia II', 'Dia III', 'Bio', 'Bio II', 'Bio III', 'Silence', 'Inundation', 'Break', 'Breakaga', 'Bind', 'Bind II' }
+Enfeeble_Duration = S { 'Sleep', 'Sleep II', 'Sleepga', 'Sleepga II', 'Diaga', 'Dia', 'Dia II', 'Dia III', 'Bio', 'Bio II', 'Bio III', 'Silence', 'Inundation', 'Break', 'Breakga', 'Bind', 'Bindga' }
 
 Dark_Acc = S { 'Death', 'Kaustra', 'Stun' }
 Dark_Absorb = S { 'Absorb-ACC', 'Absorb-AGI', 'Absorb-Attri', 'Absorb-CHR', 'Absorb-DEX', 'Absorb-INT', 'Absorb-MND', 'Absorb-STR', 'Absorb-TP', 'Absorb-VIT', 'Aspir', 'Aspir II', 'Aspir III', 'Drain', 'Drain II', 'Drain III' }
@@ -635,6 +639,8 @@ do
 
     -- Interned buff ids and action-type strings. Reused rather than rebuilt so the hot
     -- comparison paths allocate nothing.
+    local BUFF_ACCESSION   = 366
+    local BUFF_DIVINE_SEAL = 78
     local BUFF_SLEEP, BUFF_STUN, BUFF_KO = 'Sleep', 'Stun', 'KO'
     local BUFF_PETRI, BUFF_CHARM, BUFF_TERROR = 'Petrification', 'Charm', 'Terror'
     local TYPE_JA, TYPE_WS, TYPE_MS, TYPE_SCH = 'JobAbility', 'WeaponSkill', 'Magic', 'Scholar'
@@ -895,7 +901,6 @@ do
     local get_ability_recasts = ffxi.get_ability_recasts
     local get_spell_recasts = ffxi.get_spell_recasts
     local get_mob_by_id = ffxi.get_mob_by_id
-    local get_mob_by_name = ffxi.get_mob_by_name
     local get_party = ffxi.get_party
     local send_ipc = windower.send_ipc_message
 
@@ -1077,7 +1082,8 @@ do
 
         for slot, member in pairs(party) do
             if type(member) == 'table' and member.name then
-                local m_mob = get_mob_by_name(member.name)
+                -- The party marshal already carries each member's mob table.
+                local m_mob = member.mob
                 if m_mob then
                     local dx = m_mob.x - target_mob.x
                     local dy = m_mob.y - target_mob.y
@@ -2636,10 +2642,7 @@ do
             --Notify eligible targets via IPC that a tracked spell is incoming
             if state.SpellReceived.value ~= "OFF" then
                 local a_info = ability_info[spell.id]
-                if a_info and not outgoing_cast_active then
-                    local target_mob = get_mob_by_id(spell.target.id)
-                    if not player or not target_mob then return end
-
+                if a_info and player and spell.target.name and not outgoing_cast_active then
                     local target_name = spell.target.name
                     outgoing_cast_active = true
                     if settings.debug then
@@ -2650,7 +2653,9 @@ do
                     --AoE Checks
                     if a_info.aoe then
                         if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
-                        target_name = resolve_aoe_target_name(target_mob, target_name)
+                        -- Only the AoE name expansion needs the mob table.
+                        local target_mob = get_mob_by_id(spell.target.id)
+                        if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
                     end
                     if settings.debug then
                         debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
@@ -2764,7 +2769,7 @@ do
                                 else
                                     warn('sets.Midcast.DummySongs not found!')
                                 end
-                                merge_report(built_set, { range = Instrument.Count })
+                                merge_into(built_set, { range = Instrument.Count })
                                 -- Potency / Instruments
                             else
                                 -- Defined Gear Set
@@ -2777,7 +2782,7 @@ do
                                     else
                                         warn('sets.Midcast.Enfeebling not found!')
                                     end
-                                    merge_report(built_set, { range = Instrument.AOE_Sleep })
+                                    merge_into(built_set, { range = Instrument.AOE_Sleep })
                                     -- Normal Enfeebles
                                 elseif Enfeebling_Song:contains(spell.english) then
                                     if sets.Midcast.Enfeebling then
@@ -2785,13 +2790,18 @@ do
                                     else
                                         warn('sets.Midcast.Enfeebling not found!')
                                     end
-                                    merge_report(built_set, { range = Instrument.Potency })
+                                    merge_into(built_set, { range = Instrument.Potency })
                                     -- Augment the buff songs
                                 else
-                                    merge_report(built_set, { range = Instrument.Potency })
+                                    merge_into(built_set, { range = Instrument.Potency })
                                 end
-                                -- Augment the specific Song if set
-                                merge_report(built_set, equip_song_gear(spell, built_set['range']))
+                                -- Augment the specific Song if set. The instrument is
+                                -- re-applied after it so the song set cannot displace it.
+                                local song_instrument = built_set['range']
+                                merge_report(built_set, equip_song_gear(spell))
+                                if song_instrument then
+                                    merge_into(built_set, { range = song_instrument })
+                                end
                             end
                         else
                             if sets.Precast.Songs then
@@ -2810,10 +2820,7 @@ do
             --Check for spell casts that are tracked for spell-received gear swapping
             --Notify eligible targets via IPC that a tracked spell is incoming
             local s_info = spell_info[spell.id]
-            if s_info and state.SpellReceived.value ~= "OFF" and not outgoing_cast_active then
-                local target_mob = get_mob_by_id(spell.target.id)
-                if not target_mob then return end
-
+            if s_info and spell.target.name and state.SpellReceived.value ~= "OFF" and not outgoing_cast_active then
                 local target_name = spell.target.name
                 outgoing_cast_active = true
 
@@ -2831,7 +2838,9 @@ do
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
                 if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
                     if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
-                    target_name = resolve_aoe_target_name(target_mob, target_name)
+                    -- Only the AoE name expansion needs the mob table.
+                    local target_mob = get_mob_by_id(spell.target.id)
+                    if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
                 end
                 if settings.debug then
                     debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name,
@@ -3356,7 +3365,7 @@ do
                     else
                         if spell.element == "Earth" and sets.Midcast.Nuke.Earth then
                             merge_report(built_set, sets.Midcast.Nuke.Earth)
-                            windower.add_to_chat(8, 'Earth Element Detected!')
+                            info('Earth Element Detected!')
                         end
                         -- Check for an elemental set
                         built_set = elemental_check(spell, built_set)
@@ -3371,7 +3380,7 @@ do
                     else
                         warn('sets.Midcast.DummySongs not found!')
                     end
-                    merge_report(built_set, { range = Instrument.Count })
+                    merge_into(built_set, { range = Instrument.Count })
                     -- Potency / Instruments
                 else
                     -- Defined Gear Set
@@ -3384,7 +3393,7 @@ do
                         else
                             warn('sets.Midcast.Enfeebling not found!')
                         end
-                        merge_report(built_set, { range = Instrument.AOE_Sleep })
+                        merge_into(built_set, { range = Instrument.AOE_Sleep })
                         -- Normal Enfeebles
                     elseif Enfeebling_Song:contains(spell.english) then
                         if sets.Midcast.Enfeebling then
@@ -3392,13 +3401,18 @@ do
                         else
                             warn('sets.Midcast.Enfeebling not found!')
                         end
-                        merge_report(built_set, { range = Instrument.Enfeebling })
+                        merge_into(built_set, { range = Instrument.Enfeebling })
                         -- Augment the buff songs
                     else
-                        merge_report(built_set, { range = Instrument.Potency })
+                        merge_into(built_set, { range = Instrument.Potency })
                     end
-                    -- Augment the specific Song if set
-                    merge_report(built_set, equip_song_gear(spell, built_set['range']))
+                    -- Augment the specific Song if set. The instrument is re-applied
+                    -- after it so the song set cannot displace it.
+                    local song_instrument = built_set['range']
+                    merge_report(built_set, equip_song_gear(spell))
+                    if song_instrument then
+                        merge_into(built_set, { range = song_instrument })
+                    end
                 end
                 -- BlueMagic
             elseif spell.type == 'BlueMagic' then
@@ -3703,7 +3717,7 @@ do
                         merge_into(built_set, { main = "Chatoyant Staff" })
                     end
                     if Cape and spell.name:contains('Cura') then merge_into(built_set, { back = "Twilight Cape" }) end
-                    windower.add_to_chat(8, '[' .. world.day_element .. '] day - using Bonus Gear')
+                    info('[', world.day_element, '] day - using Bonus Gear')
                 elseif world.weather_element == spell.element then
                     if Obi then merge_into(built_set, { waist = "Hachirin-no-Obi" }) end
                     if Staff then
@@ -3711,7 +3725,7 @@ do
                         merge_into(built_set, { main = "Chatoyant Staff" })
                     end
                     if Cape and spell.name:contains('Cura') then merge_into(built_set, { back = "Twilight Cape" }) end
-                    windower.add_to_chat(8, 'Weather is [' .. world.weather_element .. '] - using Bonus Gear')
+                    info('Weather is [', world.weather_element, '] - using Bonus Gear')
                 end
             end
             -- This function swaps in the Orpheus or Hachirin as needed
@@ -3739,8 +3753,11 @@ do
                 merge_into(built_set, { waist = "Hachirin-no-Obi" })
                 info('[' ..
                     world.day_element .. '] day and weather is [' .. world.weather_element .. '] - using Hachirin-no-Obi')
-                -- Target distance less than 6 yalms
-            elseif spell.target.distance < (6 + spell.target.model_size) and Osash then
+                -- Target distance less than 6 yalms. A target the client has not
+                -- resolved yet - an unpicked <st> subtarget - carries neither
+                -- field, and both are arithmetic here.
+            elseif spell.target.distance and spell.target.model_size
+                and spell.target.distance < (6 + spell.target.model_size) and Osash then
                 merge_into(built_set, { waist = "Orpheus's Sash" })
                 info('Distance is [' .. round(spell.target.distance, 2) .. '] using Orpheus Sash')
                 -- Match day or weather.
@@ -3753,9 +3770,11 @@ do
         return built_set
     end
 
-    -- Select the instrument and song set for a bard song.
-    function equip_song_gear(spell, instrument)
-        local song_set = {}
+    -- Return the gear set for a bard song's family, or nil when none matches. The
+    -- set is handed back as-is: the caller re-applies the instrument afterwards, so
+    -- nothing is ever written into a set the job file owns.
+    function equip_song_gear(spell)
+        local song_set
         if string.find(spell.english, 'Finale') and sets.Midcast.Finale then
             song_set = sets.Midcast.Finale
         elseif string.find(spell.english, 'Lullaby') and sets.Midcast.Lullaby then
@@ -3796,10 +3815,19 @@ do
             song_set = sets.Midcast.Sirvente
         elseif string.find(spell.english, 'Aria') and sets.Midcast.Aria then
             song_set = sets.Midcast.Aria
-        else
-            warn('[' .. spell.english .. '] set not found!')
+        elseif string.find(spell.english, 'Fugue') and sets.Midcast.Fugue then
+            song_set = sets.Midcast.Fugue
+        elseif string.find(spell.english, 'Hymnus') and sets.Midcast.Hymnus then
+            song_set = sets.Midcast.Hymnus
+        elseif string.find(spell.english, 'Hum') and sets.Midcast.Hum then
+            song_set = sets.Midcast.Hum
+        elseif string.find(spell.english, 'Virelai') and sets.Midcast.Virelai then
+            song_set = sets.Midcast.Virelai
+        elseif string.find(spell.english, 'Nocturne') and sets.Midcast.Nocturne then
+            song_set = sets.Midcast.Nocturne
         end
-        song_set['range'] = instrument
+        -- No warning here: the set is merged by the caller, so an undeclared one
+        -- becomes the report's head and is named through the usual three channels.
         return song_set
     end
 
@@ -3841,10 +3869,10 @@ do
                     return Instrument.Pianissimo
                 end
             else
-                warn('sets.Instrument.Pianissimo not found!')
+                warn('Instrument.Pianissimo not found!')
             end
         else
-            warn('sets.Instrument not found!')
+            warn('Instrument not found!')
         end
     end
 
@@ -4111,10 +4139,7 @@ do
                     if settings.debug then debug("Divine Seal detected while tracking. Divine_Seal_Predicted = True") end
                 end
                 local a_info = ability_info[spell.id]
-                if a_info then
-                    local target_mob = get_mob_by_id(spell.target.id)
-                    if not player or not target_mob then return end
-
+                if a_info and player and spell.target.name then
                     local target_name = spell.target.name
                     outgoing_cast_active = true
                     if settings.debug then
@@ -4125,7 +4150,9 @@ do
                     --AoE Checks
                     if a_info.aoe then
                         if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
-                        target_name = resolve_aoe_target_name(target_mob, target_name)
+                        -- Only the AoE name expansion needs the mob table.
+                        local target_mob = get_mob_by_id(spell.target.id)
+                        if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
                     end
                     if settings.debug then
                         debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
@@ -4148,10 +4175,7 @@ do
             --Check for spell casts that are tracked for spell-received gear swapping
             --Notify eligible targets via IPC that a tracked spell is incoming
             local s_info = spell_info[spell.id]
-            if s_info and state.SpellReceived.value ~= "OFF" then
-                local target_mob = get_mob_by_id(spell.target.id)
-                if not target_mob then return end
-
+            if s_info and spell.target.name and state.SpellReceived.value ~= "OFF" then
                 local target_name = spell.target.name
                 outgoing_cast_active = true
 
@@ -4169,7 +4193,9 @@ do
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
                 if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
                     if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
-                    target_name = resolve_aoe_target_name(target_mob, target_name)
+                    -- Only the AoE name expansion needs the mob table.
+                    local target_mob = get_mob_by_id(spell.target.id)
+                    if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
                 end
                 if settings.debug then
                     debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name,
@@ -4338,20 +4364,6 @@ do
                     get_time()))
             end
             send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
-            if accession_predicted and not spell.interrupted and spell.type == "WhiteMagic" then
-                accession_predicted = false
-                if settings.debug then
-                    debug(
-                        "Accessioned spell probably used while tracking. Accession_Predicted = False")
-                end
-            end
-            if divine_seal_predicted and not spell.interrupted and spell.type == "WhiteMagic" and spell.skill == "Healing Magic" then
-                divine_seal_predicted = false
-                if settings.debug then
-                    debug(
-                        "Divine Sealed spell probably used while tracking. Divine_Seal_Predicted = False")
-                end
-            end
         end
         --Generate the correct set from the include file and custom function
         local built_set = aftercastequip(spell)
@@ -4439,37 +4451,46 @@ do
         equip(built_set)
     end
 
-    -- Runs while a pet action is in flight.
+    -- Runs while a pet action is in flight. Reports like a cast: the base set is
+    -- merged into a fresh table rather than aliased, so a set the job file owns
+    -- can never be written through.
     function pet_midcast(spell)
+        ensure_placeholders()
+        merge_report_begin()
         if sets.Pet_Midcast then
-            local built_set = sets.Pet_Midcast
+            local built_set = {}
+            -- No base layers: sets.Pet_Midcast is itself the set the report should
+            -- fall back to and name, so the branch starts at the mark.
+            merge_report_mark()
+            merge_report(built_set, sets.Pet_Midcast)
             -- Specific sets are defined
             if sets.Pet_Midcast[spell.english] then
-                built_set = set_combine(built_set, sets.Pet_Midcast[spell.english])
-                info('[' .. spell.english .. '] Set')
+                merge_report(built_set, sets.Pet_Midcast[spell.english])
             end
+            merge_report_branch_end()
             -- User level commands
             if pet_midcast_custom then
-                built_set = set_combine(built_set, pet_midcast_custom(spell))
+                merge_into(built_set, pet_midcast_custom(spell))
             end
             -- Weapon Checks for precast
             -- If it set to unlocked it will not swap the weapons even if defined in the built_set job lua
             if state.WeaponMode.value ~= "Unlocked" then
                 if state.WeaponMode.value == "Locked" then
-                    built_set = set_combine(built_set,
+                    merge_report(built_set,
                         { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
                 else
                     if sets.Weapons[state.WeaponMode.value] then
-                        built_set = set_combine(built_set, sets.Weapons[state.WeaponMode.value])
+                        merge_report(built_set, sets.Weapons[state.WeaponMode.value])
                         if not TwoHand and not DualWield then
                             if sets.Weapons.Shield then
-                                built_set = set_combine(built_set, sets.Weapons.Shield)
+                                merge_report(built_set, sets.Weapons.Shield)
                             end
                         end
                     end
                 end
                 log('Midcast set equiping Offense Mode Gear')
             end
+            merge_report_flush('midcast', spell)
             equip(built_set)
         else
             warn('sets.Pet_Midcast not found!')
@@ -4502,6 +4523,50 @@ do
         refresh_set       = 'sets.Refresh_Received',
         waltz_set         = 'sets.Waltz_Received',
     }
+
+    -- Does a comma-joined IPC target list name this character exactly? Finds the name,
+    -- then requires each end to abut a comma or the field edge, so a longer name that
+    -- merely contains this one cannot answer for it. Never splits the list, so the cost
+    -- does not grow with party size.
+    local COMMA_BYTE = (','):byte()
+    local function target_list_contains(field, name)
+        local last, from = #field, 1
+        while true do
+            local s, e = field:find(name, from, true)
+            if not s then return false end
+            if (s == 1 or field:byte(s - 1) == COMMA_BYTE)
+                and (e == last or field:byte(e + 1) == COMMA_BYTE) then
+                return true
+            end
+            from = s + 1
+        end
+    end
+
+    -- Drop every slot borrowed for an incoming cast and forget the casters being
+    -- tracked. The caller re-equips.
+    local function release_spell_received_gear()
+        failsafe_active = false
+        failsafe_trigger_time = 0
+        active_incoming_casters = {}
+        for slot, _ in pairs(active_external_locks) do
+            enable(slot)
+        end
+        active_external_locks = {}
+    end
+
+    -- Tear down spell-received state when the mode is switched off. Without this the
+    -- borrowed slots stay disabled: the failsafe that would release them returns early
+    -- once the mode reads OFF. A set outgoing_cast_active means a broadcast went out
+    -- and peers are owed the matching completion, so that is sent whatever the mode
+    -- now says. The Accession and Divine Seal predictions are deliberately left alone;
+    -- they belong to the buff lifecycle, not to this mode.
+    local function reset_spell_received_state()
+        if outgoing_cast_active then
+            outgoing_cast_active = false
+            send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
+        end
+        release_spell_received_gear()
+    end
 
     -- Equip the set for an incoming spell or ability and lock the slots it uses until
     -- the cast completes.
@@ -4695,8 +4760,16 @@ do
     -- Periodic and reactive behaviour: buff upkeep, burst reporting, trait checks and
     -- the main polling engine.
 
+    -- Auto-buff poll gate. The job file's check_buff hooks marshal a full recast
+    -- table per call, so they are paced here rather than running with the engine.
+    local BUFF_CHECK_INTERVAL = 1
+    local buff_check_next = 0
+
     -- Ask the job file for a buff to apply, then issue it as an ability or a spell.
     function check_buff()
+        local now = os.clock()
+        if now < buff_check_next then return end
+        buff_check_next = now + BUFF_CHECK_INTERVAL
         -- Auto Buff is on and not in a town
         if not is_Busy and state.AutoBuff.value ~= 'OFF' and not Cities:contains(world.area) and not buffactive['Stun'] and not buffactive['Terror'] then
             -- Set defaults
@@ -4717,35 +4790,47 @@ do
         end
     end
 
+    -- Look up an auto-buff name in a resource table. `:with` is a linear scan of the
+    -- whole table, and auto-buff asks for the same few names for the life of the
+    -- character, so results are kept. A name matching nothing is kept too and reported
+    -- once: check_buff_JA and check_buff_SP are job-file hooks returning hand-typed
+    -- strings, and check_buff polls them several times a second.
+    local auto_buff_entry = {}
+    local function resolve_auto_buff(resource, kind, name)
+        local memo = auto_buff_entry[kind]
+        if not memo then
+            memo = {}
+            auto_buff_entry[kind] = memo
+        end
+        local entry = memo[name]
+        if entry == nil then
+            entry = resource:with('en', name) or false
+            memo[name] = entry
+            if not entry then warn('Auto Buff: no ' .. kind .. ' named [' .. name .. '].') end
+        end
+        return entry or nil
+    end
+
+    -- Aim at the enemy only for an action that cannot be used on oneself. Reads the
+    -- target Set directly rather than comparing its stringified form; the two agree
+    -- for every ability and spell in the game, and this one cannot be broken by that
+    -- format changing.
+    local function auto_buff_target(entry)
+        return (entry.targets.Enemy and not entry.targets.Self) and '<bt>' or '<me>'
+    end
+
     -- Execute a job ability by name.
     function command_JA_execute(command_JA)
-        local cast_ability = res.job_abilities:with('en', command_JA)
-        local target = ''
-        if tostring(cast_ability.targets) == "{Self}" then
-            target = '<me>'
-        elseif tostring(cast_ability.targets) == "{Enemy}" then
-            target = '<bt>'
-        else
-            target = '<me>'
-        end
-        --log('input /ja "'..command_JA..'" '..target..'')
-        windower.chat.input('/ja "' .. command_JA .. '" ' .. target .. '')
+        local cast_ability = resolve_auto_buff(res.job_abilities, 'job ability', command_JA)
+        if not cast_ability then return end
+        windower.chat.input('/ja "' .. command_JA .. '" ' .. auto_buff_target(cast_ability))
     end
 
     -- Execute a spell by name.
     function command_SP_execute(command_SP)
-        local cast_spell = res.spells:with('en', command_SP)
-        local spell_cast_time = cast_spell.cast_time
-        local target = ''
-        if tostring(cast_spell.targets) == '{Self}' then
-            target = '<me>'
-        elseif tostring(cast_spell.targets) == '{Enemy}' then
-            target = '<bt>'
-        else
-            target = '<me>'
-        end
-        --log('input /ma "'..command_SP..'" '..target..'')
-        windower.chat.input('/ma "' .. command_SP .. '" ' .. target .. '')
+        local cast_spell = resolve_auto_buff(res.spells, 'spell', command_SP)
+        if not cast_spell then return end
+        windower.chat.input('/ma "' .. command_SP .. '" ' .. auto_buff_target(cast_spell))
     end
 
     -- Use Escha temporary items.
@@ -4765,7 +4850,7 @@ do
             or (action.add_effect_message > 766 and action.add_effect_message < 771) -- Umbra/Radiance
         then
             log('There was a skillchain')
-            local t = windower.ffxi.get_mob_by_id(data.targets[1].id)
+            local t = get_mob_by_id(data.targets[1].id)
             -- valid party target and within range
             if t and t.spawn_type == 16 and t.distance:sqrt() < 21 then
                 -- Update the enemy to track
@@ -4783,8 +4868,8 @@ do
             end
             -- This is used to stop bursting if a ws happened to close the window
         elseif data.category == 3 and data.param ~= 0 then
-            local t = windower.ffxi.get_mob_by_id(data.targets[1].id)
-            if t and t.id == last_skillchain_id then
+            -- The action data already carries the target id; no mob lookup needed.
+            if last_skillchain_id ~= 0 and data.targets[1].id == last_skillchain_id then
                 log('Skillchain is closed for [', last_skillchain_id, ']')
                 last_skillchain_elements = {}
                 last_skillchain_id = 0
@@ -4826,24 +4911,35 @@ do
         end
     end
 
-    -- Refresh the two-handed weapon flag from the current weapon set.
-    function two_hand_check()
-        if sets.Weapons[state.WeaponMode.value] and sets.Weapons[state.WeaponMode.value]['main'] then
-            local weapon_name = sets.Weapons[state.WeaponMode.value]['main']
-            if type(weapon_name) == "table" then weapon_name = sets.Weapons[state.WeaponMode.value]['main'].name end
-            local Main_Weapon = res.items:with('en', weapon_name)
-            if Main_Weapon then
-                --log('Weapon:['..Main_Weapon.en..']')
-                local Skill_type = Main_Weapon.skill
-                if Skill_type == 4 or Skill_type == 6 or Skill_type == 7 or Skill_type == 8 or Skill_type == 10 or Skill_type == 12 then
-                    TwoHand = true
-                else
-                    TwoHand = false
-                end
-            else
-                TwoHand = false
-            end
+    -- Weapon skill ids the game treats as two-handed.
+    local TWO_HAND_SKILL = { [4] = true, [6] = true, [7] = true, [8] = true, [10] = true, [12] = true }
+
+    -- Whether a named weapon is two-handed. res.items:with scans every item in the
+    -- game and the answer never changes for a name, so each is resolved once per
+    -- load; misses are kept too.
+    local two_hand_memo = {}
+    local function name_is_two_handed(name)
+        local known = two_hand_memo[name]
+        if known == nil then
+            local row = res.items:with('en', name)
+            known = row ~= nil and TWO_HAND_SKILL[row.skill] ~= nil
+            two_hand_memo[name] = known
         end
+        return known
+    end
+
+    -- Refresh the two-handed weapon flag from the current weapon set. A mode naming
+    -- no main leaves the flag alone: the weapon it inherits is still worn.
+    function two_hand_check()
+        local weapon_set = sets.Weapons[state.WeaponMode.value]
+        local weapon_name = weapon_set and weapon_set.main
+        if not weapon_name then return end
+        if type(weapon_name) == 'table' then weapon_name = weapon_name.name end
+        if weapon_name == nil then
+            TwoHand = false
+            return
+        end
+        TwoHand = name_is_two_handed(weapon_name)
     end
 
     -- The main polling engine. Bound to outgoing chunk, so it does not tick reliably
@@ -4855,6 +4951,9 @@ do
         if is_Busy and now - Spellstart > SpellCastTime then
             is_Busy = false
             SpellCastTime = 0
+            -- The action that held auto-buff off has ended: check on the next pass
+            -- instead of waiting out the poll gate, so a buff chain keeps its pace.
+            buff_check_next = 0
         end
         -- Make sure not update faster than .1 seconds
         if now - main_engine_time < .1 then return end
@@ -4869,27 +4968,31 @@ do
         if not active_buffs['Paralysis'] and not active_buffs['Silence'] and not active_buffs['Muddle'] then
             check_buff()
         end
-        local position = get_mob_by_id(player.id)
-        if position and not active_buffs['Mounted'] and not is_Busy then
-            -- Compare squared distance: saves a sqrt and three pow calls per poll.
-            local dx = position.x - Location.x
-            local dy = position.y - Location.y
-            local dz = position.z - Location.z
-            local movement = (dx * dx + dy * dy + dz * dz) > 0.25 -- 0.5 yalms, squared
-            if movement and not is_moving then
-                if player_status ~= "Engaged" then
-                    is_moving = true
+        -- Movement detection. The cheap gates run first: the marshal is the cost,
+        -- and its result is unused while mounted or mid-action.
+        if not active_buffs['Mounted'] and not is_Busy then
+            local position = get_mob_by_id(player.id)
+            if position then
+                -- Compare squared distance: saves a sqrt and three pow calls per poll.
+                local dx = position.x - Location.x
+                local dy = position.y - Location.y
+                local dz = position.z - Location.z
+                local movement = (dx * dx + dy * dy + dz * dz) > 0.25 -- 0.5 yalms, squared
+                if movement and not is_moving then
+                    if player_status ~= "Engaged" then
+                        is_moving = true
+                        Require_Update = true
+                        --windower.chat.input('/echo Moving! Status: '..player.status..'')
+                    end
+                elseif not movement and is_moving then
+                    is_moving = false
                     Require_Update = true
-                    --windower.chat.input('/echo Moving! Status: '..player.status..'')
+                    --windower.chat.input('/echo Stopped Moving! Status: '..player.status..'')
                 end
-            elseif not movement and is_moving then
-                is_moving = false
-                Require_Update = true
-                --windower.chat.input('/echo Stopped Moving! Status: '..player.status..'')
+                Location.x = position.x
+                Location.y = position.y
+                Location.z = position.z
             end
-            Location.x = position.x
-            Location.y = position.y
-            Location.z = position.z
         end
 
         if Require_Update and not is_Busy then
@@ -5334,6 +5437,7 @@ do
         else
             return true
         end
+        if state.SpellReceived.value == "OFF" then reset_spell_received_state() end
         equip_set_command()
         return true
     end
@@ -5918,7 +6022,6 @@ do
         send_command('bind ^f10 gs c Hoxne')
         send_command('bind ^f9 gs c SpellReceived')
 
-        local maxWidth = 40
         windower.add_to_chat(8, 'Stance - ' .. string.format('[%s]', 'F12'))
         windower.add_to_chat(8, 'TH Mode - ' .. string.format('[%s]', 'F11'))
         windower.add_to_chat(8, 'Auto Buff - ' .. string.format('[%s]', 'F10'))
@@ -6006,12 +6109,10 @@ do
         if state.SpellReceived.value == 'OFF' then return end
 
         if msg:startswith('MIRDAIN|SPELL|') then
-            local split_msg = msg:split("|")
-            local target_name = split_msg[4] or "Missing Target Name"
-            if string.find(target_name, player.name, 1, true) then
-                local caster_name = split_msg[3] or "Missing Caster Name"
-                local spell_id = split_msg[5] or "Missing Spell ID"
-                local time_sent = tonumber(split_msg[6]) or 9999999999999
+            local caster_name, target_name, spell_id, time_str =
+                msg:match('^MIRDAIN|SPELL|([^|]*)|([^|]*)|([^|]*)|(.*)$')
+            if target_name and target_list_contains(target_name, player.name) then
+                local time_sent = tonumber(time_str) or 9999999999999
                 local time_received = get_time()
                 if settings.debug then
                     debug("Targeted IPC Message Received: " ..
@@ -6037,12 +6138,10 @@ do
                 end
             end
         elseif msg:startswith('MIRDAIN|ABILITY|') then
-            local split_msg = msg:split("|")
-            local target_name = split_msg[4] or "Missing Target Name"
-            if string.find(target_name, player.name, 1, true) then
-                local caster_name = split_msg[3] or "Missing Caster Name"
-                local spell_id = split_msg[5] or "Missing Spell ID"
-                local time_sent = tonumber(split_msg[6]) or 9999999999999
+            local caster_name, target_name, spell_id, time_str =
+                msg:match('^MIRDAIN|ABILITY|([^|]*)|([^|]*)|([^|]*)|(.*)$')
+            if target_name and target_list_contains(target_name, player.name) then
+                local time_sent = tonumber(time_str) or 9999999999999
                 local time_received = get_time()
                 if settings.debug then
                     debug("Targeted IPC Message Received: " ..
@@ -6125,20 +6224,18 @@ do
         if not failsafe_active or state.SpellReceived.value == "OFF" then return end
 
         if os.clock() >= failsafe_trigger_time then
-            failsafe_active = false
-            failsafe_trigger_time = 0
-            active_incoming_casters = {}
             if settings.debug then debug("Failsafe triggered! Sending equipment reset command.") end
-            for slot, _ in pairs(active_external_locks) do
-                enable(slot)
-            end
-            active_external_locks = {}
+            release_spell_received_gear()
             equip_set_command()
         end
     end)
 
     -- Buff gained: sleep and doom gear, and automatic status-removal items.
     windower.register_event('gain buff', function(id)
+        -- The prediction only covers the gap between issuing the ability and its buff
+        -- appearing; from here the buff itself is read instead.
+        if id == BUFF_ACCESSION then accession_predicted = false end
+        if id == BUFF_DIVINE_SEAL then divine_seal_predicted = false end
         if id == 6 and (Mage_Job:contains(player.main_job) or Mage_Job:contains(player.sub_job)) then
             if player.inventory['Remedy'] ~= nil then
                 if AutoItem == true then
@@ -6221,6 +6318,10 @@ do
 
     -- Buff lost: release the gear locked for that buff.
     windower.register_event('lose buff', function(id)
+        -- Charge spent, duration lapsed, or buffs stripped: the prediction ends with
+        -- the buff however it ended.
+        if id == BUFF_ACCESSION then accession_predicted = false end
+        if id == BUFF_DIVINE_SEAL then divine_seal_predicted = false end
         local buff = res.buffs[id]
         local name = buff and buff.en or tostring(id)
         local gain = false
@@ -6324,7 +6425,7 @@ do
                 -- If player takes action, adjust TH tagging information
                 if state.TreasureMode.value ~= 'None' and TaggingCategories:contains(data.category) then
                     local target = data.targets[1]
-                    local target_mob = target and windower.ffxi.get_mob_by_id(target.id)
+                    local target_mob = target and get_mob_by_id(target.id)
                     if target_mob and target_mob.is_npc then
                         th_info.tagged_mobs[target.id] = os.clock()
                         if state.TreasureMode.value ~= 'Full Time' then

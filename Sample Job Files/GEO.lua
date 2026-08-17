@@ -508,21 +508,32 @@ function check_buff_SP()
 	return buff
 end
 
-function Luopan() --  This maintains the extra 600hp during midcast of spells when Luopan is deployed
-	local equipSet = {}
+-- Maintains the extra 600hp during midcast of spells when the Luopan is deployed.
+-- Called from every gear hook, so it returns as early as it can and builds no
+-- table: returning nothing is the same as returning an empty set to set_combine.
+-- The log arguments are passed separately so the text is only joined when debug
+-- is on.
+function Luopan()
+	if not pet.isvalid then return end
 	local head_item = player.equipment.head
-	local relic_equiped = false
-	if head_item and head_item:contains("Bagua") then relic_equiped = true end
+	if not (head_item and head_item:contains("Bagua")) then return end
+	log('Regen [', pet.hpp, ']% HP')
 	-- Swap the right head
-	if pet.isvalid and relic_equiped then
-		if pet.hpp > 68 then equipSet = sets.Luopan end
-		log('Regen ['..pet.hpp..']% HP')
-	end
-	return equipSet
+	if pet.hpp > 68 then return sets.Luopan end
 end
 
+-- Whether the Luopan was last seen above the threshold, so the timer below only
+-- asks for a rebuild when that actually changes.
+Luopan_Was_High = false
+
 function Cycle_Timer()
-	if player.status == "Idle" then
-		Luopan()
+	if player.status ~= "Idle" then return end
+	-- Nothing else rebuilds gear while idle, so watch for the Luopan crossing
+	-- the threshold and ask for the swap when it does. Calling Luopan() here
+	-- would only compute a set with nowhere to go.
+	local high = (pet.isvalid and pet.hpp > 68) and true or false
+	if high ~= Luopan_Was_High then
+		Luopan_Was_High = high
+		equip_set_command()
 	end
 end
