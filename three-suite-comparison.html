@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Divergence Three-Suite Report &mdash; Mirdain 1.5.12 / 1.7.2 &middot; Selindrile</title>
+<style>*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}</style>
+</head>
+<body>
+<title>Divergence Three-Suite Report</title>
+
+<style>
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tokens. Light is the complete palette on bare :root; the two dark scopes
+   redefine tokens only, so the un-stamped (system) state resolves as a set.
+   Neutrals are biased cool toward the data hues rather than left pure grey.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  --page:        #f4f6f6;
+  --sheet:       #fbfcfc;
+  --surface:     #ffffff;
+  --sunken:      #eef1f1;
+
+  --ink:         #0d0f11;
+  --ink-2:       #4c5257;
+  --ink-3:       #7d848a;
+
+  --rule:        #dfe3e3;
+  --rule-soft:   #e9ecec;
+  --grid:        #e4e8e8;
+  --baseline:    #bfc5c6;
+
+  /* Suite identity. One fixed hue per suite, never cycled, never reassigned
+     by rank: the two Mirdain engines keep their release colors, each foreign
+     suite keeps its own. */
+  --v1512:       #2a78d6;
+  --v172:        #1baf7a;
+  --vsel:        #8a5cd6;
+
+  --good:        #0ca30c;
+  --warn:        #b07100;
+
+  --shadow:      0 1px 2px rgba(13,15,17,.05), 0 8px 24px -12px rgba(13,15,17,.18);
+
+  --mono: Consolas, "Cascadia Mono", "SFMono-Regular", ui-monospace, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page:      #0f1113;
+    --sheet:     #17191c;
+    --surface:   #1c1f22;
+    --sunken:    #131518;
+    --ink:       #f1f4f5;
+    --ink-2:     #b4babf;
+    --ink-3:     #868d93;
+    --rule:      #2b2f33;
+    --rule-soft: #23272a;
+    --grid:      #282c30;
+    --baseline:  #3a3f43;
+    --v1512:     #3987e5;
+    --v172:      #22b783;
+    --vsel:      #9a6ee0;
+    --good:      #2fbf2f;
+    --warn:      #d69a1e;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page:      #0f1113;
+  --sheet:     #17191c;
+  --surface:   #1c1f22;
+  --sunken:    #131518;
+  --ink:       #f1f4f5;
+  --ink-2:     #b4babf;
+  --ink-3:     #868d93;
+  --rule:      #2b2f33;
+  --rule-soft: #23272a;
+  --grid:      #282c30;
+  --baseline:  #3a3f43;
+  --v1512:     #3987e5;
+  --v172:      #22b783;
+  --vsel:      #9a6ee0;
+  --good:      #2fbf2f;
+  --warn:      #d69a1e;
+  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stack { display: flex; flex-direction: column; gap: 26px; padding: 26px 18px 64px; align-items: center; }
+
+/* A sheet is one page of the report. */
+.sheet {
+  width: 100%;
+  max-width: 900px;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  padding: 40px 44px 46px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* ── Masthead ─────────────────────────────────────────────────────────────── */
+.masthead { display: flex; flex-direction: column; gap: 14px; }
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+h1 {
+  font-family: var(--mono);
+  font-size: clamp(26px, 4.4vw, 38px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  margin: 0;
+  text-wrap: balance;
+}
+.standfirst {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 62ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+h2 {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  margin: 0 0 4px;
+}
+h3 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0;
+}
+p { margin: 0 0 .85em; max-width: 66ch; text-wrap: pretty; }
+p:last-child { margin-bottom: 0; }
+.section { display: flex; flex-direction: column; gap: 16px; }
+strong { font-weight: 650; color: var(--ink); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ── Version key ──────────────────────────────────────────────────────────── */
+.key { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; font-family: var(--mono); font-size: 12px; }
+.key-item { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+.sw-1512 { background: var(--v1512); }
+.sw-172  { background: var(--v172); }
+.sw-sel  { background: var(--vsel); }
+
+/* ── Feature matrix & winners ─────────────────────────────────────────────── */
+.features table { font-family: var(--sans); font-size: 12.5px; font-variant-numeric: normal; }
+.features th, .features td { text-align: left; white-space: normal; vertical-align: top; line-height: 1.5; min-width: 148px; }
+.features th:first-child, .features td:first-child { font-family: var(--mono); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); min-width: 104px; }
+.features thead th { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+.winners table { font-family: var(--sans); font-size: 13px; }
+.winners th, .winners td { text-align: left; white-space: normal; vertical-align: top; }
+.winners .w-cat { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+.winners .w-val { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.winners .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; }
+
+/* ── Stat tiles ───────────────────────────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.tile { background: var(--surface); padding: 16px 17px 15px; display: flex; flex-direction: column; gap: 3px; }
+.tile-label { font-family: var(--mono); font-size: 10px; letter-spacing: .11em; text-transform: uppercase; color: var(--ink-3); }
+.tile-value { font-family: var(--mono); font-size: 27px; font-weight: 700; letter-spacing: -.025em; line-height: 1.12; }
+.tile-unit { font-size: 13px; font-weight: 400; color: var(--ink-2); letter-spacing: 0; }
+.tile-note { font-size: 12.5px; line-height: 1.42; color: var(--ink-2); }
+.tile-note .delta { font-family: var(--mono); font-weight: 650; }
+.delta.down { color: var(--good); }
+.delta.flat { color: var(--ink-2); }
+.delta.up   { color: var(--warn); }
+
+/* ── Verdict callout ──────────────────────────────────────────────────────── */
+.verdict {
+  background: var(--sunken);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.verdict p { max-width: 70ch; }
+
+/* ── Figures ──────────────────────────────────────────────────────────────── */
+figure { margin: 0; display: flex; flex-direction: column; gap: 9px; }
+figcaption { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); max-width: 70ch; }
+figcaption b { font-family: var(--mono); font-weight: 650; color: var(--ink); }
+.chart-frame { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 16px 16px 10px; overflow-x: auto; }
+.chart-frame svg { display: block; width: 100%; height: auto; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 20px; }
+
+/* SVG ink */
+.ax-line { stroke: var(--baseline); stroke-width: 1; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.tick-text { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cat-text { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-2); }
+.cat-text.strong { fill: var(--ink); font-weight: 700; }
+.val-text { font-family: var(--mono); font-size: 9.5px; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.fig-title { font-family: var(--mono); font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+.legend-text { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-2); }
+.axis-label { font-family: var(--sans); font-size: 11px; font-style: italic; fill: var(--ink-3); }
+.group-text { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; }
+/* Units are NOT uppercased: text-transform turns the micro sign into a capital
+   Mu, so "µs" renders as "ΜS" and reads as milliseconds. */
+.unit-text { font-family: var(--mono); font-size: 10px; fill: var(--ink-3); letter-spacing: .04em; }
+.bar { transition: opacity .12s ease; }
+.bar:hover, .bar:focus-visible { opacity: .78; }
+.bar:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+#tip {
+  position: fixed; z-index: 40; pointer-events: none; opacity: 0;
+  transition: opacity .1s ease;
+  background: var(--ink); color: var(--page);
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.45;
+  padding: 6px 9px; border-radius: 3px; max-width: 240px;
+  box-shadow: 0 4px 16px -4px rgba(0,0,0,.4);
+}
+#tip.on { opacity: 1; }
+#tip .tip-k { color: var(--page); opacity: .68; }
+
+/* ── Data tables ──────────────────────────────────────────────────────────── */
+details.numbers { border-top: 1px solid var(--rule-soft); padding-top: 7px; }
+details.numbers > summary {
+  cursor: pointer; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3);
+  list-style: none;
+}
+details.numbers > summary::-webkit-details-marker { display: none; }
+details.numbers > summary::before { content: "▸ "; }
+details[open].numbers > summary::before { content: "▾ "; }
+details.numbers > summary:hover { color: var(--ink); }
+.table-wrap { overflow-x: auto; margin-top: 9px; }
+table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+caption { text-align: left; font-size: 11px; color: var(--ink-3); padding-bottom: 6px; letter-spacing: .06em; text-transform: uppercase; }
+th, td { text-align: right; padding: 4px 9px; border-bottom: 1px solid var(--rule-soft); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { color: var(--ink-3); font-weight: 700; border-bottom: 1px solid var(--rule); }
+tbody tr:last-child td { border-bottom: none; }
+tfoot td { font-weight: 700; border-top: 1px solid var(--rule); border-bottom: none; }
+
+/* ── Method list ──────────────────────────────────────────────────────────── */
+.method { display: grid; gap: 0; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.method-row { display: grid; grid-template-columns: minmax(120px, 172px) 1fr; gap: 0; border-bottom: 1px solid var(--rule-soft); background: var(--surface); }
+.method-row:last-child { border-bottom: none; }
+.method-row dt { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); padding: 13px 14px; background: var(--sunken); border-right: 1px solid var(--rule-soft); }
+.method-row dd { margin: 0; padding: 13px 15px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.method-row dd code { font-family: var(--mono); font-size: .93em; color: var(--ink); }
+dl { margin: 0; }
+
+.caveat { font-size: 13px; line-height: 1.6; color: var(--ink-2); border-left: 2px solid var(--baseline); padding-left: 15px; display: flex; flex-direction: column; gap: .7em; }
+.caveat b { color: var(--ink); }
+
+@media (max-width: 620px) {
+  .sheet { padding: 26px 20px 30px; }
+  .method-row { grid-template-columns: 1fr; }
+  .method-row dt { border-right: none; border-bottom: 1px solid var(--rule-soft); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+@media print {
+  body { background: #fff; }
+  .sheet { box-shadow: none; break-after: page; page-break-after: always; }
+  .sheet:last-child { break-after: auto; page-break-after: auto; }
+  details.numbers { display: none; }
+}
+</style>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<div class="stack">
+
+<!-- ══════════════════════════════ SHEET 1 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="sheet-head"><span>GearSwap suites · Divergence three-suite report</span><span>Sheet 1 / 3 · Suites &amp; CPU</span></div>
+
+  <div class="masthead">
+    <div class="eyebrow">Mirdain 1.5.12 · Mirdain 1.7.2 · Selindrile — six boxes · 18-player alliance · bars ranked per category</div>
+    <h1>Three suites, one Divergence wave</h1>
+    <p class="standfirst">Six clients, played the way a real six-box party plays — a BRD/DNC dual-wielding between song volleys, a BLU/WAR and WAR/SAM on the mob, a COR/DNC shooting from melee range, a GEO/WHM and WHM/SCH keeping everyone standing — inside an 18-player alliance. Three feature-bearing GearSwap suites run the same fight on the same gear: Mirdain 1.7.2 and the original include it grew from, Mirdain 1.5.12, both on the same six job files and gear library, and Selindrile (pinned at its 2026-07-23 upstream commit), booting its complete shipped library against gear ported set-for-set from those same loadouts and verified slot-for-slot. Two states each: <strong>lean</strong> — every chat channel off, nothing optional running — and <strong>moderate</strong> — each suite's own out-of-the-box defaults plus the two practical modes such a party plays: Hoxne Ampulla automation on the Bard where an engine has it (only Mirdain 1.7 does) and Treasure Hunter Tag on the Corsair (all three, each through its own route). <strong>Bars in every chart are ranked largest-first within each category, and every chart says which direction is better.</strong></p>
+    <p style="font-size:12.5px;color:var(--ink-2);border-top:1px solid var(--rule-soft);padding-top:10px;max-width:66ch">Written by Rahvin, developer of the Mirdain 1.7.2 fork. Of the three engines compared, only 1.7.2 is his: Mirdain 1.5.12 is the original include as its author, Mirdain, shipped it, and Selindrile is a third author's suite, measured at its 2026-07-23 pinned upstream commit. The report is built to be checked rather than trusted: every feature claim was read from each suite's source, not its documentation; the measurement method is published in full at the foot of the page; every figure comes from the harness and is spliced in unedited; and the caveats section states where the numbers can mislead.</p>
+  </div>
+
+  <div class="key" aria-hidden="true">
+    <span class="key-item"><span class="swatch sw-1512"></span>Mirdain 1.5.12 upstream</span>
+    <span class="key-item"><span class="swatch sw-172"></span>Mirdain 1.7.2 current</span>
+    <span class="key-item"><span class="swatch sw-sel"></span>Selindrile</span>
+  </div>
+
+  <div class="section features">
+    <h2>What each suite is — and what it does for you</h2>
+    <p>A fair comparison starts by saying what each suite is trying to be, because these are not three attempts at the same product. <strong>Selindrile is a self-contained product</strong>: it aims to play the character — a turn-key automated character with an on-screen HUD, some thirty optional automation subsystems, and a packet-reaction engine, all inside one suite. <strong>The Mirdain engines draw their boundary narrower by design</strong>: they are gear-swapping engines meant to do that one job, whether the player drives the character by hand or pairs them with outside automation software that handles spell and ability sequencing. What Selindrile builds in, Mirdain deliberately leaves outside GearSwap — a scope choice on both sides, and the single most important fact for reading the moderate columns below. Within that boundary, <strong>1.5.12</strong> is the original include — modes, keybinds, a status box, movement gear, Treasure Hunter — and <strong>1.7.2</strong> is the fork's current engine, which keeps that surface and adds the enchanted-item engine, Hoxne Ampulla automation, disciplined gear reporting, and the only cross-client received-spell gear system in the field. Every claim below was read from each suite's source, not its README.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Dimension</th><th>Mirdain 1.5.12</th><th>Mirdain 1.7.2</th><th>Selindrile</th></tr></thead>
+        <tbody>
+          <tr><td>Reporting</td>
+            <td>Three channel toggles — <span class="num">gs c info</span> / <span class="num">warn</span> / <span class="num">debug</span> — saved per character; notices across five fixed chat colours, a few printing regardless; the set an action wore is never named.</td>
+            <td>Four independent toggles saved per character: <strong>info</strong> names the set every action wore, at each phase; <strong>warn</strong> carries the actionable warnings; <span class="num">gs c gearreporting</span> is the full per-phase gear trace, built to stay off until a warning sends you tracing a fallback; <strong>debug</strong> is engine internals. Ships with info and warn on, trace and debug off — the state the moderate columns measure.</td>
+            <td>One engine-level debug key (GearSwap's own); its 43 distinct Abort refusals and state summaries print unconditionally; optional party-chat buff notices, off by default.</td></tr>
+          <tr><td>Empty-set detection</td>
+            <td>Hard-coded "not found" warnings at some lookup sites, repeating each time; no declared-but-empty distinction, no audit command.</td>
+            <td>Every set about to be worn is checked: a miss names the set and the cause — never declared vs declared and left empty — and hints at the gear trace; <span class="num">gs c checksets</span> audits every declared set on demand. The designed loop: info and warn surface an unexpected fallback, the gear trace comes on to follow it, then goes off again.</td>
+            <td>None — selection falls through its chain silently; its chat reports refused actions, not missing gear.</td></tr>
+          <tr><td>Warning discipline</td>
+            <td>None — a repeating condition repeats, and its "not found" warnings fire every time.</td>
+            <td>Per-set 60&nbsp;s silences that report what they held back: quiet never means fixed.</td>
+            <td>None — refusals print each time.</td></tr>
+          <tr><td>On-screen display</td>
+            <td>Status and debug boxes; layout rebuilt every poll.</td>
+            <td>Same two boxes, layout cached; solid mode squares, outlined text.</td>
+            <td>Full status HUD, on by default; hides across zoning.</td></tr>
+          <tr><td>Movement gear</td>
+            <td colspan="2">0.1&nbsp;s position poll; speed gear whenever you run out of combat.</td>
+            <td>0.1&nbsp;s poll on its own per-frame handler; idle-only speed gear; casting while moving is cancel-queued or position-frozen.</td></tr>
+          <tr><td>Treasure Hunter</td>
+            <td>Modes None/Tag/Full Time (SATA on Thief); tag tracking and TH gear merge; no argument validation.</td>
+            <td>Same surface, validated modes, and the TH set merged at the phase where the tag actually lands per action type.</td>
+            <td>Always loaded; adds ranged/Diaga/Cyclone tagging; suppressed while a defense mode is up.</td></tr>
+          <tr><td>Enchanted items</td>
+            <td>A basic use command: equips the item and fires it on fixed delays from the item's cast data; no live cooldown, no completion detection.</td>
+            <td><span class="num">gs c use</span> for 500+ enchanted items with live cooldowns read from the item; thrown-item abilities (<span class="num">tomahawk</span>, <span class="num">angon</span>); Hoxne Ampulla kept equipped, used and released automatically.</td>
+            <td>No enchanted-equip engine; its item automation is consumables on its tick.</td></tr>
+          <tr><td>Received-spell gear</td>
+            <td>None.</td>
+            <td>Cross-client IPC: the caster's client tells the target's client at cast registration — the only multibox-aware system in the field.</td>
+            <td>Local packet reaction (Sel-Stahp): soft-equips received-gear sets on seeing the server's own echo; no IPC.</td></tr>
+          <tr><td>Automation</td>
+            <td>AutoBuff self-buffing; opt-in Holy Water on doom.</td>
+            <td>AutoBuff, paced to once a second; Hoxne; thrown-item abilities; opt-in Holy Water on doom. Sequencing of spells and abilities is deliberately out of scope.</td>
+            <td>The defining dimension: ~30 subsystems on a 0.5&nbsp;s tick — auto WS, buffs, songs, shadows, stun, defense, food and more. Most ship off; MiniQueue, doom handling, Divine Caress, Corsair ammo restock, the display and (via its shipped globals) Arts/lockstyle/re-equip ship on.</td></tr>
+          <tr><td>Buff &amp; state tracking</td>
+            <td>Engine buff paths drive set choice, with doom recognised and acted on: cursna-received gear equips and locks for the debuff's duration, and Holy Water fires automatically where the opt-in item automation is on. Sleep gear is handled the same way.</td>
+            <td>Same, plus seal predictions whose lifetime the buff itself owns. Doom keeps the recognition and the Holy Water response, and routes the gear by mode: spell-received (the default) dresses the actual incoming Cursna through IPC; with that mode off, the engine enforces the lock itself — cursna-received gear equipped and held until the doom ends.</td>
+            <td>Automatic <span class="num">state.Buff</span> from cast names, plus library-level buff-conditional gear: doom and sleep locks, owned-item Reive necks.</td></tr>
+          <tr><td>Set selection</td>
+            <td colspan="2">Layered merge — idle, then midcast base, then category — weapons composed separately.</td>
+            <td>Selects one set (CustomClass → name → spell map → skill → type), plus the buff-conditional overlays above.</td></tr>
+          <tr><td>Swap HP ordering</td>
+            <td>None — slots equip in GearSwap's default order, so a swap can drop max HP before restoring it.</td>
+            <td>The ~3,700-entry gear library (a 1.7-line addition) tags every entry with its HP as its equip priority, so the highest-HP pieces land first and max HP rises before it falls within every swap. The dip matters because a falling maximum clamps current HP down and gives nothing back when the maximum returns — and this engine swaps gear at every cast phase, so unordered swaps would bleed HP all fight.</td>
+            <td>None — no swap-order machinery; gear equips in default order.</td></tr>
+          <tr><td>Day, weather &amp; distance gear</td>
+            <td>Elemental checks at midcast on cures, nukes and elemental weapon skills: Hachirin-no-Obi and Chatoyant Staff on a day or weather match, Orpheus's Sash inside six yalms — a fixed priority ladder.</td>
+            <td>The same ladder, hardened — an unresolved subtarget can no longer break the distance check — plus Twilight Cape on matching day or weather for Cura and Curaga, a 1.7-line addition.</td>
+            <td>Scored rather than laddered: a per-cast potency computation from day, weather and clamped distance picks between obi and Orpheus's Sash, plus its own Twilight Cape check.</td></tr>
+          <tr><td>External add-ons</td>
+            <td colspan="2">None beyond GearSwap.</td>
+            <td>Cancel, Itemizer, a bundled Organizer; more named in its README that code never reaches.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-2)">The Mirdain cells were verified against each engine's source; the Selindrile inventory was read from its source, pinned at its 2026-07-23 upstream commit. Selindrile ships dated example gear, which is why every measured column below runs the same ported, parity-checked loadouts instead.</p>
+  </div>
+
+  <div class="section winners">
+    <h2>Who wins what</h2>
+    <p>Lower is better in every measured row, and every figure is drawn live from the run data below. A winner here is a fact about this scenario on this gear — the grid above is the other half of any fair reading, because the suites are not doing the same amount of work by design.</p>
+    <div class="table-wrap" id="winners"></div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="section">
+    <h2>Processor cost — the whole box, both states</h2>
+    <p>Whole-box cost: all six clients, every suite code path, per second of fighting. <strong>Moderate</strong> is each suite's own out-of-the-box defaults plus Hoxne on the Mirdain 1.7.2 Bard and Treasure Hunter Tag on the Corsair (all three suites). <strong>Lean</strong> is every chat channel off and nothing optional running — for Selindrile that is the parity tier, and it is the only column that supports a pure efficiency claim, because it is the closest the three come to doing identical work.</p>
+    <p><strong>Selindrile's cost is what its automation delivers</strong>: its 0.5&nbsp;s tick walks whole subsystem checklists and its reaction engine runs on every action packet in range, so its columns price a product, not a defect. The Mirdain columns price the gear-swap layer alone: sequencing, when a player wants it automated, comes from software outside GearSwap, which no column here can see. The Mirdain engines' own story is the generation gap: 1.7.2 against 1.5.12, on the same files, in both states — and under this grid the newer engine reads cheaper in both. Every column is a tiny share of one processor core — the frame section below puts all three against the actual budget.</p>
+    <figure>
+      <div class="chart-frame"><div id="c-cpu-total"></div></div>
+      <figcaption>Whole-box engine CPU per combat second: three suites, two states, bars ranked largest-first. Selindrile runs its parity gear in both; its moderate state is the practical tier (Treasure Hunter Tag on the Corsair).</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-cpu-total"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Processor cost per character</h2>
+    <p>The party splits three ways, and the cost follows the split. The <strong>Bard, Warrior and Blue Mage melee</strong> — dual-wield rounds every 1.6 seconds, the Chango every 1.6 under Hasso and Haste Samba — with the Bard stepping out for a full five-song volley when the earliest buff nears its end and the Blue Mage casting only its self-buffs and the occasional stun. The <strong>Geomancer and White Mage cast</strong>, so theirs is action chains, with the White Mage pairing Accession and Divine Seal with AoE spells on their recasts. The <strong>Corsair shoots between its own melee rounds</strong> — a Death Penalty shot every 2.5 seconds at 65% Snapshot — and carries Treasure Hunter on Tag in the moderate state on every suite, which is why it is among the most expensive clients everywhere.</p>
+    <p>Per-client cells say where each suite spends: Selindrile's casters pay for its MiniQueue and per-action bookkeeping, and its whole roster pays the 0.5&nbsp;s tick; the Mirdain engines' spread between the two states is chat and the two practical modes. The 1.7.2-over-1.5.12 gap is largest on the casters and the Corsair, whose action chains are where the engines differ most; on the Bard and Warrior melee it closes to a fraction of a microsecond the other way, their rotations spending the least time in engine code.</p>
+    <div class="grid-2">
+      <figure>
+        <h3>Moderate — defaults + Hoxne + TH</h3>
+        <div class="chart-frame"><div id="c-cpu-job-full"></div></div>
+      </figure>
+      <figure>
+        <h3>Lean — chat off, nothing optional</h3>
+        <div class="chart-frame"><div id="c-cpu-job-lean"></div></div>
+      </figure>
+    </div>
+    <figure>
+      <figcaption>Engine CPU per client per combat second, moderate and lean states.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-cpu-job"></div></details>
+    </figure>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ SHEET 2 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="sheet-head"><span>GearSwap suites · Divergence three-suite report</span><span>Sheet 2 / 3 · Memory &amp; collector</span></div>
+
+  <div class="section">
+    <h2>Memory churn — allocation per second, by suite</h2>
+    <p>Allocation is the cleanly measurable memory number, and it separates the three suites more sharply than CPU does. The Mirdain generation gap is the direct consequence of building gear sets with <span class="num">merge_into</span>, which writes into an existing table, instead of <span class="num">set_combine</span>, which allocates two or three fresh tables per input set — and Selindrile's figure prices its per-action bookkeeping and reaction machinery. Chat settings barely move any column, because the garbage is gear-set tables rather than strings. The whole sandbox — suite plus the harness's own per-event tables — churns well above the engine-only figure (<span class="num" id="sandbox-line"></span>) and moves in the same direction; that figure is not engine-attributable and is kept out of the chart.</p>
+    <figure>
+      <div class="chart-frame"><div id="c-alloc"></div></div>
+      <figcaption>Engine-only allocation: per-event heap growth with the collector stopped, weighted by how often each event fires.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-alloc"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Memory held per character</h2>
+    <p>Resident memory after boot and a full collection, per client, averaged across the six. The Mirdain 1.7 delta over 1.5.12 buys the whole enhanced feature set and stays small against a client process; most of either Mirdain figure is the shared surface every client loads here — engine, job file and the 3,700-entry gear library, a 1.7-line addition the measured 1.5.12 column also loads so that both engines dress identical gear; a real 1.5.12 install, which never shipped the library, would retain less. <strong>The Selindrile figure reads lowest and needs its caveat both ways</strong>: its per-character gear files are genuinely smaller than Mirdain's full gear library, and separately, the harness shares one lazily-loaded copy of the game's resource tables across its clients, charged to whichever Selindrile client touches it first — a cache-attribution premium that is a property of the measurement, not a leak in the suite. A full collection costs about the same few milliseconds everywhere, and nothing in any suite forces one.</p>
+    <div>
+      <figure>
+        <h3>Retained per booted client (mean of six)</h3>
+        <div class="chart-frame"><div id="c-retained"></div></div>
+        <figcaption>Suite, job file and gear, per client, after a full collection; moderate state. Selindrile's mean includes the shared resource cache charged to its first booter.</figcaption>
+      </figure>
+    </div>
+    <figure>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-mem"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Garbage collection: a rounding error on every suite</h2>
+    <p>Collector time is not a separate budget — it is the bill for the allocation above, so the way to reduce it is to allocate less. It is <strong>not charted here, deliberately</strong>: the numbers are too small for this harness to resolve, and drawing them would imply a precision the measurement does not have.</p>
+    <p>What can be said, across every column: collector work runs <strong><span class="num" id="gc-range"></span> µs per client per second of combat</strong>, at most <span class="num" id="gc-share"></span> of engine wall time, and one full collection of a client's live heap costs <span class="num" id="gc-pause"></span>. Nothing in any suite forces a collection.</p>
+    <p>The per-cell spread exceeds the differences between columns — the same client reads several times higher on one suite than another while their allocation rates tell a steadier story — so no suite can be ranked against another on this metric. The clock available here resolves to 1 millisecond against a pass that costs about sixteen, which is the whole reason. <strong>Allocation is the quantity that is cleanly measurable, and it is the one to watch.</strong></p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════ SHEET 3 ══════════════════════════════ -->
+<section class="sheet">
+  <div class="sheet-head"><span>GearSwap suites · Divergence three-suite report</span><span>Sheet 3 / 3 · Frames, casts, method</span></div>
+
+  <div class="section">
+    <h2>Frame time — no suite can drop a frame, and the footprints differ by design</h2>
+    <p>The question a frame budget answers is not "what does the average frame cost" but "what does the worst one cost". Across the simulated minutes per state, the single most expensive frame on any client is the one where a whole cast chain lands — and even the worst cell in the whole grid stays a small share of a frame. The per-frame <em>footprints</em> are a design difference worth naming: <strong>Mirdain 1.5.12</strong> registers no per-frame handler at all — its work rides packet events, and its prerender cell in the background table is the bare dispatch, priced for completeness; <strong>Mirdain 1.7.2</strong> registers one prerender pass that gates its enchanted-item and Hoxne ticks behind clock compares; <strong>Selindrile registers two</strong> — its 0.5&nbsp;s automation tick and its own 0.1&nbsp;s movement poll — whose combined steady pass is the costliest of the three and is where its frame column comes from.</p>
+    <figure>
+      <h3>Worst frame per client — moderate state</h3>
+      <div class="chart-frame"><div id="c-frame"></div></div>
+      <figcaption>The single most expensive frame per client over five simulated minutes, moderate state.</figcaption>
+    </figure>
+    <p>To place that sliver in context, the track below stacks it against <em>estimates</em> of what else occupies the same frame on a real client: the game's own rendering and simulation — which in a crowded Divergence pull consumes most of the budget, and is why frame rates sag there with no addons at all — and a chat-parsing addon of the Battlemod class, which rewrites every battle line and is notorious for spiking during dense combat text. Those two segments are rough comparison figures, not measurements; the suite segments are the measured worst frames. The point survives any reasonable estimate: the game takes milliseconds, a heavy chat addon takes on the order of a millisecond in a busy fight, and even the busiest suite's <em>worst</em> moment is a sliver.</p>
+    <figure>
+      <h3>What actually fills a 60 fps frame — worst frames in context</h3>
+      <div class="chart-frame"><div id="c-budget"></div></div>
+      <figcaption>One 16,667 µs frame at 60 fps: estimated game render and simulation, an estimated Battlemod-class chat addon at its busiest, and each suite's measured worst frame, stacked left to right.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-frame"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Cost of one action — same casts, three different bills</h2>
+    <p>One full chain: pretarget, precast, the outgoing chunk, the action packets, midcast, aftercast — and whatever follow-up work the suite itself queues — with every recast-table marshal and all chat formatting up to the point a line is handed to Windower. Identical gear lands on every suite, so the differences are plumbing: how much selection, merging and bookkeeping each suite runs to dress the same cast.</p>
+    <p>Read the shape, not just the ranks: the Mirdain engines layer sets and (on 1.7.2) report what they chose at each phase, while Selindrile selects one merged set but runs its full refresh-and-check pass at the head of every action, so its per-action floor is higher before any gear moves. A dash means the suite has no such action on that client's rotation bench.</p>
+    <figure>
+      <div class="chart-frame"><div id="c-cast"></div></div>
+      <figcaption>Cost of one complete action chain, per action, moderate state.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-cast"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Background events — where the suites' event footprints show</h2>
+    <p>Background paths scale with <em>alliance traffic</em> rather than with how often this character acts, and they are also where the three suites genuinely register different work. A dash is a path the suite does not have, or one not benched for it: the IPC rows exist only on Mirdain 1.7.2 (1.5.12 predates the spell-received system); the <span class="num">update auto</span> rebuild is a Mirdain self-command; the mode-change row is benched through Selindrile's own command machinery, so the Mirdain engines' mode commands are simply not measured there; and on a battle-log line only Selindrile does more than dispatch-floor work, because only its proc watcher registers a text handler.</p>
+    <p>The two Mirdain rows that scale hardest with alliance size — the foreign-weaponskill handler, which runs for every entity's weaponskill in range, and the bystander IPC parse — are where 1.7.2's optimization work shows against 1.5.12's shape of the same paths. Costlier one-off events sit in the table rather than the chart, where their scale would flatten everything else.</p>
+    <figure>
+      <div class="chart-frame"><div id="c-bg"></div></div>
+      <figcaption>Cost of one background event, measured on the BRD client, moderate state.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-bg"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Killing a mob and moving on</h2>
+    <p>A party does not stand on one mob for five minutes. Each client here fights one for 30&ndash;68 seconds, kills it, disengages, runs 5&ndash;11 seconds to the next and re-engages &mdash; five or six times a run. Disengaging and re-engaging each run a full set build and equip through every suite's status-change path, and the movement rows show two designs: the Mirdain engines poll position inside their packet-driven engine pass, while Selindrile polls on its own per-frame handler. At five or six kills per five minutes none of this dominates a per-second total, but every step is real work a suite does dozens of times a night.</p>
+    <figure>
+      <div class="chart-frame"><div id="c-kill"></div></div>
+      <figcaption>Cost of each step of the kill-and-travel cycle, per event, BRD client, moderate state.</figcaption>
+      <details class="numbers"><summary>Numbers</summary><div class="table-wrap" id="t-kill"></div></details>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Received-spell gear: the race only two suites can enter</h2>
+    <p>When a peer casts a tracked spell at you, gear for the incoming effect is worth wearing only if it lands <em>before the spell does</em>. Two of the three suites have a mechanism at all, and they are structurally different. <strong>Mirdain 1.7.2's is cross-client</strong>: the caster's client sends an IPC message at cast registration, so the target's window is the whole cast time minus one same-machine hop. <strong>Selindrile's is local</strong>: its Sel-Stahp engine reacts to the server's own casting echo, so its floor is the server round-trip — and its swap is suppressed while the receiver is mid-action, then rides a queued command hop. Mirdain 1.5.12 predates the system entirely.</p>
+    <p>The verdicts below replay both mechanisms against the same fast-cast-capped spell windows, at three stated server delays. Engine-side processing is microseconds on both sides — irrelevant against windows measured in hundreds of milliseconds; the race is decided by <em>when each mechanism can know</em>.</p>
+    <figure>
+      <figcaption id="race-note"></figcaption>
+      <div class="table-wrap" id="t-race"></div>
+    </figure>
+  </div>
+
+  <div class="section">
+    <h2>Which suite fits which player</h2>
+    <p>The run in one paragraph: Mirdain 1.7.2 is the cheapest engine of the three in both states — <span class="num" id="sum-cpu-delta"></span> CPU and <span class="num" id="sum-alloc-delta"></span> allocation against Mirdain 1.5.12 box-wide — though the two melee clients read a fraction the other way and 1.5.12 retains slightly less memory per client. Selindrile's columns are the grid's largest on CPU and churn — bought behaviour, per the caveats — while it takes resident memory and default chat volume outright. No suite comes near a dropped frame, and the received-spell race is Mirdain 1.7.2's by design, Selindrile entering only locally.</p>
+    <p><strong>A lean gear-swapper, nothing running you didn't ask for.</strong> Mirdain 1.7.2 in its lean state — every channel off, nothing optional on — is the grid's efficiency floor: <span class="num" id="sum-lean-cpu"></span> µs/s box-wide, the lowest CPU and allocation columns of the three, with the gear library's swap HP ordering still working underneath. Mirdain 1.5.12 is within a fraction of a microsecond on the melee clients and retains slightly less per client, but costs more box-wide in both states; the newer engine run quiet is the cheaper lean suite.</p>
+    <p><strong>A gear-swap layer beside outside automation software.</strong> The Mirdain engines are designed as exactly this — sequencing deliberately left outside GearSwap — and Mirdain 1.7.2 at its defaults adds the layers a driven character benefits from: set naming, empty-set detection, the received-spell IPC, enchanted-item handling. It costs <span class="num" id="sum-mod-cpu"></span> µs/s box-wide and is the loudest default chat column of the grid, every channel its own toggle. What the outside tool itself costs, no column here can see.</p>
+    <p><strong>Automation living inside the GearSwap suite.</strong> That is Selindrile, plainly: some thirty subsystems on its half-second tick, an on-screen HUD, packet-reaction gear — it aims to play the character, and its columns price that ambition: the grid's highest CPU (<span class="num" id="sum-sel-cpu"></span> µs/s) and allocation (<span class="num" id="sum-sel-alloc"></span> KB/s), still a small share of one core and never frame-visible, alongside the grid's lowest resident memory and quietest default chat. For automation without running software outside GearSwap, it is the suite built for the job.</p>
+  </div>
+
+  <div class="section">
+    <h2>How this was measured</h2>
+    <dl class="method">
+      <div class="method-row"><dt>Scenario</dt><dd>Six local clients &mdash; BRD/DNC at 60 fps; GEO/WHM, WHM/SCH, COR/DNC, BLU/WAR and WAR/SAM at 30 &mdash; inside an 18-player alliance against a 15-mob wave. 300 simulated seconds per configuration, replayed from a fixed seed so every engine sees a byte-identical event stream. Each client fights a mob for 30&ndash;68 s, kills it, disengages, runs 5&ndash;11 s to the next one and re-engages: five or six times a run. The Bard dual-wields Naegling and Centovente, keeps Haste Samba up out of its TP, and re-sings its five buff songs as one volley when the earliest buff is a minute from dropping; the Blue Mage dual-wields Naegling and Thibron and casts only self-buffs plus the occasional stun; the Corsair dual-wields Rostam &times;2 in melee range while shooting Death Penalty; the Warrior swings Chango behind Utu Grip; the White Mage pairs Accession and Divine Seal with AoE spells on their recasts. Day and weather are pinned for the whole run — Fire day, single Dark weather — so every suite's day, weather and distance gear checks run and are priced on each eligible cast, always resolving down the same branch.</dd></div>
+      <div class="method-row"><dt>Cadence</dt><dd>Not hand-picked gaps. Every timing rule is sourced and self-tested against the wiki&rsquo;s own worked examples: attack rounds from weapon delay with the three haste categories capped separately and a global 80% floor; dual wield on combined delay; TP per hit from delay-per-hand; Fast Cast capped at 80% of cast time and contributing half its value to recast; magical and equipment haste reducing recast, job-ability haste not; ranged shots from the gun&rsquo;s delay at ~106 delay/second with Snapshot capped at 70% combined and Rapid Shot rolled per shot from its flat 1/16&ndash;8/16 distribution. Weapon delay comes from the game&rsquo;s item data, cast times and recasts from its spell data. A reaction interval and a per-job duty factor separate what the lockout permits from what the fight asks for.</dd></div>
+      <div class="method-row"><dt>What runs</dt><dd>Each suite's complete shipped code, compiled into a per-client sandbox in GearSwap's own load order: the two Mirdain engine files with the real job files and gear library; Selindrile's full library chain with its bundled organizer include. Registrations, schedules and settings run as shipped. Nothing is extracted or paraphrased.</dd></div>
+      <div class="method-row"><dt>States</dt><dd><b>Lean</b>: every chat channel off, Hoxne off, Treasure Hunter None; for Selindrile this is the parity tier — its one GearSwap-level verbosity key already defaults off. <b>Moderate</b>: each suite's own first-load defaults untouched (for Mirdain that is info and warn on, debug and the gear trace off), plus Hoxne ON-Allow Critical on the Bard where the engine has the mode (Mirdain 1.7.2) and Treasure Hunter Tag on the Corsair on all three — Selindrile by its library mode, the Mirdain engines by their own command. Default-on automation and buff tracking run untouched everywhere; the identical seeded buff stream (the Warrior's Aftermath cycle, roll pairs, samba daze) reaches every suite's own buff-change path.</dd></div>
+      <div class="method-row"><dt>Gear</dt><dd>Matched everywhere: both Mirdain engines run the same six job files and gear library — the library is a 1.7-line addition, loaded under the 1.5.12 column too so the pair differs only in engine — and Selindrile runs generated ports of the same six loadouts — mappings judged by hand, gear transcribed by machine, and checked set-for-set against the originals. Its upstream files stay pinned byte-for-byte; the as-shipped tier is bootable but deliberately not in this grid, because its shipped example gear is dated, and measuring it would compare sample authorship rather than engines.</dd></div>
+      <div class="method-row"><dt>GearSwap layer</dt><dd>A port of the real <code>set_merge</code> / <code>unify_slots</code>, preserving per-call allocation shape — including its silent tolerance of nil arguments, which one live job file depends on.</dd></div>
+      <div class="method-row"><dt>Timing</dt><dd>Unit costs come from continuous hot loops of 250 ms or more, on the real clock, outside the sandbox. Inside it, time is virtual and driver-controlled, so busy windows, critical windows, warn throttles and item cooldowns all run on their true cadence.</dd></div>
+      <div class="method-row"><dt>Allocation</dt><dd>Two figures at two scopes. Engine allocation is each event type&rsquo;s heap delta, measured with the collector stopped, weighted by event rate &mdash; that is the number charted. Whole-sandbox allocation is the heap delta across the entire timeline; it includes the driver&rsquo;s own tables, runs well above the engine figure, and is reported only as corroboration.</dd></div>
+      <div class="method-row"><dt>Collector</dt><dd>Both sides timed in interleaved chunks of about 0.25 s, ten a side, the stopped side collecting between chunks so only one chunk of garbage is ever live. Interleaving also keeps run order from favouring either side.</dd></div>
+    </dl>
+  </div>
+
+  <div class="section">
+    <h2>What these numbers are not, and where they can mislead</h2>
+    <div class="caveat">
+      <p><b>A cell is only comparable within this run.</b> The scenario, rotations and cadence are regenerated for each run of the suite, so a figure here is not the same measurement as the matching cell in an older copy of this report. The suites are compared against each other on identical input, which is the comparison that matters.</p>
+      <p><b>Not an in-game measurement.</b> There is no FFXI client in this environment. Windower API calls are modelled as fresh-table builds of realistic size, applied identically to every suite; chat is counted as volume, never timed, because rendering happens on Windower's side; GearSwap's own per-event overhead is excluded as identical for all three. The game-render and chat-addon segments of the frame chart are order-of-magnitude estimates for context, not measurements. An in-game load remains the final word.</p>
+      <p><b>The lean columns are the only pure efficiency claim.</b> Moderate differences are bought behaviour: a suite doing more work is not slower, it is charging for a feature the others do not attempt. Read the feature grid on sheet 1 before reading any moderate rank as a verdict.</p>
+      <p><b>The suites draw the automation boundary in different places, and the moderate columns inherit it.</b> Selindrile bundles play automation into the measured suite; the Mirdain engines are designed as the gear-swap layer of a setup where sequencing, if automated at all, runs outside GearSwap — invisible to this harness. A moderate-state gap between them is therefore partly a boundary difference: one bill includes automation, the other's automation is billed elsewhere or nowhere. The lean and parity columns are unaffected — optional automation is off everywhere there, which is exactly why they remain the only pure efficiency claim.</p>
+      <p><b>The collector figures are an envelope, not a ranking.</b> The clock here resolves to 1 ms and one 300-second pass costs about 16 ms, so a few-percent collector delta sits close to the floor even chunked and interleaved. The per-cell spread exceeds the differences between suites, so none can be ranked against another on this metric. Allocation, which is what drives the collector, is measured cleanly and is the number to watch.</p>
+      <p><b>Selindrile's memory attribution carries a harness property.</b> The sandbox shares one lazily-loaded copy of the game's resource tables across clients and charges it to the first Selindrile client that touches it, so its retained and live-heap cells include a cache premium that is not a leak in the suite. Its Bard-client cancellation count in the bench notes is its own AutoCaress cycle at hot-loop cadence — understood, bounded, and never averaged into a cast figure.</p>
+      <p><b>Selindrile is measured at its pinned upstream commit of 2026-07-23</b> on ported gear, with its shipped defaults; claims about it are claims about that version on this scenario, nothing broader. Its measured columns exist because its library genuinely boots, casts, equips and tracks here — verified end to end before any number was recorded.</p>
+      <p><b>This report compares feature-bearing suites.</b> Gear-swap frameworks that ship machinery for job authors rather than finished features for players are a different product class, and ranking one beside these three would compare unlike work; none is included here.</p>
+      <p><b>Chat volume, not CPU, remains the binding constraint on a six-box setup.</b> The moderate columns emit what each suite's shipped defaults produce — most of it Mirdain 1.7.2's info channel naming every set worn, which makes it the loudest column of this grid <em>at those defaults</em>. The volume is a setting, not a fixed property: every Mirdain channel is its own toggle on both engines, and the lean column measures exactly that state — with info and warn off, Mirdain 1.7.2 falls to <span class="num" id="chat-lean"></span> lines a minute box-wide, a floor of ammo warnings and similar safety notices that deliberately ignore the toggles. The asymmetry runs the other way too: Selindrile's refusal messages and state summaries have no toggle — its <span class="num" id="chat-sel"></span> lines a minute here are low because this scenario rarely refuses an action, not because a player can turn them down. Mirdain's full-channel diagnostic state (retired from this grid) emitted on the order of a thousand lines a minute box-wide; that is why the gear trace ships off by default and is documented as a diagnostic toggle.</p>
+    </div>
+  </div>
+
+  <div class="sheet-head" style="border-bottom:none; border-top:1px solid var(--rule); padding-top:12px; padding-bottom:0;">
+    <span>Measured 2026-08-18 · PUC Lua 5.1.5 · Mirdain 1.5.12 &amp; 1.7.2 × moderate/lean; Selindrile × practical/parity · bars ranked per category</span><span>tools/perfsim</span>
+  </div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+
+/* ─── Data. Every figure below comes from tools/perfsim/analyze.lua. ────────
+   The splice strips any column this report does not compare, so the data
+   object carries exactly the three suites V names below. */
+const V = ["1.5.12", "1.7.2", "sel"];
+const COLOR = { "1.5.12": "var(--v1512)", "1.7.2": "var(--v172)", "sel": "var(--vsel)" };
+const LEGEND = { "1.5.12": "Mirdain 1.5.12", "1.7.2": "Mirdain 1.7.2", "sel": "Selindrile" };
+const CFGS = ["moderate", "lean"];
+const CFGLABEL = { moderate: "Moderate", lean: "Lean" };
+const CFGNOTE = { moderate: "defaults + Hoxne + TH", lean: "chat off, nothing optional" };
+const JOBS = ["BRD", "GEO", "WHM", "COR", "BLU", "WAR"];
+const FPS  = { BRD: 60, GEO: 30, WHM: 30, COR: 30, BLU: 30, WAR: 30 };
+/* A null cell is a path that suite does not have; tables draw it as a dash,
+   charts leave the slot empty. */
+function cell(v, dp) { return v == null ? "—" : fmt(v, dp); }
+function minOf(obj) {
+  let best = null;
+  V.forEach(k => { const v = obj && obj[k]; if (v != null && (!best || v < best.v)) best = { k: k, v: v }; });
+  return best;
+}
+
+const D =
+{
+"cpuTotal":{"moderate":{"1.5.12":207.6,"1.7.2":182,"sel":825.8},"lean":{"1.5.12":189.2,"1.7.2":167.5,"sel":830}},
+"cpuJob":{"moderate":{"BRD":{"1.5.12":29.05,"1.7.2":29.58,"sel":140.1},"GEO":{"1.5.12":34.73,"1.7.2":30.28,"sel":138.2},"WHM":{"1.5.12":37.92,"1.7.2":30.02,"sel":141.1},"COR":{"1.5.12":59.66,"1.7.2":46.34,"sel":143.3},"BLU":{"1.5.12":25.96,"1.7.2":24.64,"sel":129.8},"WAR":{"1.5.12":20.29,"1.7.2":21.12,"sel":133.3}},"lean":{"BRD":{"1.5.12":27.96,"1.7.2":28.53,"sel":139.2},"GEO":{"1.5.12":34.64,"1.7.2":30.42,"sel":138.5},"WHM":{"1.5.12":37.96,"1.7.2":30.13,"sel":140.3},"COR":{"1.5.12":42.36,"1.7.2":33.21,"sel":143.6},"BLU":{"1.5.12":26.08,"1.7.2":24.38,"sel":132.4},"WAR":{"1.5.12":20.16,"1.7.2":20.85,"sel":136}}},
+"allocTotal":{"moderate":{"1.5.12":132.4,"1.7.2":80.14,"sel":602.8},"lean":{"1.5.12":126.6,"1.7.2":78.17,"sel":603.2}},
+"allocJob":{"moderate":{"BRD":{"1.5.12":17.61,"1.7.2":11.36,"sel":94.42},"GEO":{"1.5.12":24.64,"1.7.2":16.3,"sel":105.8},"WHM":{"1.5.12":27.59,"1.7.2":17.62,"sel":106.6},"COR":{"1.5.12":31.16,"1.7.2":14.61,"sel":100.5},"BLU":{"1.5.12":18.36,"1.7.2":11.89,"sel":99.71},"WAR":{"1.5.12":13.04,"1.7.2":8.357,"sel":95.76}},"lean":{"BRD":{"1.5.12":17.61,"1.7.2":11.36,"sel":94.42},"GEO":{"1.5.12":24.64,"1.7.2":16.29,"sel":105.8},"WHM":{"1.5.12":27.59,"1.7.2":17.62,"sel":106.6},"COR":{"1.5.12":25.4,"1.7.2":12.66,"sel":100.5},"BLU":{"1.5.12":18.36,"1.7.2":11.89,"sel":99.71},"WAR":{"1.5.12":13.04,"1.7.2":8.356,"sel":96.15}}},
+"sandboxAllocTotal":{"moderate":{"1.5.12":247.9,"1.7.2":194.9,"sel":831.8},"lean":{"1.5.12":241.5,"1.7.2":190,"sel":831.7}},
+"gcJob":{"moderate":{"BRD":{"1.5.12":3.94,"1.7.2":4.52,"sel":43.92},"GEO":{"1.5.12":0.7,"1.7.2":2.05,"sel":39.13},"WHM":{"1.5.12":0.7,"1.7.2":2.56,"sel":33.8},"COR":{"1.5.12":2.37,"1.7.2":4.37,"sel":32.93},"BLU":{"1.5.12":2.31,"1.7.2":2.31,"sel":31.13},"WAR":{"1.5.12":1.98,"1.7.2":3,"sel":29}},"lean":{"BRD":{"1.5.12":2.19,"1.7.2":2.79,"sel":32.42},"GEO":{"1.5.12":3.14,"1.7.2":3.97,"sel":34.47},"WHM":{"1.5.12":1.94,"1.7.2":2.71,"sel":31.67},"COR":{"1.5.12":4.21,"1.7.2":2.87,"sel":30.93},"BLU":{"1.5.12":2.13,"1.7.2":2.16,"sel":31.13},"WAR":{"1.5.12":2.98,"1.7.2":1.58,"sel":26.13}}},
+"gcShare":{"moderate":{"BRD":{"1.5.12":5.34,"1.7.2":5.7,"sel":15.19},"GEO":{"1.5.12":0.92,"1.7.2":2.92,"sel":18.57},"WHM":{"1.5.12":0.91,"1.7.2":3.69,"sel":16.42},"COR":{"1.5.12":2.3,"1.7.2":4.78,"sel":14.84},"BLU":{"1.5.12":3.49,"1.7.2":3.56,"sel":15.67},"WAR":{"1.5.12":3.29,"1.7.2":4.9,"sel":14.39}},"lean":{"BRD":{"1.5.12":3.15,"1.7.2":3.88,"sel":11.33},"GEO":{"1.5.12":4.18,"1.7.2":5.63,"sel":16.46},"WHM":{"1.5.12":2.54,"1.7.2":3.96,"sel":15.27},"COR":{"1.5.12":4.97,"1.7.2":3.85,"sel":14.29},"BLU":{"1.5.12":3.26,"1.7.2":3.36,"sel":15.54},"WAR":{"1.5.12":4.9,"1.7.2":2.59,"sel":13.01}}},
+"retained":{"1.5.12":1584,"1.7.2":1655,"sel":862.8},
+"pause":{"1.5.12":1.075,"1.7.2":1.142,"sel":4.975},
+"retainedJob":{"BRD":{"1.5.12":1608,"1.7.2":1706,"sel":865.7},"GEO":{"1.5.12":1569,"1.7.2":1637,"sel":871.3},"WHM":{"1.5.12":1577,"1.7.2":1643,"sel":860.3},"COR":{"1.5.12":1603,"1.7.2":1670,"sel":861.6},"BLU":{"1.5.12":1574,"1.7.2":1632,"sel":877.9},"WAR":{"1.5.12":1573,"1.7.2":1641,"sel":840}},
+"liveJob":{"BRD":{"1.5.12":8953,"1.7.2":9160,"sel":3.737e+004},"GEO":{"1.5.12":8427,"1.7.2":8764,"sel":3.698e+004},"WHM":{"1.5.12":8412,"1.7.2":8618,"sel":3.695e+004},"COR":{"1.5.12":8524,"1.7.2":8859,"sel":3.704e+004},"BLU":{"1.5.12":8657,"1.7.2":8859,"sel":3.708e+004},"WAR":{"1.5.12":8683,"1.7.2":8903,"sel":3.707e+004}},
+"framePct":{"moderate":{"BRD":{"1.5.12":1.081,"1.7.2":0.533,"sel":0.8368},"GEO":{"1.5.12":0.4413,"1.7.2":0.2762,"sel":0.3907},"WHM":{"1.5.12":0.4225,"1.7.2":0.2947,"sel":0.4436},"COR":{"1.5.12":0.4752,"1.7.2":0.2735,"sel":0.3742},"BLU":{"1.5.12":0.4147,"1.7.2":0.2849,"sel":0.3446},"WAR":{"1.5.12":0.1958,"1.7.2":0.1185,"sel":0.363}},"lean":{"BRD":{"1.5.12":0.9837,"1.7.2":0.5172,"sel":0.8383},"GEO":{"1.5.12":0.4313,"1.7.2":0.2737,"sel":0.3913},"WHM":{"1.5.12":0.4343,"1.7.2":0.2923,"sel":0.4416},"COR":{"1.5.12":0.3768,"1.7.2":0.2196,"sel":0.3664},"BLU":{"1.5.12":0.4135,"1.7.2":0.2606,"sel":0.3634},"WAR":{"1.5.12":0.1927,"1.7.2":0.1138,"sel":0.3671}}},
+"frame":{"moderate":{"BRD":{"1.5.12":[0.49,1.4,180],"1.7.2":[0.53,1.5,89],"sel":[2.39,58.0,139]},"GEO":{"1.5.12":[1.16,1.8,147],"1.7.2":[1.00,3.8,92],"sel":[4.66,59.5,130]},"WHM":{"1.5.12":[1.27,2.1,141],"1.7.2":[1.00,2.0,98],"sel":[4.76,60.4,148]},"COR":{"1.5.12":[2.09,94.4,158],"1.7.2":[1.54,58.3,91],"sel":[4.88,66.7,125]},"BLU":{"1.5.12":[0.87,1.9,138],"1.7.2":[0.82,3.0,95],"sel":[4.43,57.9,115]},"WAR":{"1.5.12":[0.69,1.9,65],"1.7.2":[0.71,2.9,40],"sel":[4.58,61.5,121]}},"lean":{"BRD":{"1.5.12":[0.47,1.4,164],"1.7.2":[0.47,1.4,86],"sel":[2.38,58.0,140]},"GEO":{"1.5.12":[1.16,1.8,144],"1.7.2":[1.01,3.8,91],"sel":[4.66,60.5,130]},"WHM":{"1.5.12":[1.27,2.1,145],"1.7.2":[1.01,2.1,97],"sel":[4.72,60.2,147]},"COR":{"1.5.12":[1.42,61.3,126],"1.7.2":[1.10,40.8,73],"sel":[4.88,64.1,122]},"BLU":{"1.5.12":[0.88,1.9,138],"1.7.2":[0.81,3.0,87],"sel":[4.53,61.5,121]},"WAR":{"1.5.12":[0.69,1.8,64],"1.7.2":[0.70,2.9,38],"sel":[4.67,61.2,122]}}},
+"casts":[{"label":"BRD song","moderate":{"1.5.12":155.5,"1.7.2":73.58,"sel":121.2},"lean":{"1.5.12":138.6,"1.7.2":70.8,"sel":108.9}},{"label":"BRD Honor March","moderate":{"1.5.12":159.4,"1.7.2":82.48,"sel":112.7},"lean":{"1.5.12":139,"1.7.2":79.23,"sel":115.1}},{"label":"BRD Haste Samba","moderate":{"1.5.12":56.6,"1.7.2":31.6,"sel":50.25},"lean":{"1.5.12":56.1,"1.7.2":33,"sel":50.75}},{"label":"GEO Fire V","moderate":{"1.5.12":119.6,"1.7.2":75,"sel":107.4},"lean":{"1.5.12":116.8,"1.7.2":74.2,"sel":107.7}},{"label":"WHM Cure IV","moderate":{"1.5.12":115.2,"1.7.2":73.4,"sel":84.4},"lean":{"1.5.12":118,"1.7.2":73.4,"sel":83.6}},{"label":"WHM Accession","moderate":{"1.5.12":51.75,"1.7.2":37.65,"sel":53.09},"lean":{"1.5.12":51.3,"1.7.2":34.9,"sel":51.45}},{"label":"COR ranged","moderate":{"1.5.12":130.4,"1.7.2":74.23,"sel":66.2},"lean":{"1.5.12":98.08,"1.7.2":56.79,"sel":62.8}},{"label":"COR Leaden Salute","moderate":{"1.5.12":109.8,"1.7.2":57.75,"sel":66.19},"lean":{"1.5.12":76.73,"1.7.2":40.6,"sel":66.6}},{"label":"BLU Sudden Lunge","moderate":{"1.5.12":113.4,"1.7.2":72.8,"sel":85.25},"lean":{"1.5.12":113,"1.7.2":68.19,"sel":92.23}},{"label":"BLU Savage Blade","moderate":{"1.5.12":56.55,"1.7.2":33.1,"sel":59.6},"lean":{"1.5.12":56.6,"1.7.2":31.9,"sel":62.4}},{"label":"WAR Upheaval","moderate":{"1.5.12":64.05,"1.7.2":37.65,"sel":59.4},"lean":{"1.5.12":62.99,"1.7.2":36.7,"sel":61.2}}],
+"background":[{"label":"Foreign weaponskill","moderate":{"1.5.12":0.624,"1.7.2":0.193,"sel":3.533},"lean":{"1.5.12":0.626,"1.7.2":0.194,"sel":3.378}},{"label":"Foreign WS closing a skillchain","moderate":{"1.5.12":0.955,"1.7.2":0.93,"sel":3.734},"lean":{"1.5.12":0.958,"1.7.2":0.964,"sel":3.356}},{"label":"IPC cast for someone else","moderate":{"1.5.12":null,"1.7.2":2.482,"sel":null},"lean":{"1.5.12":null,"1.7.2":2.522,"sel":null}},{"label":"IPC cast aimed at you","moderate":{"1.5.12":null,"1.7.2":20.8,"sel":null},"lean":{"1.5.12":null,"1.7.2":17.25,"sel":null}},{"label":"main_engine pass","moderate":{"1.5.12":0.926,"1.7.2":0.813,"sel":0.167},"lean":{"1.5.12":0.901,"1.7.2":0.813,"sel":0.169}},{"label":"update auto rebuild","moderate":{"1.5.12":20.2,"1.7.2":13.93,"sel":null},"lean":{"1.5.12":22.15,"1.7.2":11.2,"sel":null}},{"label":"Incoming packet","moderate":{"1.5.12":0.08,"1.7.2":0.08,"sel":0.598},"lean":{"1.5.12":0.079,"1.7.2":0.081,"sel":0.592}},{"label":"Prerender pass, steady state","moderate":{"1.5.12":0.084,"1.7.2":0.165,"sel":0.398},"lean":{"1.5.12":0.079,"1.7.2":0.167,"sel":0.406}},{"label":"Battle-log text line","moderate":{"1.5.12":0.037,"1.7.2":0.037,"sel":0.117},"lean":{"1.5.12":0.037,"1.7.2":0.037,"sel":0.119}},{"label":"Game-minute tick","moderate":{"1.5.12":0.044,"1.7.2":0.044,"sel":0.135},"lean":{"1.5.12":0.045,"1.7.2":0.045,"sel":0.138}},{"label":"Mode change (self-command)","moderate":{"1.5.12":null,"1.7.2":null,"sel":30.2},"lean":{"1.5.12":null,"1.7.2":null,"sel":31.1}},{"label":"Movement poll, out of combat","moderate":{"1.5.12":1.035,"1.7.2":0.842,"sel":0.206},"lean":{"1.5.12":1.03,"1.7.2":0.855,"sel":0.207}},{"label":"Movement poll, in combat","moderate":{"1.5.12":1.04,"1.7.2":0.849,"sel":0.207},"lean":{"1.5.12":1.028,"1.7.2":0.863,"sel":0.206}},{"label":"Engage a new mob","moderate":{"1.5.12":24.45,"1.7.2":15,"sel":17.3},"lean":{"1.5.12":25.25,"1.7.2":15.15,"sel":17.4}},{"label":"Disengage on a kill","moderate":{"1.5.12":22.1,"1.7.2":14.65,"sel":11.93},"lean":{"1.5.12":22.2,"1.7.2":14.95,"sel":12.55}},{"label":"Mob death packet","moderate":{"1.5.12":0.986,"1.7.2":0.973,"sel":1.577},"lean":{"1.5.12":0.973,"1.7.2":0.994,"sel":1.587}}],
+"race":{"mirdainUs":22.8,"selUs":24.8,"delays":[400,650,900],"rows":[{"spell":"Cure III","window":0.50,"ipc":true,"sel":[true,false,false]},{"spell":"Cure IV","window":0.50,"ipc":true,"sel":[true,false,false]},{"spell":"Curaga II","window":0.95,"ipc":true,"sel":[true,true,true]},{"spell":"Regen II","window":0.35,"ipc":true,"sel":[false,false,false]},{"spell":"Haste","window":0.60,"ipc":true,"sel":[true,false,false]},{"spell":"Paralyna","window":0.20,"ipc":true,"sel":[false,false,false]},{"spell":"Quick Magic proc","window":0.00,"ipc":true,"sel":[false,false,false]}]},
+"chat":{"moderate":{"1.5.12":93.4,"1.7.2":145.2,"sel":1.2},"lean":{"1.5.12":13,"1.7.2":13,"sel":1.2}}
+};
+
+/* ─── Tooltip ─────────────────────────────────────────────────────────────── */
+const tip = document.getElementById("tip");
+function showTip(evt, html) {
+  tip.innerHTML = html;
+  tip.classList.add("on");
+  moveTip(evt);
+}
+function moveTip(evt) {
+  const pad = 14;
+  let x = (evt.clientX ?? 0) + pad, y = (evt.clientY ?? 0) + pad;
+  const r = tip.getBoundingClientRect();
+  if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.classList.remove("on"); }
+
+/* ─── SVG helpers ─────────────────────────────────────────────────────────── */
+const NS = "http://www.w3.org/2000/svg";
+function el(name, attrs, text) {
+  const n = document.createElementNS(NS, name);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text != null) n.textContent = text;
+  return n;
+}
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) {
+    if (v <= mag * m) return mag * m;
+  }
+  return mag * 10;
+}
+function fmt(v, dp) { return v.toFixed(dp == null ? 1 : dp); }
+
+/* Attach hover + keyboard to a mark. Every value is also in the table view, so
+   the tooltip enhances and never gates. */
+function interactive(node, label) {
+  node.setAttribute("tabindex", "0");
+  node.setAttribute("role", "img");
+  node.setAttribute("aria-label", label.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  node.addEventListener("mouseenter", e => showTip(e, label));
+  node.addEventListener("mousemove", moveTip);
+  node.addEventListener("mouseleave", hideTip);
+  node.addEventListener("focus", () => {
+    const r = node.getBoundingClientRect();
+    showTip({ clientX: r.left + r.width / 2, clientY: r.top }, label);
+  });
+  node.addEventListener("blur", hideTip);
+}
+
+/* ─── Chart frame ─────────────────────────────────────────────────────────────
+   Every figure gets the same furniture: a title, a legend naming each series, and
+   both axes labelled with what they measure and in what unit. Nothing here asks
+   the reader to infer what they are looking at.
+
+   Returns the svg plus the plot rectangle the caller draws into.
+   spec: { title, xlabel, ylabel, series:[keys], W, plotH, legend:false }         */
+function chartFrame(host, spec) {
+  const W = spec.W || 820;
+  const padT = 12;
+  const titleH = 20;
+  const legendH = spec.legend === false ? 0 : 20;
+  const plotTop = padT + titleH + legendH + 10;
+  const plotH = spec.plotH || 190;
+  const xAxisH = 40;                       /* tick labels + axis label */
+  const padL = spec.padL != null ? spec.padL : 62;
+  const padR = spec.padR != null ? spec.padR : 16;
+  const H = plotTop + plotH + xAxisH;
+
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+    "aria-label": (spec.title || "chart") + ". " + (spec.aria || "") });
+  if (W >= 600) svg.style.minWidth = "480px";
+
+  svg.appendChild(el("text", { class: "fig-title", x: 0, y: padT + 11 }, spec.title || ""));
+
+  /* Which direction wins, stated on the chart itself. */
+  if (spec.better) {
+    svg.appendChild(el("text", { class: "group-text", x: W - padR, y: padT + 11,
+      "text-anchor": "end" },
+      spec.better === "higher" ? "▲ higher is better" : "▼ lower is better"));
+  }
+
+  if (spec.legend !== false && spec.series) {
+    let lx = 0;
+    const ly = padT + titleH + 12;
+    spec.series.forEach(k => {
+      svg.appendChild(el("rect", { x: lx, y: ly - 8, width: 9, height: 9, rx: 2,
+        fill: COLOR[k] }));
+      const t = el("text", { class: "legend-text", x: lx + 13, y: ly }, LEGEND[k] || k);
+      svg.appendChild(t);
+      lx += 13 + (LEGEND[k] || k).length * 6.1 + 20;
+    });
+  }
+
+  /* Y axis label, rotated up the left edge. */
+  if (spec.ylabel) {
+    const cy = plotTop + plotH / 2;
+    svg.appendChild(el("text", { class: "axis-label", x: 11, y: cy,
+      "text-anchor": "middle", transform: `rotate(-90 11 ${cy})` }, spec.ylabel));
+  }
+  /* X axis label, centred under the ticks. */
+  if (spec.xlabel) {
+    svg.appendChild(el("text", { class: "axis-label", x: padL + (W - padL - padR) / 2,
+      y: H - 6, "text-anchor": "middle" }, spec.xlabel));
+  }
+
+  return { svg: svg, x0: padL, y0: plotTop, w: W - padL - padR, h: plotH, W: W, H: H };
+}
+
+/* ─── Vertical grouped bars: category on X, value on Y ────────────────────── */
+function groupedBars(host, spec) {
+  const f = chartFrame(host, spec);
+  const svg = f.svg;
+  const max = spec.max || niceMax(Math.max(...spec.groups.flatMap(g => g.bars.map(b => b.value).filter(v => v != null))) * 1.16);
+  const y = v => f.y0 + f.h - (v / max) * f.h;
+
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = (max / ticks) * i, yy = y(v);
+    svg.appendChild(el("line", { class: i === 0 ? "ax-line" : "gridline",
+      x1: f.x0, x2: f.x0 + f.w, y1: yy, y2: yy }));
+    svg.appendChild(el("text", { class: "tick-text", x: f.x0 - 7, y: yy + 3.4,
+      "text-anchor": "end" }, fmt(v, spec.tickDp == null ? 0 : spec.tickDp)));
+  }
+
+  const gw = f.w / spec.groups.length;
+  const nb = spec.groups[0].bars.length;
+  /* Thin marks, capped width, 2px surface gap between neighbours. */
+  const barW = Math.min(spec.barW || 38, (Math.min(gw * 0.74, 92 * nb) - 2 * (nb - 1)) / nb);
+  const bandW = barW * nb + 2 * (nb - 1);
+
+  spec.groups.forEach((g, gi) => {
+    const gx = f.x0 + gw * gi + (gw - bandW) / 2;
+    /* Ranked within the category: largest first; absent paths drop out. */
+    const bars = g.bars.filter(bb => bb.value != null)
+      .sort((aa, bb) => bb.value - aa.value);
+    bars.forEach((b, bi) => {
+      const bx = gx + bi * (barW + 2);
+      const h = Math.max(1.5, (b.value / max) * f.h);
+      const r = el("rect", { class: "bar", x: bx, y: f.y0 + f.h - h, width: barW, height: h,
+        fill: COLOR[b.key], rx: 4, ry: 4 });
+      /* square the baseline end; only the data end is rounded */
+      svg.appendChild(r);
+      svg.appendChild(el("rect", { x: bx, y: f.y0 + f.h - Math.min(h, 5), width: barW,
+        height: Math.min(h, 5), fill: COLOR[b.key] }));
+      interactive(r, `<span class="tip-k">${g.label} · ${LEGEND[b.key] || b.key}</span><br>${fmt(b.value, spec.dp)} ${spec.unit}`);
+      if (spec.valueLabels !== false) {
+        svg.appendChild(el("text", { class: "val-text", x: bx + barW / 2,
+          y: f.y0 + f.h - h - 6, "text-anchor": "middle" }, fmt(b.value, spec.dp)));
+      }
+    });
+    svg.appendChild(el("text", { class: "cat-text strong", x: gx + bandW / 2,
+      y: f.y0 + f.h + 15, "text-anchor": "middle" }, g.label));
+    if (g.note) {
+      svg.appendChild(el("text", { class: "tick-text", x: gx + bandW / 2,
+        y: f.y0 + f.h + 27, "text-anchor": "middle" }, g.note));
+    }
+  });
+
+  host.appendChild(svg);
+}
+
+/* ─── Horizontal grouped bars: value on X, category on Y ──────────────────── */
+function hBars(host, spec) {
+  const rowH = spec.rowH || 14, gap = 2, groupGap = 13;
+  const nb = spec.groups[0].bars.length;
+  const groupH = rowH * nb + gap * (nb - 1);
+  const plotH = spec.groups.length * (groupH + groupGap) - groupGap;
+  const f = chartFrame(host, Object.assign({}, spec, { plotH: plotH,
+    padL: spec.padL != null ? spec.padL : 150, padR: 52 }));
+  const svg = f.svg;
+
+  const max = spec.max || niceMax(Math.max(...spec.groups.flatMap(g => g.bars.map(b => b.value).filter(v => v != null))) * 1.12);
+  const x = v => f.x0 + (v / max) * f.w;
+
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const v = (max / ticks) * i, xx = x(v);
+    svg.appendChild(el("line", { class: i === 0 ? "ax-line" : "gridline",
+      x1: xx, x2: xx, y1: f.y0 - 6, y2: f.y0 + f.h + 2 }));
+    svg.appendChild(el("text", { class: "tick-text", x: xx, y: f.y0 + f.h + 15,
+      "text-anchor": "middle" }, fmt(v, spec.tickDp == null ? 0 : spec.tickDp)));
+  }
+
+  spec.groups.forEach((g, gi) => {
+    const gy = f.y0 + gi * (groupH + groupGap);
+    svg.appendChild(el("text", { class: "cat-text strong", x: f.x0 - 9,
+      y: gy + groupH / 2 + 3.6, "text-anchor": "end" }, g.label));
+    /* Ranked within the category: largest first; absent paths drop out. */
+    const bars = g.bars.filter(bb => bb.value != null)
+      .sort((aa, bb) => bb.value - aa.value);
+    bars.forEach((b, bi) => {
+      const by = gy + bi * (rowH + gap);
+      const w = Math.max(1.5, (b.value / max) * f.w);
+      const r = el("rect", { class: "bar", x: f.x0, y: by, width: w, height: rowH,
+        fill: COLOR[b.key], rx: 4, ry: 4 });
+      svg.appendChild(r);
+      svg.appendChild(el("rect", { x: f.x0, y: by, width: Math.min(w, 5), height: rowH,
+        fill: COLOR[b.key] }));
+      interactive(r, `<span class="tip-k">${g.label} · ${LEGEND[b.key] || b.key}</span><br>${fmt(b.value, spec.dp)} ${spec.unit}`);
+      svg.appendChild(el("text", { class: "val-text", x: f.x0 + w + 6, y: by + rowH / 2 + 3.4 },
+        fmt(b.value, spec.dp)));
+    });
+  });
+
+  host.appendChild(svg);
+}
+
+/* ─── Budget composition: one 60 fps frame as a track, filled left to right
+       with everything that has to share it — the game's own render/sim time
+       and a Battlemod-class chat addon (both order-of-magnitude ESTIMATES,
+       drawn muted and hatched), then the engine's measured worst frame in the
+       version's own colour. The engine sliver against the whole track is the
+       chart's entire message. ─────────────────────────────────────────────── */
+const BUDGET_US = 16667;
+const GAME_EST_US = 10000;   /* game render + simulation in a crowded pull (estimate) */
+const BM_EST_US = 1500;      /* Battlemod-class chat parser during dense battle text (estimate) */
+
+function budgetStack(host, spec) {
+  const rowH = 30;
+  const plotH = spec.rows.length * rowH + 24;   /* +legend line above rows */
+  const f = chartFrame(host, Object.assign({}, spec, { plotH: plotH,
+    padL: 74, padR: 128, legend: false }));
+  const svg = f.svg;
+
+  /* Hatch pattern for the estimated segments. */
+  const defs = el("defs", {});
+  const pat = el("pattern", { id: "est-hatch", width: 6, height: 6,
+    patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
+  pat.appendChild(el("rect", { x: 0, y: 0, width: 6, height: 6, fill: "var(--sunken)" }));
+  pat.appendChild(el("rect", { x: 0, y: 0, width: 2.4, height: 6, fill: "var(--baseline)", opacity: 0.55 }));
+  defs.appendChild(pat);
+  svg.appendChild(defs);
+
+  /* Custom legend: what each segment is. */
+  let lx = f.x0;
+  const ly = f.y0 + 2;
+  const legend = [
+    { fill: "url(#est-hatch)", label: "game render + sim (est.)" },
+    { fill: "var(--warn)", label: "Battlemod-class addon (est.)", opacity: 0.45 },
+    { fill: "var(--ink)", label: "this engine, worst measured frame" },
+  ];
+  legend.forEach(item => {
+    svg.appendChild(el("rect", { x: lx, y: ly - 8, width: 9, height: 9, rx: 2,
+      fill: item.fill, opacity: item.opacity || 1 }));
+    svg.appendChild(el("text", { class: "legend-text", x: lx + 13, y: ly }, item.label));
+    lx += 13 + item.label.length * 6.1 + 22;
+  });
+
+  const x = us => (us / BUDGET_US) * f.w;
+
+  spec.rows.forEach((r, ri) => {
+    const y = f.y0 + 24 + ri * rowH + 6;
+    svg.appendChild(el("text", { class: "cat-text strong", x: f.x0 - 10, y: y + 9.5,
+      "text-anchor": "end" }, r.label));
+    /* the whole budget */
+    svg.appendChild(el("rect", { x: f.x0, y: y, width: f.w, height: 13, rx: 3, ry: 3,
+      fill: "var(--surface)", stroke: "var(--grid)", "stroke-width": 1 }));
+
+    /* game (estimate, hatched) */
+    const gw = x(GAME_EST_US);
+    const g = el("rect", { class: "bar", x: f.x0, y: y, width: gw, height: 13, rx: 3, ry: 3,
+      fill: "url(#est-hatch)", stroke: "var(--baseline)", "stroke-width": 0.5 });
+    interactive(g, `<span class="tip-k">${r.label} · game render + simulation</span><br>~${GAME_EST_US.toLocaleString()} µs — a rough estimate for a crowded Divergence pull<br>${(GAME_EST_US / BUDGET_US * 100).toFixed(0)}% of the 16,667 µs budget`);
+    svg.appendChild(g);
+
+    /* Battlemod-class addon (estimate) */
+    const bw = x(BM_EST_US);
+    const b = el("rect", { class: "bar", x: f.x0 + gw, y: y, width: bw, height: 13,
+      fill: "var(--warn)", opacity: 0.45 });
+    interactive(b, `<span class="tip-k">${r.label} · Battlemod-class chat addon</span><br>~${BM_EST_US.toLocaleString()} µs — a rough estimate at its busiest<br>${(BM_EST_US / BUDGET_US * 100).toFixed(0)}% of the budget`);
+    svg.appendChild(b);
+
+    /* the engine's measured worst frame */
+    const ew = Math.max(3, x(r.us));
+    const e = el("rect", { class: "bar", x: f.x0 + gw + bw, y: y, width: ew, height: 13,
+      fill: COLOR[r.key] });
+    interactive(e, `<span class="tip-k">${r.label} · worst measured frame</span><br>${r.us.toFixed(0)} µs of 16,667 µs<br>${(r.us / BUDGET_US * 100).toFixed(2)}% of the budget`);
+    svg.appendChild(e);
+
+    svg.appendChild(el("text", { class: "val-text", x: f.x0 + f.w + 9, y: y + 10 },
+      "engine " + r.us.toFixed(0) + " µs · " + (r.us / BUDGET_US * 100).toFixed(2) + "%"));
+  });
+
+  /* Scale ticks along the track, so the reader can see it is a full budget. */
+  for (let i = 0; i <= 4; i++) {
+    const xx = f.x0 + (f.w * i) / 4;
+    svg.appendChild(el("text", { class: "tick-text", x: xx, y: f.y0 + f.h + 15,
+      "text-anchor": "middle" }, (i * 25) + "%"));
+  }
+  host.appendChild(svg);
+}
+
+/* ─── Table builder ───────────────────────────────────────────────────────── */
+function table(host, spec) {
+  const t = el2("table");
+  if (spec.caption) { const c = el2("caption"); c.textContent = spec.caption; t.appendChild(c); }
+  const thead = el2("thead"), htr = el2("tr");
+  spec.cols.forEach(c => { const th = el2("th"); th.setAttribute("scope", "col"); th.textContent = c; htr.appendChild(th); });
+  thead.appendChild(htr); t.appendChild(thead);
+  const tb = el2("tbody");
+  spec.rows.forEach(r => {
+    const tr = el2("tr");
+    r.forEach((cell, i) => {
+      const td = el2(i === 0 ? "th" : "td");
+      if (i === 0) td.setAttribute("scope", "row");
+      td.textContent = cell;
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+  if (spec.foot) {
+    const tf = el2("tfoot"), tr = el2("tr");
+    spec.foot.forEach(cell => { const td = el2("td"); td.textContent = cell; tr.appendChild(td); });
+    tf.appendChild(tr); t.appendChild(tf);
+  }
+  host.appendChild(t);
+}
+function el2(n) { return document.createElement(n); }
+
+/* ─── Render ──────────────────────────────────────────────────────────────── */
+
+/* Stat tiles — computed from D, never typed by hand. */
+(function () {
+  const host = document.getElementById("tiles");
+  const tile = (label, value, unit, note) => {
+    const d = el2("div"); d.className = "tile";
+    const l = el2("div"); l.className = "tile-label"; l.textContent = label;
+    const v = el2("div"); v.className = "tile-value"; v.textContent = value;
+    if (unit) { const u = el2("span"); u.className = "tile-unit"; u.textContent = " " + unit; v.appendChild(u); }
+    const n = el2("div"); n.className = "tile-note"; n.innerHTML = note;
+    d.append(l, v, n); host.appendChild(d);
+  };
+  const cpuL = minOf(D.cpuTotal.lean);
+  tile("Cheapest suite, lean", fmt(cpuL.v, 0), "µs/s",
+    `<span class="delta down">${LEGEND[cpuL.k]}</span> — whole box, everything off`);
+  tile("CPU: 1.7.2 vs 1.5.12", pct(D.cpuTotal.moderate["1.7.2"], D.cpuTotal.moderate["1.5.12"]), "CPU",
+    `whole box, moderate state; lean <span class="delta down">${pct(D.cpuTotal.lean["1.7.2"], D.cpuTotal.lean["1.5.12"])}</span>`);
+  tile("Memory: 1.7.2 vs 1.5.12", pct(D.allocTotal.moderate["1.7.2"], D.allocTotal.moderate["1.5.12"]), "allocation",
+    `engine-only churn, moderate state; lean <span class="delta down">${pct(D.allocTotal.lean["1.7.2"], D.allocTotal.lean["1.5.12"])}</span>`);
+  const chM = minOf(D.chat.moderate);
+  let chLoud = null;
+  V.forEach(k => { const v = D.chat.moderate[k]; if (v != null && (!chLoud || v > chLoud.v)) chLoud = { k: k, v: v }; });
+  tile("Quietest chat, moderate", fmt(chM.v, 1), "lines/min",
+    `<span class="delta down">${LEGEND[chM.k]}</span> box-wide; the loudest is ${LEGEND[chLoud.k]} at ${fmt(chLoud.v, 0)} (defaults; see the caveats)`);
+  const worstAll = Math.max(...V.flatMap(k => JOBS.map(j => {
+    const f = D.frame.moderate[j][k];
+    return f ? f[2] / (FPS[j] === 60 ? 16667 : 33333) * 100 : 0;
+  })));
+  tile("Worst frame, any suite", fmt(worstAll, 2), "% of budget",
+    `no suite can drop a frame, in either state`);
+})();
+
+/* Who wins what — computed from D. */
+(function () {
+  const host = document.getElementById("winners");
+  const t = el2("table");
+  const thead = el2("thead"), htr = el2("tr");
+  ["Category", "Winner", "Value", "Reading"].forEach(c => {
+    const th = el2("th"); th.setAttribute("scope", "col"); th.textContent = c; htr.appendChild(th);
+  });
+  thead.appendChild(htr); t.appendChild(thead);
+  const tb = el2("tbody");
+  const row = (cat, key, val, note) => {
+    const tr = el2("tr");
+    const c1 = el2("td"); c1.className = "w-cat"; c1.textContent = cat;
+    const c2 = el2("td");
+    if (key) { const s = el2("span"); s.className = "sw"; s.style.background = COLOR[key]; c2.appendChild(s); }
+    c2.appendChild(document.createTextNode(key ? LEGEND[key] : "—"));
+    const c3 = el2("td"); c3.className = "w-val"; c3.textContent = val;
+    const c4 = el2("td"); c4.innerHTML = note;
+    tr.append(c1, c2, c3, c4); tb.appendChild(tr);
+  };
+  let m;
+  m = minOf(D.cpuTotal.lean);
+  row("CPU · lean", m.k, fmt(m.v, 0) + " µs/s", "the efficiency floor of the three — same fight, least plumbing");
+  m = minOf(D.cpuTotal.moderate);
+  row("CPU · moderate", m.k, fmt(m.v, 0) + " µs/s", "cheapest with the practical modes on");
+  m = minOf(D.allocTotal.lean);
+  row("Allocation · lean", m.k, fmt(m.v, 1) + " KB/s", "engine-only churn; the 1.7.2-over-1.5.12 cut is the Mirdain generation gap's headline");
+  m = minOf(D.chat.moderate);
+  row("Chat · moderate", m.k, fmt(m.v, 1) + " lines/min", "box-wide at shipped defaults — chat volume, not CPU, binds a six-box setup");
+  let fb = null;
+  V.forEach(k => {
+    const w = Math.max(...JOBS.map(j => { const f = D.frame.moderate[j][k]; return f ? f[2] : -1; }));
+    if (w >= 0 && (!fb || w < fb.v)) fb = { k: k, v: w };
+  });
+  row("Worst frame · moderate", fb.k, fmt(fb.v, 0) + " µs", "smallest worst case; no suite is frame-visible");
+  m = minOf(D.retained);
+  row("Resident memory", m.k, fmt(m.v, 0) + " KB/client", "mean retained after boot; Selindrile's per-character gear files are smaller than Mirdain's full gear library, and its mean carries the shared-cache premium besides");
+  if (D.race) {
+    row("Received-spell gear", "1.7.2", D.race.rows.filter(r => r.ipc).length + "/" + D.race.rows.length + " in time",
+      "cross-client IPC knows at cast registration; Selindrile's local reactor wins only the slowest casts at the best-case delay");
+  }
+  row("Automation breadth", "sel", "~30 subsystems", "the product identity — priced, not penalised: its columns buy behaviour the Mirdain engines deliberately leave outside GearSwap");
+  t.appendChild(tb); host.appendChild(t);
+})();
+
+/* The received-gear race, from D.race (measure_received_race.lua output). */
+(function () {
+  if (!D.race) return;
+  document.getElementById("race-note").textContent =
+    "Engine-side processing: Mirdain 1.7.2 IPC " + fmt(D.race.mirdainUs, 1) +
+    " µs, Selindrile packet path " + fmt(D.race.selUs, 1) +
+    " µs — both irrelevant against the windows. Stated inputs: server packet delay " +
+    D.race.delays.join("/") + " ms (in-game socket timing); IPC transit bounded at one 30 fps frame (33.3 ms, same-machine).";
+  table(document.getElementById("t-race"), {
+    caption: "Does the received-gear swap land before the spell? Fast-cast-capped windows — in time is better",
+    cols: ["Incoming spell", "Window", "Mirdain 1.7.2 IPC", ...D.race.delays.map(d => "Selindrile @" + d + " ms")],
+    rows: D.race.rows.map(r => [r.spell, fmt(r.window, 2) + " s",
+      r.ipc ? "in time" : "late", ...r.sel.map(v => v ? "in time" : "late")]),
+  });
+})();
+
+/* ── Sheet 1: CPU ─────────────────────────────────────────────────────────── */
+groupedBars(document.getElementById("c-cpu-total"), {
+  title: "Engine CPU for the whole six-client box",
+  ylabel: "µs of engine code per combat second",
+  xlabel: "state",
+  series: V, unit: "µs/s", dp: 1, plotH: 200, better: "lower",
+  groups: CFGS.map(cfg => ({ label: CFGLABEL[cfg], note: CFGNOTE[cfg],
+    bars: V.map(k => ({ key: k, value: D.cpuTotal[cfg][k] })) })),
+});
+table(document.getElementById("t-cpu-total"), {
+  caption: "Whole-box engine CPU, µs per combat second",
+  cols: ["State", ...V.map(k => LEGEND[k]), "Mirdain 1.7.2 vs 1.5.12"],
+  rows: CFGS.map(cfg => [CFGLABEL[cfg], ...V.map(k => cell(D.cpuTotal[cfg][k])),
+    pct(D.cpuTotal[cfg]["1.7.2"], D.cpuTotal[cfg]["1.5.12"])]),
+});
+
+hBars(document.getElementById("c-cpu-job-full"), {
+  title: "Engine CPU per client — moderate",
+  xlabel: "microseconds of engine code per second of combat",
+  ylabel: "client",
+  series: V, unit: "µs/s", dp: 1, W: 400, padL: 52, better: "lower",
+  groups: JOBS.map(j => ({ label: j, bars: V.map(k => ({ key: k, value: D.cpuJob.moderate[j][k] })) })),
+});
+hBars(document.getElementById("c-cpu-job-lean"), {
+  title: "Engine CPU per client — lean",
+  xlabel: "microseconds of engine code per second of combat",
+  ylabel: "client",
+  series: V, unit: "µs/s", dp: 1, W: 400, padL: 52, better: "lower",
+  groups: JOBS.map(j => ({ label: j, bars: V.map(k => ({ key: k, value: D.cpuJob.lean[j][k] })) })),
+});
+table(document.getElementById("t-cpu-job"), {
+  caption: "Engine CPU per client, µs per combat second — moderate, then lean",
+  cols: ["Client", ...V.map(k => LEGEND[k] + " mod"), ...V.map(k => LEGEND[k] + " lean")],
+  rows: JOBS.map(j => [j + " · " + FPS[j] + " fps",
+    ...V.map(k => cell(D.cpuJob.moderate[j][k])), ...V.map(k => cell(D.cpuJob.lean[j][k]))]),
+  foot: ["All six", ...V.map(k => cell(D.cpuTotal.moderate[k])), ...V.map(k => cell(D.cpuTotal.lean[k]))],
+});
+
+/* ── Sheet 2: memory ──────────────────────────────────────────────────────── */
+groupedBars(document.getElementById("c-alloc"), {
+  title: "Memory the engine churns, whole six-client box",
+  ylabel: "KB allocated per combat second",
+  xlabel: "state",
+  series: V, unit: "KB/s", dp: 1, plotH: 190, better: "lower",
+  groups: CFGS.map(cfg => ({ label: CFGLABEL[cfg], note: CFGNOTE[cfg],
+    bars: V.map(k => ({ key: k, value: D.allocTotal[cfg][k] })) })),
+});
+document.getElementById("sandbox-line").textContent =
+  V.map(k => LEGEND[k] + " " + cell(D.sandboxAllocTotal.moderate[k], 0)).join(" · ") + " KB/s";
+table(document.getElementById("t-alloc"), {
+  caption: "Engine allocation, KB per combat second — moderate, then lean",
+  cols: ["Client", ...V.map(k => LEGEND[k] + " mod"), ...V.map(k => LEGEND[k] + " lean")],
+  rows: JOBS.map(j => [j, ...V.map(k => cell(D.allocJob.moderate[j][k])), ...V.map(k => cell(D.allocJob.lean[j][k]))]),
+  foot: ["All six", ...V.map(k => cell(D.allocTotal.moderate[k])), ...V.map(k => cell(D.allocTotal.lean[k]))],
+});
+
+groupedBars(document.getElementById("c-retained"), {
+  title: "Memory one client keeps after loading",
+  ylabel: "kilobytes retained per client",
+  xlabel: "suite (mean of the six clients)",
+  series: V, unit: "KB", dp: 0, plotH: 155, W: 400, padL: 62, tickDp: 0, better: "lower",
+  groups: [{ label: "Mean of six clients", bars: V.map(k => ({ key: k, value: D.retained[k] })) }],
+});
+table(document.getElementById("t-mem"), {
+  caption: "Retained KB per booted client, and live heap after a full collection",
+  cols: ["Client", ...V.map(k => LEGEND[k] + " boot"), ...V.map(k => LEGEND[k] + " live")],
+  rows: JOBS.map(j => [j, ...V.map(k => cell(D.retainedJob[j][k], 0)), ...V.map(k => cell(D.liveJob[j][k], 0))]),
+});
+
+/* Collector figures are stated, not charted — see the note in the markup. */
+(function () {
+  const all = [], shares = [];
+  V.forEach(k => CFGS.forEach(cfg => JOBS.forEach(j => {
+    const g = D.gcJob[cfg][j][k];
+    if (g != null) all.push(g);
+    const s = D.gcShare[cfg][j][k];
+    if (s != null) shares.push(s);
+  })));
+  document.getElementById("gc-range").textContent =
+    fmt(Math.min(...all), 1) + "–" + fmt(Math.max(...all), 1);
+  document.getElementById("gc-share").textContent = fmt(Math.max(...shares), 0) + "%";
+  document.getElementById("gc-pause").textContent =
+    V.map(k => cell(D.pause[k], 2) + " ms (" + LEGEND[k] + ")").join(", ");
+  document.getElementById("chat-lean").textContent = fmt(D.chat.lean["1.7.2"], 0);
+  document.getElementById("chat-sel").textContent = fmt(D.chat.moderate.sel, 1);
+  document.getElementById("sum-cpu-delta").textContent = pct(D.cpuTotal.moderate["1.7.2"], D.cpuTotal.moderate["1.5.12"]);
+  document.getElementById("sum-alloc-delta").textContent = pct(D.allocTotal.moderate["1.7.2"], D.allocTotal.moderate["1.5.12"]);
+  document.getElementById("sum-lean-cpu").textContent = fmt(D.cpuTotal.lean["1.7.2"], 0);
+  document.getElementById("sum-mod-cpu").textContent = fmt(D.cpuTotal.moderate["1.7.2"], 0);
+  document.getElementById("sum-sel-cpu").textContent = fmt(D.cpuTotal.moderate.sel, 0);
+  document.getElementById("sum-sel-alloc").textContent = fmt(D.allocTotal.moderate.sel, 0);
+})();
+
+/* ── Sheet 3: frames, casts, background ───────────────────────────────────── */
+hBars(document.getElementById("c-frame"), {
+  title: "Worst single frame in five minutes, per client — moderate",
+  xlabel: "microseconds of engine work in that one frame",
+  ylabel: "client",
+  series: V, unit: "µs", dp: 0, W: 820, padL: 60, rowH: 14, better: "lower",
+  groups: JOBS.map(j => ({ label: j, bars: V.map(k => {
+    const f = D.frame.moderate[j][k];
+    return { key: k, value: f ? f[2] : null };
+  }) })),
+});
+budgetStack(document.getElementById("c-budget"), {
+  title: "One 60 fps frame (16,667 µs) and everything that shares it",
+  xlabel: "share of the frame budget",
+  ylabel: "suite",
+  better: "lower",
+  rows: V.map(k => {
+    const worst = Math.max(...JOBS.map(j => {
+      const f = D.frame.moderate[j][k];
+      return f ? f[2] : 0;
+    }));
+    return { label: LEGEND[k], key: k, us: worst };
+  }).sort((a, b) => b.us - a.us),
+});
+table(document.getElementById("t-frame"), {
+  caption: "Frame cost in µs — mean / 99th percentile / worst",
+  cols: ["Client", ...V.map(k => LEGEND[k])],
+  rows: JOBS.map(j => [j + " · moderate", ...V.map(k => {
+      const f = D.frame.moderate[j][k]; return f ? f.join(" / ") : "—";
+    })]).concat(
+        JOBS.map(j => [j + " · lean", ...V.map(k => {
+      const f = D.frame.lean[j][k]; return f ? f.join(" / ") : "—";
+    })])),
+});
+
+hBars(document.getElementById("c-cast"), {
+  title: "Cost of one complete action, precast through aftercast — moderate",
+  xlabel: "microseconds per action chain",
+  ylabel: "action",
+  series: V, unit: "µs", dp: 1, W: 820, padL: 150, rowH: 14, better: "lower",
+  groups: D.casts.map(c => ({ label: c.label, bars: V.map(k => ({ key: k, value: c.moderate[k] })) })),
+});
+table(document.getElementById("t-cast"), {
+  caption: "Cost of one full action chain, µs — moderate, then lean",
+  cols: ["Action", ...V.map(k => LEGEND[k] + " mod"), ...V.map(k => LEGEND[k] + " lean")],
+  rows: D.casts.map(c => [c.label, ...V.map(k => cell(c.moderate[k])), ...V.map(k => cell(c.lean[k]))]),
+});
+
+const BG_CHART = ["Foreign weaponskill", "Prerender pass, steady state",
+                  "IPC cast for someone else", "main_engine pass", "Incoming packet"];
+hBars(document.getElementById("c-bg"), {
+  title: "Cost of one background event — the alliance around you (moderate)",
+  xlabel: "microseconds per event",
+  ylabel: "event",
+  series: V, unit: "µs", dp: 2, W: 820, padL: 210, rowH: 13, better: "lower",
+  groups: D.background.filter(b => BG_CHART.indexOf(b.label) >= 0)
+    .map(b => ({ label: b.label, bars: V.map(k => ({ key: k, value: b.moderate[k] })) })),
+});
+table(document.getElementById("t-bg"), {
+  caption: "Cost of one background event, µs (BRD client) — moderate, then lean",
+  cols: ["Event", ...V.map(k => LEGEND[k] + " mod"), ...V.map(k => LEGEND[k] + " lean")],
+  rows: D.background.map(b => [b.label,
+    ...V.map(k => cell(b.moderate[k], 2)), ...V.map(k => cell(b.lean[k], 2))]),
+});
+
+const KILL_ROWS = ["Disengage on a kill", "Engage a new mob", "Mob death packet",
+                   "Movement poll, out of combat", "Movement poll, in combat"];
+const killData = KILL_ROWS.map(l => D.background.filter(b => b.label === l)[0]).filter(b => b);
+hBars(document.getElementById("c-kill"), {
+  title: "Cost of each step of killing a mob and moving to the next — moderate",
+  xlabel: "microseconds per event",
+  ylabel: "step of the kill cycle",
+  series: V, unit: "µs", dp: 2, W: 820, padL: 210, rowH: 13, better: "lower",
+  groups: killData.map(b => ({ label: b.label, bars: V.map(k => ({ key: k, value: b.moderate[k] })) })),
+});
+table(document.getElementById("t-kill"), {
+  caption: "Kill-and-travel cycle, µs per event (BRD client) — moderate, then lean",
+  cols: ["Step", ...V.map(k => LEGEND[k] + " mod"), ...V.map(k => LEGEND[k] + " lean")],
+  rows: killData.map(b => [b.label,
+    ...V.map(k => cell(b.moderate[k], 2)), ...V.map(k => cell(b.lean[k], 2))]),
+});
+
+function pct(a, b) {
+  const d = (a - b) / b * 100;
+  return (d > 0 ? "+" : "") + d.toFixed(0) + "%";
+}
+</script>
+
+</body>
+</html>
