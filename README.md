@@ -1,6 +1,9 @@
 # Mirdain Gearswap Enhanced by Rahvin
 ## Now including GearSets-Include by Rahvin
 
+## Performance Comparison: 
+[Mirdain 1.5.12 vs Mirdain Enhanced 1.7.2 vs Selendriles 8/18/2026](https://rahvincode.github.io/Gearswap/)
+
 **Version 1.7.2** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
 Enhanced version of Mirdain-Include, created by Rahvin. Everything from 1.6.0 forward is Rahvin's work; credit to Mirdain for the original concept and scaffolding. Check your running version in game with `//gs c version`.
