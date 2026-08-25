@@ -1,10 +1,7 @@
 # Mirdain Gearswap Enhanced by Rahvin
 ## Now including GearSets-Include by Rahvin
 
-## Performance Comparison: 
-[Mirdain 1.5.12 vs Mirdain Enhanced 1.7.2 vs Selendriles 8/18/2026](https://rahvincode.github.io/Gearswap/)
-
-**Version 1.7.2** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 1.7.3** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
 Enhanced version of Mirdain-Include, created by Rahvin. Everything from 1.6.0 forward is Rahvin's work; credit to Mirdain for the original concept and scaffolding. Check your running version in game with `//gs c version`.
 
@@ -31,19 +28,65 @@ Enhanced version of Mirdain-Include, created by Rahvin. Everything from 1.6.0 fo
 
 # New in 1.7
 
-What the 1.7 line adds over 1.6.5, including the 1.6.6 work that shipped inside 1.7.0. Every existing job file, custom command and keybind keeps working as-is; a few improvements live in the sample job files and take effect in your own only if you copy them — the **Notices** in [PATCH NOTES.md](PATCH%20NOTES.md) list those.
+What the 1.7 line adds over 1.6.5, including the 1.6.6 work that shipped inside 1.7.0. Most of it reaches your existing job file with nothing to do. Three things need you: **one command is renamed**, **a few set paths are worth checking in your own file**, and **corrections to the sample job files reach your own file only if you copy them** — all three are under [Job files: what to check after upgrading](#job-files-what-to-check-after-upgrading) below.
 
-Release-by-release detail, back to the original, is in [PATCH NOTES.md](PATCH%20NOTES.md).
+Release-by-release detail, back to the original, is in [PATCH NOTES.md](PATCH%20NOTES.md); the **Notices** heading of each release is the same information broken out per version.
+
+## Job files: what to check after upgrading
+
+### One command is renamed
+
+`gs c cp` is now **`gs c trizek`**. It equips and uses the Trizek Ring exactly as before. Update any macro or keybind carrying the old word.
+
+### Set paths worth checking
+
+Gear declared at a path the engine does not read sits there doing nothing. Three are worth a search through your own file:
+
+| The engine reads | A spelling that reads as nothing |
+|---|---|
+| `sets.WS.RA.ACC`, `.PDL`, `.SB`, `.CRIT`, `.MEVA` | `sets.WS.ACC.RA` and friends |
+| `sets.WS.RA.AM`, `.AM1`, `.AM2`, `.AM3` | `sets.WS.AM3.RA` and friends |
+| `sets.Midcast.RA.AM`, `.AM1`, `.AM2`, `.AM3` | `sets.Midcast.AM3` and friends |
+
+`sets.Midcast.AM` and its three siblings are gone from the engine's declarations; no builder ever merged them, so ranged-midcast Aftermath belongs under `sets.Midcast.RA`. The two `sets.WS` rows are the shape the engine has always read — it is the WAR sample that carried them the other way round, so check your file if you built it from that sample.
+
+Two more worth a look while you are in there:
+
+- **Every mode you offer needs a set.** A mode named in `state.OffenseMode:options(...)` with no matching `sets.OffenseMode.<mode>` costs you the rest of the engaged build — the weapons, the shield or dual-wield offhand, the Ranged-mode idle layer, Aftermath and Treasure Hunter. Your base `sets.OffenseMode` still equips, which is what makes the gap easy to miss. `sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})` is enough.
+- **Aftermath tier sets dress every weapon now.** `sets.WS.AM3` is a base layer and `sets.WS.AM3['<Weapon Mode>']` refines it for one weapon mode, so gear you put in the tier itself equips whichever weapon you hold. The child's key is the WeaponMode value, the same string `state.WeaponMode:options(...)` offers.
+
+### Sample job files worth copying
+
+All 22 sample files were refreshed. These carry gear or behaviour corrections that only reach your own file if you take the sample:
+
+| Sample | Take it for |
+|---|---|
+| **WAR** | The ranged weaponskill sets keyed under `sets.WS.RA`, where the engine reads them — the four Aftermath tiers included, with weapon-mode children on three of them. Also `sets.OffenseMode.PDT` for the mode the file offers, and `sets.WS["Savage Blade"]` holding a table of its own rather than sharing `sets.WS.WSD`. |
+| **PLD** | Shield Bash and Chivalry moved into `check_tank_JA`, which `check_buff_JA` calls, with recast ids 73 and 79; Enlight on recast id 855; `sets.Rampart` declared beside `sets.Cover` and read by `midcast_custom`. |
+| **COR** | The `Ammo.Bullet` table declared above `sets.Weapons`, which reads `Ammo.Bullet.MAG_WS` — so the Aeolian Edge weapon set carries the bullet you named. |
+| **BRD** | `sets.OffenseMode.SB` and `.CRIT` built on `sets.OffenseMode.TP`, so both modes carry the full TP base. Plus `sets.WS["Evisceration"]` spelled as the game spells it. |
+| **RNG** | `Ammo.TP` in `sets.Midcast.RA`, the Bounty Shot set and `Smart_Ammo()`. `Ammo.RA` is not a key the file defines, so all three dressed the ammo slot with nothing. |
+| **BLM** | `sets.Midcast.Curaga`, the name the engine reads for the Curaga family, and `sets.JA["Dematerialize"]` spelled as the game spells it. |
+| **GEO** | `sets.OffenseMode.PDL` and `.SB` declared for two modes the file offers, and `sets.JA["Dematerialize"]` spelled as the game spells it. |
+| **BLM, BRD, SCH, SMN, WHM** | Ring entries naming `gear.stikiniRingPlusOne`, the key the gear library defines — four in BLM, four each in SMN and WHM, two each in BRD and SCH. |
+| **RDM** | `sets.Subtle_Blow` and `sets.OffenseMode.PDL` declared. |
+| **RUN** | `sets.Midcast.Divine` declared, and `sets.JA["Vivacious Pulse"]` built from it. |
+| **SAM** | `Ammo.ACC` and `sets.OffenseMode.PDL` declared. |
+| **PUP** | `sets.OffenseMode.PDL` declared. |
+| **BST** | The Puppetmaster Maneuver branch dropped from `precast_custom`, where a Beastmaster never reaches it. |
+| **DRG, DRK** | `sets.JA["Provoke"]` pointed at `sets.Enmity`, which both files declare — so Provoke has a named set to put gear in. |
+
+Twelve of the samples — BST, COR, DNC, DRG, DRK, MNK, NIN, PUP, RNG, RUN, SAM and WAR — also hand their Warrior self-buff chain to the engine's `check_war_self_buff`, and COR and RNG drop their own `Job_Mode_Check` for the engine's. See [Customization Hooks](#13-customization-hooks) for both. Keeping your own copies is fine: a definition in your job file loads after the include and replaces the engine's. Copying is worth it in two places — seven of those twelve ask for a Warrior self-buff on any Warrior subjob at all, where the engine's version gates each ability on the level that learns it; and the engine's `Job_Mode_Check` merges `sets.Weapons[<JobMode value>]` for every mode your file offers rather than three named ones.
 
 ## Performance Simulation Results
 
-Measured, not guessed: a simulated Dynamis Divergence alliance fight — a six-client multibox party inside an 18-player alliance with a full mob wave, every entity acting every one to three seconds — puts this engine and the original Mirdain-Include 1.5.12 side by side on identical timelines.
+Measured, not guessed: a simulated Dynamis Divergence fight — six clients played the way a six-box party plays, inside an 18-player alliance against a full mob wave — runs this engine, the original Mirdain-Include 1.5.12 and a third author's suite over identical timelines from a fixed seed. The figures below are from that run, **measured on version 1.7.2** at each engine's own shipped defaults.
 
-- **1.7 runs at roughly 70% of 1.5.12's CPU cost and 72% of its allocation rate**, with Hoxne, spell-received tracking, enchanted-item automation and the gear diagnostics all running. With every chat channel on, it costs what 1.5.12 costs running silent.
-- **Frame rate is never at risk from the engine.** The worst single frame in twenty minutes of simulated combat is about 1% of a 60 fps frame budget on 1.5.12, and about half that on 1.7. Both engines together, across all six clients, use under 0.03% of one CPU core.
-- **Chat volume is the one load that scales with settings rather than engine**: with every channel on, six clients emit about 1,400 lines a minute; with chat off, effectively none. For long fights, keep `debug` off — it is worth three orders of magnitude more rendered chat than any other choice.
+- **Cheaper than 1.5.12 on both counts.** Across all six clients, 1.7.2 costs about 88% of 1.5.12's CPU and about 61% of its allocation rate — measured at the shipped defaults, with `info` and `warn` on, the gear trace and `debug` off, Hoxne Ampulla automation running on the Bard and Treasure Hunter on Tag on the Corsair. Run quiet, with every channel off, it is the cheapest of the three suites measured.
+- **Frame rate is never at risk from the engine.** The most expensive single frame on any client is about 1% of a 60 fps frame budget on 1.5.12 and about half that on 1.7.2. A whole six-box party on 1.7.2 draws under 0.02% of one CPU core.
+- **Chat volume is the load that scales with your settings rather than with the engine.** At the shipped defaults — `info` and `warn` on, the gear trace and `debug` off — six clients emit about 145 lines a minute between them; with `info` and `warn` off that falls to about 13. The full diagnostic state, every channel on, runs on the order of a thousand lines a minute, which is why the gear trace ships off and is meant to be switched on only while you are following a fallback.
 
-The full write-up — per-cast costs, frame-budget analysis, allocation, chat volume, and methodology — is in the repository at https://github.com/RahvinCode/Gearswap/blob/master/Performance%20Impact%20Report.md
+The full comparison — what each suite is for, a source-read feature grid, per-cast costs, frame-budget analysis, allocation, resident memory, the received-spell race, chat volume and the whole method — ships with this release as `tools/three-suite-comparison.html`. Open it in a browser.
 
 ## New Features and Optimizations
 
@@ -52,7 +95,14 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - **`gs c use <item>`** equips and uses any enchanted item — over five hundred are supported — handling the slot, the equip delay and the cooldown for you. Type the name in lower case, spaces and any `+1` included: `//gs c use prishe's boots +1`.
 - **Cooldowns are tracked** and read live from the item, so they survive a reload or a relog. A use on cooldown is refused with the time remaining; an equip delay is waited out quietly. Every refusal names its reason — item missing, wrong job, level too low, on cooldown.
 - **`gs c cancel`** stops a use in progress, and issuing any new use command — `gs c use`, `gs c warp` and friends — takes over from the one already running. See [Changing your mind](#changing-your-mind).
+- **The slot is held for the whole use.** A combat rebuild, a buff wearing off or a weapon-mode change leaves the item where it is until the use finishes. Zoning cancels the use and gives the slot straight back.
 - **`gs c enchinfo <item>`** prints an item's live charges, equip delay and cooldown when the timing looks wrong.
+
+#### Holding an item in place
+
+- **`gs c aptitude` and `gs c jubilee`** wear the Aptitude Mantle and the Jubilee Ring and hold that slot against your normal gear, for as long as you want it. Type either bare to flip it, or with `on` or `off` to set it outright. See [Lock modes](#lock-modes).
+- **They give way to anything above them.** An item use, the Hoxne Ampulla lock and incoming spell-received gear all outrank a lock mode: asking for a slot one of them holds is refused, and the refusal names what is holding it.
+- **They let go when they have to.** If the item stops being equippable — moved out of your bags, or dropped by a level sync — the mode switches itself off rather than holding an empty slot shut. Gear taken back by `/equipset`, a server-forced unequip or `//gs enable` is noticed and reclaimed.
 
 #### Hoxne Ampulla
 
@@ -64,6 +114,14 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 #### Job abilities that need a thrown item
 
 - **`gs c tomahawk` and `gs c angon`** equip the throwing item, then use the ability on your target. Use these in macros in place of a raw `/ja` line, which the game refuses while the item is not worn. The ability's recast is checked before any gear moves.
+- **Any bag you can equip from, any stack.** The search covers every equippable bag and every stack in it, and prefers a copy you are already wearing.
+- **A refusal speaks every time.** With the Hoxne Ampulla lock on `ON-Locked` the ability is refused with its reason on each press, rather than falling silent after the first.
+
+#### Bard songs
+
+- **Instrument overrides cover every song family.** An `Instrument.Pianissimo.<Family>` entry is honoured at midcast for all 25 families the engine routes, Hymnus included.
+- **Enfeebling songs wear `Instrument.Enfeebling`** at midcast, and at precast under Nightingale.
+- **Your offhand is respected.** Each phase reads its own weapon child set and the shield merges last, so a declared offhand wins where dual wield allows one and stands aside where it does not. `sets.Weapons.Songs.Precast` holds a weapon pair through precast if you declare it.
 
 #### Gear reporting and diagnostics
 
@@ -72,7 +130,9 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - **A set that holds no gear is named, with the reason**: `[sets.Midcast.Cure] not found!` if you never declared it, `[sets.Midcast.Regen] is empty!` if you declared it and left it bare.
 - **Warnings stay readable in a long fight.** Each set warns at most once a minute and says so — `Silencing warnings for 60s` — and when it speaks again it reports what it held back, `(4 silenced since the last)`, so quiet never means fixed.
 - **`gs c checksets`** audits a job file: how many sets carry gear, how many engine sets you never declared, and — named individually — any set you declared but left empty. It also clears the warning silences.
+- **Aftermath layers are named in their own clause** on a weaponskill or shot line, and in the `gs c gearreporting` trace. The set your branch chose stays at the head of the line: an Aftermath layer goes on over it, so it never appears as a fallback.
 - **`gs c gearreporting`** traces precast, midcast and aftercast, one labelled line each, including the whole fallback path when a set was bare. Off by default.
+- **Confirmations and diagnostics have a channel of their own**, which your settings do not silence. Mode and setting confirmations, the lock-mode on and off announcements, the startup keybind list, `gs c version` and every diagnostic reply print whatever `gs c info`, `warn`, `gearreporting` and `debug` are set to — so a toggle can confirm itself, and a diagnostic you typed always answers. Gear and action reporting stays on `gs c info`, which is the channel to turn down in a long fight; a mistyped mode argument is answered on `gs c warn`.
 
 #### Healing magic
 
@@ -83,7 +143,8 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 
 - **Clearer layout.** The indicators run SR, TH, HOX; in the stacked layout the header spans the full box, evenly spaced, and each mode value sits between its chevrons with a single space on either side.
 - **More legible.** Mode status shows as a solid coloured square, and the text carries a dark outline so it reads against any background.
-- **Chat notices were re-coloured** so warnings, the gear trace and debug output are distinguishable at a glance.
+- **Chat notices carry their own colours** so warnings, confirmations, the gear trace and debug output are distinguishable at a glance.
+- **Both boxes take an explicit visibility at load**, so a reload or a job change leaves no empty box painted on the screen.
 
 #### Fixes
 
@@ -99,6 +160,19 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - A macro aimed at an open subtarget cursor — `/ma "Cure IV" <stpt>`, `/ws "Aeolian Edge" <stnpc>` — completes without a Lua error.
 - Geo-Refresh wears `sets.Geomancy.Geo`; Breakga and Bindga wear the enfeebling duration set.
 - Every castable bard song has a family set — Fugue, Hum, Hymnus, Virelai and Nocturne join the family list — and casting a song leaves your song sets exactly as you declared them.
+- Weapons in the gear library share one ordering rank, and shields, grips and strap items rank below it, so a weapon-mode change dresses the main hand first and leaves the offhand slot free when you move between one-handed, two-handed and dual-wield sets.
+- `gear.chango`, `gear.compensator` and `gear.mumeito` are defined, so a set naming any of them dresses that slot.
+- A mob killed by a weapon skill, spell, job ability or additional effect is dropped from Treasure Hunter's tag list, so a mob respawning on the same spot within three minutes is tagged again and wears your Treasure Hunter set.
+- Spectral Jig cancels an active Sneak before the ability fires, so the jig's own Sneak lands.
+- Blue magic spells, avatar and spirit summons, and Trust summons hold their midcast gear for the whole cast: each gets a busy window sized from its own cast time, so a buff landing mid-cast does not rebuild you into idle or engaged gear. Trust summons report their gear like any other cast.
+- A cancelled cast releases the gear and slots it borrowed on your other characters at once, and the next cast you announce is announced correctly.
+- An AoE spell announced to your other characters reaches your party members only — an alliance member in another party is not armed for a buff that cannot land on them.
+- `sets.Midcast.Utsusemi`, `sets.Midcast.Phalanx`, `sets.Midcast.Divine`, `sets.Midcast.BlueMagic` and `sets.Helix` report through the same throttled, cause-named path as every other family, with the fallback trace attached.
+- `gs c zero` and `gs c displaymode` report a settings write only when the write happened.
+- The `back` slot is released along with the other fifteen at startup.
+- A weaponskill fired with no ammunition falls back on the ammunition type your ranged weapon actually uses, on Ranger as well as Corsair.
+- A job file whose `jobsetup` line offers an empty lockstyle list loads instead of aborting.
+- The four mode-cycling commands wrap through their options identically, including in job files that define `self_command_custom`.
 - Sample job files for all 22 jobs are included.
 
 #### Cheaper hot paths
@@ -106,6 +180,10 @@ The full write-up — per-cast costs, frame-budget analysis, allocation, chat vo
 - **Weapon-mode changes answer from memory.** Whether a weapon is two-handed is resolved once per weapon name and remembered, instead of scanning the full item database on every press of the weapon-mode key.
 - **Auto-buff checks are paced to once a second**, resuming immediately after each action so a buff chain keeps its pace, at a tenth of the recast queries.
 - **Big fights cost less per event.** AoE broadcast expansion reads the party data already in hand, a skillchain closed by someone else's weaponskill is recognized without fetching the mob, and the movement poll skips its position read while mounted or mid-action.
+- **A death costs nothing.** While you are dead the Hoxne Ampulla mode stops scanning your bags and re-sending its equip, and picks up again when you are raised.
+- **Report text is built only when its channel is on.** With `gs c info` off, the line for a shot or a weaponskill is never assembled.
+- **Fewer bag reads on a cast.** The day, weather and distance gear checks look items up only down the branch that can use them, taking a common midcast from eighteen bag reads to none.
+- **The display boxes redraw only while visible**, and Treasure Hunter sweeps its tracked-mob list in a single pass.
 
 #### If you see warnings you do not want
 
@@ -482,7 +560,9 @@ The engine issues `gs c update auto` itself after almost every action, so you ra
 | `gs c holla` | Use Dim. Ring (Holla) |
 | `gs c dem` | Use Dim. Ring (Dem) |
 | `gs c mea` | Use Dim. Ring (Mea) |
-| `gs c cp` | Use Trizek Ring |
+| `gs c trizek` | Use Trizek Ring |
+| `gs c aptitude [on\|off]` | Wear Aptitude Mantle and hold the back slot |
+| `gs c jubilee [on\|off]` | Wear Jubilee Ring and hold its ring slot |
 
 #### Using enchanted items
 
@@ -494,7 +574,7 @@ The engine issues `gs c update auto` itself after almost every action, so you ra
 //gs c use volte harness
 ```
 
-The shortcut commands above (`gs c warp`, `gs c cp` and friends) do the same thing for the items people use most often.
+The shortcut commands above (`gs c warp`, `gs c trizek` and friends) do the same thing for the items people use most often.
 
 It tells you what it is doing rather than failing silently. Before equipping anything it checks that you own the item, that your job, level and race can wear it, and that it is not on cooldown, and it names whichever check failed:
 
@@ -515,13 +595,35 @@ You rarely need it, though, because any new `gs c use` or shortcut simply takes 
 
 ```
 //gs c warp
-//gs c cp
+//gs c trizek
 ```
 
 The Warp Ring is dropped and the Trizek Ring takes its place. Two things are worth knowing:
 
 - **Re-typing the same command changes nothing** — the running use keeps its place and the engine answers `Warp Ring is already in progress.`
 - **Once the item has been used it cannot be called back.** Cancelling afterwards still frees your slot and restores your gear; to stop the effect itself, move to interrupt it, as you would a spell.
+
+#### Lock modes
+
+`gs c aptitude` and `gs c jubilee` are a different thing from a use: they **wear** an item and keep it there. Nothing your job file equips takes that slot back while the mode is on.
+
+```
+//gs c aptitude          -- flip it
+//gs c jubilee on        -- set it on
+//gs c jubilee off       -- set it off
+```
+
+Each transition is announced, so you always know which state you are in.
+
+They sit at the bottom of the slot pecking order. An enchanted item use, the Hoxne Ampulla lock and gear equipped for an incoming spell all outrank a lock mode, and asking for a slot one of them is holding is refused with the holder named, on the info channel:
+
+```
+Aptitude Mantle: back is held by an item use right now.
+```
+
+That refusal, and the ones for an item you do not own or cannot wear, ride `gs c info`. The on and off announcements do not.
+
+They also let go on their own when they must. If the item leaves your bags, or a level sync drops it below what you can wear, the mode switches itself off instead of holding an empty slot shut. And because `/equipset`, a server-forced unequip and `//gs enable` fire no event the engine can hear, the held slot is compared against what you are actually wearing as gear is chosen — so a slot taken from behind the engine's back is reclaimed.
 
 ---
 
@@ -696,10 +798,15 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Idle.TP` / `.ACC` / `.DT` | Idle variants matched to OffenseMode |
 | `sets.Movement` | Layered on top of idle while moving |
 | `sets.OffenseMode` | Base melee set, always applied when engaged |
-| `sets.OffenseMode.<Mode>` | Per-mode melee set — one per OffenseMode option |
-| `sets.OffenseMode.AM1` / `.AM2` / `.AM3` | Aftermath tiers |
+| `sets.OffenseMode.<Mode>` | Per-mode melee set — **declare one for every OffenseMode you offer** |
+| `sets.OffenseMode.AM` / `.AM1` / `.AM2` / `.AM3` | Aftermath tiers, worn over the mode set |
+| `sets.OffenseMode.AM3['<Weapon Mode>']` | An Aftermath tier refined for one weapon mode |
 | `sets.DualWield` | Layered when the Dual Wield trait is detected |
-| `sets.Enmity` | Enmity-focused gear |
+| `sets.Enmity` | Enmity-focused gear — the set Provoke reads |
+
+An OffenseMode you offer with no matching child set costs you the rest of the engaged build: the weapons, the shield or dual-wield offhand, the Ranged-mode idle layer, Aftermath and Treasure Hunter are all skipped. The base `sets.OffenseMode` still equips, which is what makes the gap easy to miss. An empty declaration is enough to close it.
+
+An Aftermath tier set dresses you whichever weapon you hold; its weapon-mode child refines it on top. Declaring the child alone is fine, and so is declaring only the tier.
 
 ### Weapons
 
@@ -709,6 +816,7 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Weapons.Sleep` | Locked on automatically when you fall asleep |
 | `sets.Weapons.Shield` | Shield swap |
 | `sets.Weapons.Songs` | BRD instrument handling |
+| `sets.Weapons.Songs.Precast` | Weapons held through a song's precast |
 
 ### Precast
 
@@ -739,7 +847,8 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Midcast.Dark.Absorb` | Absorb, Aspir, Drain |
 | `sets.Midcast.Dark.Enhancing` | Dread Spikes, Endark, Klimaform, Tractor |
 | `sets.Midcast.Aspir` / `.Drain` | Aspir and Drain specifically |
-| `sets.Midcast.Helix` | Helix spells |
+| `sets.Helix` | Helix spells, with `.Dark` and `.Light` layered on top by element |
+| `sets.Midcast.BlueMagic` | Blue magic base, with `.Physical`, `.Breath`, `.Nuke`, `.Skill`, `.Buff`, `.Enmity`, `.Healing` and `.ACC` layered by spell class |
 
 ### Midcast — healing and enhancing
 
@@ -754,6 +863,9 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Midcast.Enhancing.Elemental` | Barfire, Barblizzard, … |
 | `sets.Midcast.Enhancing.Status` | Barsleep, Barpoison, … |
 | `sets.Midcast.Enhancing.Gain` | Gain-STR and friends |
+| `sets.Midcast.Utsusemi` | Utsusemi midcast |
+| `sets.Midcast.Phalanx` | Phalanx midcast |
+| `sets.Midcast.Divine` | Divine magic — also the set RUN's Vivacious Pulse reads |
 | `sets.Midcast.SIRD` | Spell Interruption Rate Down |
 | `sets.Midcast.Skill` | Generic magic skill |
 | `sets.Midcast.ACC` | Generic magic accuracy |
@@ -765,7 +877,7 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.Midcast.RA` | Ranged attack |
 | `sets.Midcast.RA.TripleShot` / `.DoubleShot` / `.Barrage` | With the matching buff active |
 | `sets.Midcast.RA['True Shot']` | True Shot |
-| `sets.Midcast.RA.AM1` / `.AM2` / `.AM3` | Ranged aftermath tiers |
+| `sets.Midcast.RA.AM` / `.AM1` / `.AM2` / `.AM3` | Ranged aftermath tiers, each with an optional `['<Weapon Mode>']` child |
 | `sets.Midcast.BP` | Blood Pacts |
 | `sets.Midcast.Summon` / `.SummoningMagic` | Summoning |
 | `sets.Pet_Midcast` | Pet actions |
@@ -779,9 +891,14 @@ All sets go inside `function get_sets()` in your job file.
 | `sets.WS.<Mode>` | Per OffenseMode — `ACC`, `PDL`, `SB`, `CRIT`, `MEVA` |
 | `sets.WS['<Weaponskill Name>']` | A specific weaponskill — e.g. `sets.WS['Savage Blade']` |
 | `sets.WS['<Name>'].<Mode>` | A specific weaponskill in a specific mode |
-| `sets.WS.RA` | Ranged weaponskills, plus `.ACC`, `.PDL`, `.AM1`–`.AM3` |
+| `sets.WS.AM` / `.AM1` / `.AM2` / `.AM3` | Aftermath tiers, each with an optional `['<Weapon Mode>']` child |
+| `sets.WS.RA` | Ranged weaponskills, the base |
+| `sets.WS.RA.<Mode>` | Ranged weaponskills per OffenseMode — `ACC`, `PDL`, `SB`, `CRIT`, `MEVA` |
+| `sets.WS.RA.AM` / `.AM1` / `.AM2` / `.AM3` | Ranged aftermath tiers, each with an optional `['<Weapon Mode>']` child |
 
 Named weaponskill sets layer on top of the generic ones, so you only specify what differs.
+
+**Ranged weaponskill keys read `RA` first**: `sets.WS.RA.ACC`, not `sets.WS.ACC.RA`. A declaration written the other way round sits in a table the engine does not read.
 
 ### Job-specific
 
@@ -836,7 +953,7 @@ GearSwap equips the pieces of a set in priority order, highest first. The librar
 
 **This strategy has been through extensive in-game testing by Rahvin.** Side-by-side comparison against unprioritized swapping shows prioritized swaps reliably preserving higher enduring HP and MP. A third strategy — computing the HP delta between the incoming set and the gear currently worn, and prioritizing by that delta — was also built and tested, and it performed markedly worse in practice: lower HP at aftercast, plus heavy calculation cost at load and cast time. Raw total-HP priorities win on both reliability and cost, which is why the library uses them.
 
-Items with MP but no HP get a small priority (scaled 1–10) so they sort below anything carrying real HP. Weapons mostly use **ordering tokens** instead of HP: a main-hand weapon's priority is set high enough that it always equips before any offhand, which forces the offhand slot to empty and be available when you switch between one-handed and two-handed weapon sets.
+Items with MP but no HP get a small priority (scaled 1–10) so they sort below anything carrying real HP. Melee weapons use an **ordering token** instead of HP: every main- or offhand weapon in the library carries the same rank, **100**, and shields, grips and strap items rank strictly below it. Since GearSwap breaks a priority tie by slot number, equal-ranked weapons dress the main hand before the offhand, which forces the offhand slot to empty and be available when you switch between one-handed, two-handed and dual-wield sets. Guns, bows and crossbows carry an ordinary HP priority instead: nothing competes with them for the range slot, so there is no ordering to protect.
 
 ### Using it in your job file
 
@@ -873,8 +990,10 @@ Three builders are available after the include line, so you can define personal 
 ```lua
 gear.myCape = hp_gear("Aptitude Mantle +1", 0)              -- priority = total HP
 gear.myOrb  = mp_gear("Sapience Orb", 0)                    -- MP-only item
-gear.mySword = rank_gear("Excalibur", 101)                  -- ordering token, not HP
+gear.mySword = rank_gear("Excalibur", 100)                  -- ordering token, not HP
 ```
+
+Give a **main- or offhand** weapon the rank **100** the library uses for them — a different number puts it out of order with everything else and can leave an offhand slot occupied when it should be clear. A gun or bow wants `hp_gear` instead, like the rest of the library's ranged weapons.
 
 Give an augmented item its `augments` list in a third argument, exactly as `//gs export` prints it, and the entry will match only that copy.
 
@@ -1020,6 +1139,31 @@ end
 
 `check_buff_SP` is only called while you are standing still, so movement is not interrupted by casting.
 
+#### Helpers the engine supplies
+
+Two pieces of job-file boilerplate live in the engine, so you can call them instead of pasting them. A function of the same name defined in your job file loads after the include and replaces the engine's, so an existing copy keeps working exactly as it did.
+
+```lua
+-- The Warrior self-buff to ask for next, or nil when nothing is ready. It takes the
+-- first of Berserk, Aggressor and Warcry that is off cooldown, not already up, and
+-- learned at the level you pass -- Warrior 15, 45 and 35 respectively.
+function check_buff_JA()
+    local buff = 'None'
+    if os.clock() - buff_time > Buff_Delay then
+        local ja_recasts = windower.ffxi.get_ability_recasts()
+        if player.sub_job == 'WAR' then
+            buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
+        end
+        if buff ~= 'None' then buff_time = os.clock() end
+    end
+    return buff
+end
+```
+
+Pass `player.main_job_level` on a Warrior main and `player.sub_job_level` on anything subbing Warrior.
+
+`Job_Mode_Check(equipSet)` merges `sets.Weapons[<your current JobMode value>]` into the set it is given and returns it — for **any** mode name your file offers, `Standard` included. Declare a weapon set for each mode you want dressed, and leave the mode's set out to have it dress nothing.
+
 ### Pet hooks
 
 | Function | Called |
@@ -1033,7 +1177,7 @@ end
 | Function | Called |
 |---|---|
 | `self_command_custom(command)` | Any `gs c` command the engine did not recognize — add your own |
-| `sub_job_change_custom()` | Subjob changed |
+| `sub_job_change_custom(new, old)` | Subjob changed — `new` and `old` are the subjob names |
 | `Cycle_Timer()` | Every 2 seconds, for periodic work |
 | `user_file_unload()` | Job file unloading — clean up anything you created |
 

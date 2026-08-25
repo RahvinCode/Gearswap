@@ -1,5 +1,4 @@
 
---Hurin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -231,7 +230,7 @@ function get_sets()
 	
 	--Job Abilities
 	sets.JA = {}
-	sets.JA["Provoke"] = sets.Precast.Enmity
+	sets.JA["Provoke"] = sets.Enmity
 	sets.JA["Blood Weapon"] = {}
 	sets.JA["Souleater"] = {}
 	sets.JA["Arcane Circle"] = {}
@@ -424,14 +423,8 @@ function check_buff_JA()
 		end
 	end
 
-	if player.sub_job == 'WAR' and player.sub_job_level == 49 then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+	if player.sub_job == 'WAR' then
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 
 	return buff

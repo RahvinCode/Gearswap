@@ -1,4 +1,3 @@
--- Luthien
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -115,7 +114,7 @@ function get_sets()
 	}
 
 	--Set the ammo type for each WeaponMode (above): Bullet, Arrow, Bolt
-	--This allows for generic gear sets such as ammo=Ammo.RA for Midcast.RA as an example.
+	--This allows for generic gear sets such as ammo=Ammo.TP for Midcast.RA as an example.
 	Ranged_Weapons = {
 		{WeaponMode = "Naegling", Type = "Bullet"},
 		{WeaponMode = "Dolichenus", Type = "Bullet"},
@@ -184,7 +183,7 @@ function get_sets()
 		right_ring=gear.defending,
 		back = gear.rngDW,
     }
-	-- 'TP','ACC','DT','PDL','CRIT'
+	-- 'TP','ACC','DT','PDL','CRIT','SB','True Shot'
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {})
@@ -338,7 +337,7 @@ function get_sets()
 
 	-- Ranged Attack Gear (Normal Midshot)
     sets.Midcast.RA = set_combine(sets.Midcast, {
-		ammo=Ammo.RA,
+		ammo=Ammo.TP,
 		head = gear.arcadianHeadPlusThree,
 		body=gear.aminiBodyPlusThree,
 		hands=gear.aminiHandsPlusThree,
@@ -383,7 +382,7 @@ function get_sets()
 		back = gear.rngCrit,
     })
 
-	-- Ranged Attack Gear (Critical Build)
+	-- Ranged Attack Gear (Subtle Blow Build)
     sets.Midcast.RA.SB = set_combine(sets.Midcast.RA, {
 		-- 10 II from gleti's Knife
 		neck=gear.bathyPlusOne,
@@ -437,7 +436,7 @@ function get_sets()
 	sets.JA["Unlimited Shot"] = {}
 	sets.JA["Velocity Shot"] = {}
 	sets.JA["Double Shot"] = {} -- Midcast.RA.Double Shot set
-	sets.JA["Bounty Shot"] = { ammo= Ammo.RA, hands=gear.aminiHandsPlusThree,} -- Upgrade to TH4
+	sets.JA["Bounty Shot"] = { ammo= Ammo.TP, hands=gear.aminiHandsPlusThree,} -- Upgrade to TH4
 	sets.JA["Decoy Shot"] = {}
 	sets.JA["Overkill"] = {}
 	sets.JA["Hover Shot"] = {}
@@ -488,7 +487,7 @@ function get_sets()
 	-- Accuracy set used in OffenseMode.ACC
 	sets.WS.ACC = set_combine(sets.WS, { })
 
-	-- Critical Hit set used in OffenseMode.SB
+	-- Critical Hit set used in OffenseMode.CRIT
 	sets.WS.CRIT = set_combine(sets.WS, { })
 
 	-- Weapon Skill Damage (Melee)
@@ -545,11 +544,11 @@ function get_sets()
 	})
 
 	sets.WS.RA.ACC = set_combine(sets.WS.RA, {
-		ammo=Ammo.ACC, -- Smart_Ammo() will select from your XXXX.RA type
+		ammo=Ammo.ACC, -- Smart_Ammo() picks the Bullet/Arrow/Bolt table this reads from
 	})
 
 	sets.WS.RA.CRIT = set_combine(sets.WS.RA, {
-		ammo=Ammo.CRIT -- Smart_Ammo() will select from your XXXX.RA type
+		ammo=Ammo.CRIT -- Smart_Ammo() picks the Bullet/Arrow/Bolt table this reads from
 	})
 
 	sets.WS.RA.SB = set_combine(sets.WS.RA, {
@@ -746,13 +745,7 @@ function check_buff_JA()
 	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 	if player.sub_job == 'WAR' then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 	return buff
 end
@@ -770,27 +763,11 @@ function Smart_Ammo()
 				state.RAMode:set(Ranged_Weapons[i].Type)
 				windower.add_to_chat(8,'Ammo Mode is ['..state.RAMode.value..']')
 				get_sets()
-				equip({ammo=Ammo.RA})
+				equip({ammo=Ammo.TP})
 			end
 			return
 		end
 	end
-end
-
-function Job_Mode_Check(equipSet)
-	if state.JobMode.value == 'Melee' then
-		equipSet = set_combine(equipSet, sets.Weapons.Melee)
-	elseif state.JobMode.value == 'Ranged' then
-		equipSet = set_combine(equipSet, sets.Weapons.Ranged)
-	elseif state.JobMode.value == 'Subtle Blow' then
-		equipSet = set_combine(equipSet, sets.Weapons['Subtle Blow'])
-	end
-	if DualWield == false then
-		if TwoHand == false then
-			equipSet = set_combine(equipSet, sets.Weapons.Shield)
-		end
-	end
-	return equipSet
 end
 
 function pet_change_custom(pet,gain)

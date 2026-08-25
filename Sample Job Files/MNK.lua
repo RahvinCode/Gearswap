@@ -1,5 +1,4 @@
 
---Turin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -149,7 +148,7 @@ function get_sets()
 		back = gear.mnkDADex,
 	})
 
-	-- Augments the OffenseMode when in DT stance
+	-- Augments the engaged set while the Footwork buff is up
 	sets.Foot_Work = { feet=gear.anchoriteFeetPlusFour, }
 
 	--Used to swap into movement gear when the player is detected movement when not engaged
@@ -287,7 +286,7 @@ function get_sets()
 		right_ear = gear.schere, -- SB 3
 	})
 
-	sets.WS.MEVA = set_combine( sets.WS, { -- This maximize SB
+	sets.WS.MEVA = set_combine( sets.WS, {
 		neck = gear.warderCharmPlusOne,
 		left_ring=gear.defending,
 	})
@@ -393,7 +392,7 @@ function pet_midcast_custom(spell)
 	return equipSet
 end
 
--- Called after the performs an action
+-- Called after the pet performs an action
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
@@ -449,16 +448,10 @@ function check_buff_JA()
 
 	-- Sub job has least priority
 	if player.sub_job == 'WAR' then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 
-	-- Mantra Max priority
+	-- Chakra takes priority when HP is low
 	if player.hpp < 51 and ja_recasts[15] == 0 then
 		buff = "Chakra"
 	elseif not buffactive.Impetus and ja_recasts[31] == 0 then

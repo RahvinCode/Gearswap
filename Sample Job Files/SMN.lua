@@ -1,6 +1,4 @@
 
---Morwen
-
 -- Load and initialize the include file.
 include('GearSets-Include')
 include('Mirdain-Include')
@@ -146,7 +144,7 @@ function get_sets()
 	sets.Precast.Cure = set_combine(sets.Precast.FastCast, {})
 
 	-- ===================================================================================================================
-	--		sets.midcast
+	--		sets.Midcast
 	-- ===================================================================================================================
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability
@@ -176,8 +174,8 @@ function get_sets()
     }
 	-- Enhancing Skill
 	sets.Midcast.Enhancing = {
-		ring1=gear.stikiniPlusOne,
-		ring2=gear.stikiniPlusOne,
+		ring1=gear.stikiniRingPlusOne,
+		ring2=gear.stikiniRingPlusOne,
 	}
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {
@@ -269,7 +267,7 @@ function get_sets()
 	})
 
 	-- ===================================================================================================================
-	--		sets.aftercast
+	--		sets.WS
 	-- ===================================================================================================================
 	--Custome sets for each jobsetup
 	sets.Custom = {}
@@ -359,8 +357,8 @@ function get_sets()
 		waist=gear.luciditySash,
 		left_ear=gear.lugalbanda,
 		right_ear=gear.cathPalugEarring,
-		left_ring=gear.stikiniPlusOne,
-		right_ring=gear.stikiniPlusOne,
+		left_ring=gear.stikiniRingPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back = gear.smnFC,
 	}
 

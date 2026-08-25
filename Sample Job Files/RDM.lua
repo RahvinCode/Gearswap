@@ -1,5 +1,4 @@
 
---Yavanna
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -158,11 +157,14 @@ function get_sets()
 	    neck=gear.nicander,
 	}
 
+	-- Read by sets.WS.SB below; add subtle blow pieces here to use that mode
+	sets.Subtle_Blow = {}
+
 	-- ===================================================================================================================
 	--		sets.OffenseMode
 	-- ===================================================================================================================
 
-	-- 'TP','ACC','DT','PDL','SB','Enspell'
+	-- 'TP','ACC','DT','PDL','SB','CRIT','Enspell'
 	sets.OffenseMode = {
 		ammo = gear.coiste,
 		head=gear.malignanceHead,
@@ -224,6 +226,7 @@ function get_sets()
 		right_ring = gear.metamorphPlusOne,
 		back=gear.nullShawl,
 	})
+	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
 
 	sets.DualWield = {
 		waist=gear.reiki,
@@ -287,7 +290,7 @@ function get_sets()
 	sets.Precast.BlueMagic = set_combine (sets.Precast.FastCast, {})
 
 	-- ===================================================================================================================
-	--		sets.midcast
+	--		sets.Midcast
 	-- ===================================================================================================================
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability

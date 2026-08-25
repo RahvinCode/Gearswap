@@ -1,4 +1,3 @@
--- Salidar
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -108,9 +107,9 @@ function get_sets()
 	    neck=gear.nicander,
 	}
 
-	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
 	sets.OffenseMode = {}
 
+	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
 	sets.OffenseMode.DT = {
 		ammo=gear.yamarang,
 		head=gear.malignanceHead,
@@ -446,14 +445,8 @@ function check_buff_JA()
 		end
 	end
 
-	if player.sub_job == 'WAR' and player.sub_job_level > 8 then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+	if player.sub_job == 'WAR' then
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 
 	return buff

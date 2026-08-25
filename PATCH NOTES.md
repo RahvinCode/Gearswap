@@ -21,6 +21,7 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 
 | Version | Summary |
 |---|---|
+| [1.7.3](#173) | Sets that were equipping nothing now equip; two commands to hold an item in a slot; Aftermath gear layers correctly; every sample job file refreshed |
 | [1.7.2](#172) | Crash fixes for subtarget macros; reporting reaches pet actions and songs; weapon-mode and auto-buff costs cut |
 | [1.7.1](#171) | Per-action gear reporting and warning throttle; status box redesign; the HP-priority gear library |
 | [1.7.0](#170) | Thrown-item job abilities; cancel and override for item use; reload recovery; `gs c enchinfo` and `gs c hoxneinfo` |
@@ -29,6 +30,162 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 | [1.6.4](#164) | 196 blue magic spells classified; item-search bag list corrected |
 | [1.6.0 – 1.6.3](#160--163) | The initial enhancement work over Mirdain 1.5.x |
 | [1.5.12](#1512) | Mirdain's original |
+
+---
+
+## 1.7.3
+
+A correctness release. A lot of gear that was quietly equipping nothing now equips:
+sets whose names were misspelled, sets declared where the engine does not look, and
+modes offered with no set behind them. Every sample job file carries the fixes. One
+command is renamed, and a few things in your own job file are worth a look — the
+Notices below are the short list.
+
+### Notices
+
+- **`gs c cp` is now `gs c trizek`.** Same Trizek Ring, same behaviour. Update any macro
+  or keybind carrying the old word.
+- **Take the sample job file for your job if you can.** All 22 changed. What each one
+  gets you, in play:
+
+  | Sample | What you get |
+  |---|---|
+  | WAR | Ranged weaponskills wear the gear you wrote for them — the sets were sitting under a name the engine does not read. Also a set for the PDT mode the file offers, and a Savage Blade set of its own rather than one shared with the weaponskill-damage set. |
+  | PLD | Shield Bash and Chivalry fire on their recasts, and Enlight applies. Plus a Rampart set to put gear in. |
+  | COR | Your Aeolian Edge set carries the bullet you named for it. |
+  | BRD | The Subtle Blow and Critical Hit modes dress you — both now build on your full TP set. Evisceration wears the set you wrote for it. |
+  | RNG | Your TP ammunition, your Bounty Shot ammunition, and the ammunition chosen on a weapon-mode change all resolve to real ammunition. |
+  | BLM | Curaga wears your cure set, and Dematerialize wears the set you wrote for it. |
+  | GEO | The Physical Damage Limit and Subtle Blow modes dress you, and Dematerialize wears the set you wrote for it. |
+  | RDM | A Subtle Blow set, and a set behind the Physical Damage Limit mode. |
+  | RUN | A Divine magic set, which Vivacious Pulse wears. |
+  | SAM | Accuracy ammunition, and a set behind the Physical Damage Limit mode. |
+  | PUP | A set behind the Physical Damage Limit mode. |
+  | BST | A Puppetmaster ability branch taken out, where a Beastmaster never reaches it. |
+  | DRG, DRK | Provoke wears your enmity set. |
+  | BLM, BRD, SCH, SMN, WHM | Ring entries that name a key the gear library actually defines, so those ring slots dress. |
+  | BST, COR, DNC, DRG, DRK, MNK, NIN, PUP, RNG, RUN, SAM, WAR | Warrior self-buffing that asks for Berserk, Aggressor and Warcry at the levels Warrior learns them. Seven of these ask on any Warrior subjob at all, however low. |
+  | COR, RNG | Job-mode weapon swapping that covers every job mode the file offers, `Standard` included. |
+
+- **Every mode you offer needs a set behind it.** A mode named in your
+  `state.OffenseMode:options(...)` line with no matching `sets.OffenseMode.<mode>` costs
+  you the rest of the engaged build — your weapons, your shield or dual-wield offhand,
+  Aftermath and Treasure Hunter all go with it. Your base `sets.OffenseMode` still
+  equips, which is what makes this easy to miss: you look dressed. An empty declaration
+  is enough to close it:
+
+  ```lua
+  sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
+  ```
+
+- **Three set paths are worth checking in your own file.** Gear declared at a name the
+  engine does not read equips nothing, silently.
+
+  | Put it here | Not here |
+  |---|---|
+  | `sets.WS.RA.ACC`, `.PDL`, `.SB`, `.CRIT`, `.MEVA` | `sets.WS.ACC.RA` and friends |
+  | `sets.WS.RA.AM`, `.AM1`, `.AM2`, `.AM3` | `sets.WS.AM3.RA` and friends |
+  | `sets.Midcast.RA.AM`, `.AM1`, `.AM2`, `.AM3` | `sets.Midcast.AM3` and friends |
+
+  The two `sets.WS` rows are the shape the engine has always read — it is the WAR sample
+  that carried them the other way round, so check your file if you built it from that
+  one. `sets.Midcast.AM` and its siblings are gone from the engine's own declarations.
+
+- **Aftermath tier sets dress you on their own now.** `sets.WS.AM3` is a base layer, and
+  `sets.WS.AM3['<Weapon Mode>']` goes on over it for one weapon mode. Gear you put in the
+  tier itself equips whichever weapon you are holding, and a weapon-mode set you declared
+  and left empty holds nothing back. The same applies under `sets.WS.RA`,
+  `sets.OffenseMode` and `sets.Midcast.RA`.
+
+- **Five families of set are available and ship empty**: `sets.Midcast.Utsusemi`,
+  `sets.Midcast.Phalanx`, `sets.Midcast.Divine`, `sets.Midcast.BlueMagic` with its eight
+  children (`.ACC`, `.Breath`, `.Buff`, `.Enmity`, `.Healing`, `.Nuke`, `.Physical`,
+  `.Skill`), and `sets.Helix` with `.Dark` and `.Light`. Filling them is optional — left
+  alone they fall back like any other family set, and they warn on the same once-a-minute
+  throttle as everything else.
+
+- **Bards: `sets.Weapons.Songs.Precast` is read.** Declare it to hold a particular
+  instrument or weapon pair through a song's precast; leave it out and precast keeps
+  whatever you are holding.
+
+- **Two pieces of job-file boilerplate moved into the engine** — the job-mode weapon
+  swap and the Warrior sub-job self-buff chain — so the sample files are shorter. Your
+  own copies keep working exactly as they did. The README's *Customization Hooks* section
+  shows the shorter form if you want it.
+
+- **The subjob-change hook receives the new and previous subjob.** If you wrote a branch
+  against those, it runs with real values in it now.
+
+### New and Changed Features
+
+- **Hold an item in a slot: `gs c aptitude` and `gs c jubilee`.** They wear the Aptitude
+  Mantle and the Jubilee Ring and keep them there against your normal gear. Type either
+  bare to flip it, or with `on` or `off` to set it. They stand aside for an enchanted
+  item use, the Hoxne Ampulla lock and incoming spell-received gear, and say so when they
+  do. If the item leaves your bags or a level sync drops it, the mode switches itself off
+  rather than holding an empty slot shut — and gear taken back by `/equipset` or a
+  server-forced unequip is noticed and reclaimed.
+- **Confirmations and diagnostics always answer.** Mode and setting confirmations, the
+  lock-mode announcements, the startup keybind list, the version and every diagnostic
+  reply print whatever your chat channels are set to — so a toggle can confirm itself and
+  a diagnostic you typed never answers with silence. Gear and action reporting stays on
+  `gs c info`, which is still the channel to turn down in a long fight.
+- **Weaponskill and shot reports name the Aftermath gear they wore**, in a clause of
+  their own. The set your weaponskill chose stays at the head of the line: Aftermath goes
+  on over it rather than replacing it.
+- **Bards: instrument overrides cover every song.** An `Instrument.Pianissimo` entry is
+  honoured for all 25 song families, Hymnus included. Enfeebling songs wear
+  `Instrument.Enfeebling`, and under Nightingale they wear it at precast too.
+- **Bards: your offhand is respected through a song.** A declared offhand wins where dual
+  wield allows one, and stands aside where it does not.
+- **`gs c tomahawk` and `gs c angon` find the item anywhere you can equip it from** — any
+  bag, any stack, and a copy you are already wearing is preferred. Under the Hoxne
+  Ampulla lock the ability is refused with its reason on every press.
+- **An enchanted item keeps its slot for the whole use.** A combat rebuild, a buff
+  wearing off or a weapon-mode change leaves it in place until the use finishes. Zoning
+  cancels the use and gives the slot straight back.
+- **Long casts keep their midcast gear.** Blue magic, avatar and spirit summons, and
+  Trust summons hold the gear they cast in for the whole cast, so a buff landing partway
+  through does not dress you back into idle or engaged gear. Trust summons report their
+  gear like any other cast.
+
+### Optimizations
+
+- **Dying costs nothing.** While you are dead the Hoxne Ampulla mode stops searching your
+  bags and re-equipping, and picks up again when you are raised.
+- **Reports cost nothing when their channel is off.** With `gs c info` off, the line for a
+  shot or a weaponskill is never built in the first place.
+- **Fewer bag searches on a cast.** The day, weather and distance gear checks look for an
+  item only when the branch they are on can actually use it.
+- **Less idle work.** The display boxes redraw only while they are visible, and Treasure
+  Hunter's mob tracking does its housekeeping in one pass.
+
+### Bug Fixes
+
+- Weapon-mode changes dress the main hand first, so the offhand slot is free when you
+  move between one-handed, two-handed and dual-wield sets.
+- Chango, Compensator and Mumeito equip when a set names them.
+- A mob killed by a weapon skill, spell, job ability or additional effect is dropped from
+  Treasure Hunter's tag list, so a mob that respawns on the same spot within three minutes
+  is tagged again and wears your Treasure Hunter set.
+- Spectral Jig cancels an active Sneak before the ability fires, so the jig's own Sneak
+  lands.
+- Cancelling a cast releases the gear and slots it borrowed on your other characters at
+  once, and the next cast you make is announced correctly.
+- An AoE spell announced to your other characters reaches your party members only — an
+  alliance member in another party is not dressed for a buff that cannot land on them.
+- Utsusemi, Phalanx, Divine magic, blue magic and Helix spells report their sets and warn
+  about them the same way every other family does.
+- A reload or a job change leaves no empty box painted on the screen.
+- `gs c zero` and `gs c displaymode` report a settings write only when the write happened.
+- The back slot is released along with the other fifteen at startup.
+- A weaponskill fired with no ammunition falls back on the ammunition type your ranged
+  weapon actually uses, on Ranger as well as Corsair.
+- A job file that offers an empty lockstyle list loads instead of failing.
+- `gs c debug` prints one confirmation when you switch it on.
+- The mode-cycling commands all wrap through their options the same way, including in job
+  files that add their own commands.
+- A job ability refused during the Hoxne Ampulla lock says why on every press.
 
 ---
 
@@ -199,7 +356,7 @@ seconds per configuration:
 - The reporting itself costs under 9 microseconds per action in any configuration, so
   chat volume rather than processing is what a busy fight should be tuned for.
 
-The full write-up is [Performance Impact Report.md](Performance%20Impact%20Report.md).
+The full write-up, with charts, is the Divergence Three-Suite Report, distributed separately.
 
 ### Bug Fixes
 

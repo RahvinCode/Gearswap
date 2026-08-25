@@ -1,5 +1,4 @@
 
---Turin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -169,11 +168,6 @@ function get_sets()
 		right_ear=gear.friomisi, --2
 		left_ring=gear.petrov, -- 4
 	}
-
-	-- Used for Raises and Cure spells
-	sets.Precast.QuickMagic = set_combine( sets.Precast.FastCast, {
-
-	});
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability
 	sets.Midcast = set_combine(sets.Idle, {

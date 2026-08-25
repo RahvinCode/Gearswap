@@ -1,4 +1,3 @@
---Luthien
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -16,7 +15,7 @@ Food = "Tropical Crepe"
 state.WeaponMode:options('Mordant Rime','Aeolian Edge','Shining Strike','Shining Blade','Savage Blade','Evisceration','Rudra\'s Storm','Staff')
 state.WeaponMode:set('Mordant Rime')
 
---Default to DT Mode
+--Default to TP Mode
 state.OffenseMode:set('TP')
 
 -- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
@@ -90,7 +89,7 @@ function get_sets()
 	Instrument.Pianissimo = { name="Gjallarhorn" }
 
 	-- Note all song types that can be Pianissimo'd can be defined
-	Instrument.Pianissimo.Ballad = { name="Miracle Cheer" } -- Possible swap to Miracle Cheer
+	Instrument.Pianissimo.Ballad = { name="Miracle Cheer" }
 	Instrument.AOE_Sleep = { name="Daurdabla" }
 
 	Instrument.Idle = { name="Linos", augments={'Mag. Evasion+15','"Waltz" potency +4%','HP+20',} }
@@ -189,18 +188,18 @@ function get_sets()
 		left_ring=gear.sroda,
 	})
 
-	--This set is used when OffenseMode is PDL and Enaged
+	--This set is used when OffenseMode is MEVA and Enaged
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode.DT, {
 		waist=gear.carriers,
 	})
 
 	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
-	sets.OffenseMode.SB = set_combine(sets.OffenseMode, {
+	sets.OffenseMode.SB = set_combine(sets.OffenseMode.TP, {
 		left_ring = gear.chirichPlusOne1,
 		right_ring = gear.chirichPlusOne2,
 	})
 
-	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode, {
+	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode.TP, {
 		body=gear.adamantiteArmor,
 		right_ring=gear.moonlightRing,
 	})
@@ -334,8 +333,8 @@ function get_sets()
 		waist=gear.nullWaist,
 		left_ear=gear.regalEarring,
 		right_ear=gear.crepuscularEar,
-		left_ring=gear.stikiniPlusOne,
-		right_ring=gear.stikiniPlusOne,
+		left_ring=gear.stikiniRingPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back = gear.brdFCPdt,
 	}
 
@@ -467,7 +466,7 @@ function get_sets()
 		back = gear.brdWSDChr,
 	})
 
-	sets.WS["Eviceration"] = sets.WS.CRIT
+	sets.WS["Evisceration"] = sets.WS.CRIT
 
 	sets.WS["Aeolian Edge"] = set_combine(sets.WS.MAB, {
 	})

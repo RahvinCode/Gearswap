@@ -1,5 +1,4 @@
 
--- Maedhros
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -31,7 +30,7 @@ Lockstyle_List = {1,2,6,12}
 --Set Mode to Damage Taken as Default
 state.OffenseMode:set('DT')
 
---Modes for specific to Ninja
+--Modes for specific to Beastmaster
 state.WeaponMode:options('Decimation','Pangu','Unlocked', 'Locked')
 state.WeaponMode:set('Decimation')
 
@@ -164,7 +163,7 @@ function get_sets()
 		neck=gear.warderCharmPlusOne,
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
 	-- Cap is 75% - 50% limit in I or II
 	sets.OffenseMode.SB = {}
 
@@ -341,9 +340,7 @@ end
 -- Augment basic equipment sets
 function precast_custom(spell)
 	local equipSet = {}
-	if spell.name:contains('Maneuver') then
-		equipSet = sets.JA.Maneuver
-	elseif spell.type == 'WeaponSkill' then
+	if spell.type == 'WeaponSkill' then
 		if state.OffenseMode.value == "MEVA" then
 			equipSet = { neck=gear.warderCharmPlusOne, }
 		end
@@ -398,7 +395,7 @@ function pet_midcast_custom(spell)
 	return equipSet
 end
 
--- Called after the performs an action
+-- Called after the pet performs an action
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
@@ -441,13 +438,7 @@ function check_buff_JA()
 
 	-- Sub job has least priority
 	if player.sub_job == 'WAR' then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 
 	return buff

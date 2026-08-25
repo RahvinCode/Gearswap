@@ -1,4 +1,3 @@
---Yavanna
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -80,7 +79,7 @@ function get_sets()
 		back = gear.schFCDt, -- 5/5
     } -- 57 PDT / 58 MDT
 
-	-- 'TP','PDL','ACC','DT','PDT','MEVA'
+	-- 'TP','ACC','DT','PDT','MEVA'
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {})
@@ -205,7 +204,7 @@ function get_sets()
 	sets.JA["Convert"] = {}
 
 	-- ===================================================================================================================
-	--		sets.midcast
+	--		sets.Midcast
 	-- ===================================================================================================================
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability
@@ -289,8 +288,8 @@ function get_sets()
 		waist = gear.obstinateSash,
 		left_ear=gear.regalEarring,
 		right_ear=gear.crepuscularEar,
-		left_ring=gear.stikiniPlusOne,
-		right_ring=gear.stikiniPlusOne,
+		left_ring=gear.stikiniRingPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back = gear.schNuke,
 	}
 

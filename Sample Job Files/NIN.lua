@@ -1,5 +1,4 @@
 
---Turin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -207,10 +206,6 @@ function get_sets()
 		neck=gear.magoragaBeadNecklace, -- 10 FC (+6)
 	}
 
-	sets.Precast.QuickMagic = {
-
-	}
-
 	sets.Enmity = { -- Head and Back upgrade slots
 		ammo=gear.sapience, --2
 		body=gear.emetHarnessPlusOne, --10
@@ -308,13 +303,13 @@ function get_sets()
 		back = gear.ninWSD,
 	}
 
-	sets.WS.WSD = set_combine({ sets.WS,
+	sets.WS.WSD = set_combine({
 		left_ring=gear.epimanondas,
 		right_ring=gear.karieyhRingPlusOne,
 	})
 
 	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
-	sets.WS.ACC = set_combine({ sets.WS,	    
+	sets.WS.ACC = set_combine({
 		head=gear.kendatsubaJinpachiPlusOne,
 		body=gear.kendatsubaSamuePlusOne,
 		hands=gear.kendatsubaTekkoPlusOne,
@@ -337,7 +332,7 @@ function get_sets()
 		right_ring=gear.eponas,
 		back = gear.ninDA,
 	}
-	sets.WS.MAB = set_combine({ sets.WS,
+	sets.WS.MAB = set_combine({
 		ammo = gear.seethingBombletPlusOne,
 		neck=gear.sanctity,
 		waist=gear.eschan,
@@ -462,13 +457,7 @@ function check_buff_JA()
 	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
 	if player.sub_job == 'WAR' then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 	return buff
 end

@@ -1,5 +1,4 @@
 
---Luthien
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -32,7 +31,7 @@ state.OffenseMode:set('DT')
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 -- Blue Magic classification.  Buckets follow the spell's mechanic, because the
--- mechanics do not share gear.  See the header in Mirdain-Include.lua.
+-- mechanics do not share gear.  The same buckets are in Mirdain-Include.lua's SECTION 5.
 BluePhysical = S { 'Amorphic Spikes', 'Asuran Claws', 'Barbed Crescent', 'Battle Dance',
     'Benthic Typhoon', 'Bilgestorm', 'Bloodrake', 'Bludgeon', 'Body Slam', 'Cannonball',
     'Claw Cyclone', 'Death Scissors', 'Delta Thrust', 'Dimensional Death', 'Disseverment',
@@ -525,7 +524,7 @@ function get_sets()
 		back = gear.bluDA,
 	}
 
-	-- Note that the Mote library will unlock these gear spots when used.
+	-- Worn to tag Treasure Hunter on a mob; the engine merges it on the tagging action.
 	sets.TreasureHunter = {
 		waist=gear.chaac,
 		body=gear.volteJupon,

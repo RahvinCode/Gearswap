@@ -1,4 +1,3 @@
---Hurin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -61,7 +60,7 @@ function get_sets()
 		left_ear=gear.lugalbanda,
 		right_ear=gear.etiolation,
 		left_ring=gear.defending, --10
-		right_ring=gear.stikiniPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back = gear.blmNuke,
     }
 
@@ -147,7 +146,7 @@ function get_sets()
 	sets.JA["Ecliptic Attrition"] = {}
 	sets.JA["Life Cycle"] = {}
 	sets.JA["Blaze of Glory"] = {}
-	sets.JA["Dematerialzie"] = {}
+	sets.JA["Dematerialize"] = {}
 	sets.JA["Theurgic Focus"] = {}
 	sets.JA["Concentric Pulse"] = {}
 	sets.JA["Mending Halation"] = {}
@@ -185,7 +184,7 @@ function get_sets()
 		left_ear=gear.mimir,
 		right_ear=gear.etiolation,
 		left_ring = gear.gelatinousPlusOne,
-		right_ring=gear.stikiniPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back=gear.perimedeCape,
 	}
 	sets.Midcast.Enhancing.Others = set_combine(sets.Midcast.Enhancing, {});
@@ -207,7 +206,7 @@ function get_sets()
 		left_ear=gear.malignanceEar,
 		right_ear=gear.wicceEarringPlusOne,
 		left_ring=gear.weatherspoon,
-		right_ring=gear.stikiniPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back = gear.blmNuke,
 	}
 
@@ -253,7 +252,7 @@ function get_sets()
 	})
 
 	-- Misc Sets
-	sets.Midcast.CuragaSet = sets.Midcast.Cure
+	sets.Midcast.Curaga = sets.Midcast.Cure
 
 	sets.Midcast.Cursna = {}
 
@@ -266,7 +265,7 @@ function get_sets()
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		right_ring=gear.stikiniPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		waist=gear.siegel,
 		neck=gear.nodens,
 	})

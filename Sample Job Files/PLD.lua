@@ -1,5 +1,4 @@
 
--- Luthien
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -283,8 +282,6 @@ function get_sets()
 	sets.Precast.Cure = {
 		left_ring=gear.rahabRing,
 	}
-	-- Augments the base Fast Cast set when a cure or raise is used.
-	sets.Precast.QuickMagic = {}
 
 	--Base set for midcast - if not defined will notify and use your idle set for surviability
 	sets.Midcast = set_combine( sets.Idle, {
@@ -374,9 +371,12 @@ function get_sets()
 	
 	})
 
-	sets.Cover = { 
+	sets.Cover = {
 		body = gear.caballariusBodyPlusThree
 	}
+
+	--Used for midcast set when rampart is active and casting white magic or blue magic
+	sets.Rampart = {}
 
 	sets.JA = {}
 	sets.JA["Invincible"] = set_combine( sets.Enmity, { legs = gear.caballariusLegsPlusThree })
@@ -473,7 +473,7 @@ end
 function midcast_custom(spell)
 	local equipSet = {}
 		if buffactive['Rampart'] and (spell.type == 'WhiteMagic' or spell.type == 'BlueMagic') then
-			equipSet = sets.Midcast.Rampart
+			equipSet = sets.Rampart
 		end
 		if state.OffenseMode.value == 'MEVA' and not spell.name:contains('Cure') then
 			equipSet = set_combine(equipSet, sets.MEVA)
@@ -563,6 +563,8 @@ function check_buff_JA()
 
 		if buff ~= 'None' then
 			buff_time = os.clock()
+		else
+			buff = check_tank_JA()
 		end
 	end
 	return buff
@@ -579,7 +581,7 @@ function check_buff_SP()
 			buff = "Phalanx"
 		elseif not buffactive['Reprisal'] and sp_recasts[97] == 0 and player.mp > 25 and player.main_job_level > 60 then
 			buff = "Reprisal"
-		elseif not buffactive['Enlight'] and sp_recasts[274] == 0 and player.mp > 25 and player.main_job_level > 84 then
+		elseif not buffactive['Enlight'] and sp_recasts[855] == 0 and player.mp > 25 and player.main_job_level > 84 then
 			buff = "Enlight II"
 		end
 		if player.sub_job == "BLU" then
@@ -601,15 +603,32 @@ function check_tank()
 	if os.clock() - tank_time > Tank_Delay then
 		if (player.status == "Engaged" or windower.ffxi.get_player().target_locked) and state.JobMode.value == "ON" then
 			local sp_recasts = windower.ffxi.get_spell_recasts()
-			local ja_recasts = windower.ffxi.get_ability_recasts()
 			if sp_recasts[112] == 0 and player.mp > 25 and player.main_job_level > 36 then
 				buff = "Flash"
-			elseif ja_recasts[46] == 0 and state.JobMode.value == "ON" and player.main_job_level > 14 then
-				buff = "Shield Bash"
-			elseif ja_recasts[159] == 0 and player.mp < 150 and player.tp > 2000 and state.JobMode.value == "ON" and player.main_job_level > 14 then
-				buff = "Chivalry"
 			elseif sp_recasts[840] == 0 and player.mp > 48 and player.sub_job == "RUN" and player.sub_job_level > 57 then
 				buff = "Foil"
+			end
+		end
+	end
+
+	if buff ~= 'None' then
+		tank_time = os.clock()
+	end
+	return buff
+end
+
+-- Tank job abilities, chosen on the JA hook so they cast as /ja. Shares
+-- tank_time with check_tank, so spells and abilities spend one tanking
+-- window between them.
+function check_tank_JA()
+	local buff = 'None'
+	if os.clock() - tank_time > Tank_Delay then
+		if (player.status == "Engaged" or windower.ffxi.get_player().target_locked) and state.JobMode.value == "ON" then
+			local ja_recasts = windower.ffxi.get_ability_recasts()
+			if ja_recasts[73] == 0 and player.main_job_level > 14 then
+				buff = "Shield Bash"
+			elseif ja_recasts[79] == 0 and player.mp < 150 and player.tp > 2000 and player.main_job_level > 14 then
+				buff = "Chivalry"
 			end
 		end
 	end

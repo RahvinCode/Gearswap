@@ -1,53 +1,29 @@
 --------------------------------------------------------------------------
 --===          Mirdain Gearswap Enhanced by Rahvin                   ===--
+--===     DO NOT MODIFY THIS FILE - ONLY MODIFY JOB FILES            ===--
 --------------------------------------------------------------------------
--- Revisions of Mirdain-Include and sample job files from 1.6.0 forward were conceived and programmed by Rahvin.
--- README.md covers installation, features, commands and troubleshooting
+-- Revisions of Mirdain-Include and sample job files from 1.6.0 forward were
+-- conceived and programmed by Rahvin. Many new features have been added and
+-- extensive optimization of the entire suite has been performed.
 
--- Enhanced features compared to Mirdain 1.5.X:
--- Hoxne Ampulla Mode with automatic equipping and item use.
---     Specialized modes: (ON-Allow Critical) allow critical spells to equip ranged and ammo (Bard songs, geo spells, angon and tomahawk only)
---                        (ON-Locked) disallow any ranged or ammo changes.
--- Multibox Spell-Received Gear Tracking with AoE prediction for -aga, -ra, Accession, Divine Veil and Majesty.
---     Automatically equips sets.XXXX_Received the instant a local multiboxed character starts casting on you.
---     Locks spell received gear in place until the exact moment the spell lands.  Reverts to normal gear immediately.
---     Set up your gear in job specific lua (BRD.lua, WAR.lua, etc).
--- Automated Holy Water gear equipping when used from macro or through automation tools.
--- Twilight Cape support. Now equips Twilight Cape automatically for Cura and Curaga during matching day/weather.
--- One-Line or Full display toggling with automated position saving. Display redesigned for aesthetics and compactness.
--- Added commands for better gear control and fixed equipment slot enabling/unlock routines to respect modes and zones
---     Supports all usable items for gs c use xxxx . Type the name of the item out in all lower case, including spaces and +1 when applicable.
---     Item equip delays and recast times are tracked now, with warnings when requested items are on cooldown.
---     No longer silently fails to use warp rings due to unlock or equip overwrites from movement, incoming action packets, combat commands, etc.
--- Extensive optimization to core code.
---     CPU performance improved by ~10%. 2-3% less total cpu usage for a 6 box on high end systems.
---     Many functions and table calls optimized to use hash-mapped checks over iterative lookups.
---     Event registers switched to raw register events for some routines to reduce background table allocations
---     Guard clauses and fixes to conditional statements everywhere to prevent unnecessary computation
+-- README.md covers installation, features, commands and troubleshooting
 
 -- See https://www.github.com/rahvincode for full details and latest version.
 -- README.md includes installation instructions and full feature explanations.
 -- Credit to Mirdain for the original concept and scaffolding.
-
--- TODO next version:
--- Fix info texts/warn texts to display when a called set is empty.
-
 -----------------------------------------------------------------------------
-
 
 ----------------------------------------------------------------------------------------------------
 -- SECTION 1 - VERSION AND SHARED GLOBALS
 ----------------------------------------------------------------------------------------------------
 -- The version string, the Modes library, and globals the job file may read.
-Mirdain_GS = '1.7.2'
+Mirdain_GS = '1.7.3'
 
 -- Modes supplies the M{} mode-tracking class used by every state variable below.
 include('Modes')
 
 -- Slots locked by the multibox spell-received system, so they can be released on unload.
 active_external_locks = {}
-
--- Weapons and idle.
 
 ----------------------------------------------------------------------------------------------------
 -- SECTION 2 - GEAR SET PLACEHOLDERS
@@ -59,6 +35,7 @@ sets.Weapons = {}
 sets.Weapons.Sleep = {}
 sets.Weapons.Shield = {}
 sets.Weapons.Songs = {}
+sets.Weapons.Songs.Precast = {}
 sets.Weapons.Songs.Midcast = {}
 
 sets.Idle = {}
@@ -79,9 +56,11 @@ sets.Protect_Shell_Received = {}
 sets.Regen_Received = {}
 sets.Refresh_Received = {}
 sets.Waltz_Received = {}
+
+-- Worn when this character uses a Holy Water or Hallowed Water.
 sets.Holy_Water = {}
 
--- Melee stance, keyed by state.OffenseMode. AM1-AM3 apply under Aftermath.
+-- Melee stance, keyed by state.OffenseMode. AM through AM3 apply under Aftermath.
 sets.OffenseMode = {}
 sets.OffenseMode.AM = {}
 sets.OffenseMode.AM1 = {}
@@ -146,6 +125,24 @@ sets.Midcast.BP = {}
 sets.Midcast.SummoningMagic = {}
 sets.Midcast.Summon = {}
 
+sets.Midcast.Utsusemi = {}
+sets.Midcast.Phalanx = {}
+sets.Midcast.Divine = {}
+sets.Helix = {}
+sets.Helix.Dark = {}
+sets.Helix.Light = {}
+
+-- Midcast: blue magic by mechanic.
+sets.Midcast.BlueMagic = {}
+sets.Midcast.BlueMagic.Physical = {}
+sets.Midcast.BlueMagic.Breath = {}
+sets.Midcast.BlueMagic.Nuke = {}
+sets.Midcast.BlueMagic.Skill = {}
+sets.Midcast.BlueMagic.Buff = {}
+sets.Midcast.BlueMagic.Enmity = {}
+sets.Midcast.BlueMagic.Healing = {}
+sets.Midcast.BlueMagic.ACC = {}
+
 -- Midcast: bard songs, keyed by song family.
 sets.Midcast.DummySongs = {}
 sets.Midcast.Finale = {}
@@ -174,14 +171,11 @@ sets.Midcast.Hymnus = {}
 sets.Midcast.Virelai = {}
 sets.Midcast.Nocturne = {}
 
--- Midcast under Aftermath.
-sets.Midcast.AM = {}
+-- Midcast under Aftermath. Ranged only: no builder merges an aftermath tier for a
+-- spell midcast.
 sets.Midcast.RA.AM = {}
-sets.Midcast.AM1 = {}
 sets.Midcast.RA.AM1 = {}
-sets.Midcast.AM2 = {}
 sets.Midcast.RA.AM2 = {}
-sets.Midcast.AM3 = {}
 sets.Midcast.RA.AM3 = {}
 
 -- Weaponskills. RA variants apply to ranged weaponskills.
@@ -250,8 +244,6 @@ Instrument.FastCast = {}
 Instrument.MAB = {}
 
 state = state or {}
-
--- Melee stance.
 
 ----------------------------------------------------------------------------------------------------
 -- SECTION 3 - MODE DEFINITIONS
@@ -326,8 +318,6 @@ Ammo.Bolt = {}
 
 Ammo_Warning_Limit = 99
 
--- Job file options. Override these in the job file, not here.
-
 
 ----------------------------------------------------------------------------------------------------
 -- SECTION 4 - JOB FILE OPTIONS
@@ -337,6 +327,38 @@ is_Busy = false
 AutoItem = false
 Random_Lockstyle = false
 Lockstyle_List = {}
+
+-- Layer the weapon set the current job mode names, if the job file declares one. A job
+-- file that needs different behaviour defines its own Job_Mode_Check after the include.
+function Job_Mode_Check(equipSet)
+    local weapons = sets.Weapons and sets.Weapons[state.JobMode.value]
+    -- set_combine, not an in-place merge: the caller owns the table it passed.
+    if weapons then equipSet = set_combine(equipSet, weapons) end
+    return equipSet
+end
+
+-- The Warrior self-buff an auto-buff hook should ask for next: the first in priority
+-- order that is not already up, is off cooldown, and the character is high enough to
+-- have learned. job_level is the level of the slot supplying the abilities, so a
+-- Warrior main passes player.main_job_level and everything else player.sub_job_level.
+-- Returns nil when there is nothing to use.
+do
+    -- Recast id and the Warrior level that learns each, in priority order.
+    local WAR_SELF_BUFF = {
+        { buff = 'Berserk',   id = 1, level = 15 },
+        { buff = 'Aggressor', id = 4, level = 45 },
+        { buff = 'Warcry',    id = 2, level = 35 },
+    }
+    function check_war_self_buff(job_level, ja_recasts)
+        for i = 1, #WAR_SELF_BUFF do
+            local candidate = WAR_SELF_BUFF[i]
+            if job_level >= candidate.level and not buffactive[candidate.buff]
+                and ja_recasts[candidate.id] == 0 then
+                return candidate.buff
+            end
+        end
+    end
+end
 
 
 ----------------------------------------------------------------------------------------------------
@@ -523,18 +545,15 @@ Ready_Debuff = S { 'Dust Cloud', 'Sheep Song', 'Scream', 'Dream Flower', 'Roar',
 
 Ready_Multi = S { 'Sweeping Gouge', 'Tickling Tendrils', 'Chomp Rush', 'Pentapeck', 'Wing Slap', 'Pecking Flurry' }
 
--- Long mode names used in chat messages. Leave empty to hide the mode entirely.
-
 ----------------------------------------------------------------------------------------------------
 -- SECTION 6 - DISPLAY LABELS
 ----------------------------------------------------------------------------------------------------
 -- Names shown in chat and on the status box for the two job-defined modes.
+-- An empty name hides the mode.
 UI_Name = ''
 UI_Name2 = ''
 
 -- Optional three-letter labels for the status box. Leave empty and the include derives
--- one from UI_Name, so existing job files need no changes.
--- one from UI_Name, so existing job files need no changes.
 UI_Short = ''
 UI_Short2 = ''
 
@@ -572,8 +591,8 @@ do
     -- The live settings table. Every toggle in this file reads and writes through it.
     local settings = config.load(default)
 
-    -- Bind a text box to its saved position so dragging it persists. Called once per
-    -- box immediately after creation.
+    -- Apply a box's saved appearance and position. Called once per box
+    -- immediately after creation.
     local function apply_box_settings(box, cfg)
         box:pos(cfg.pos.x, cfg.pos.y)
         box:font(cfg.text.font, unpack(cfg.text.fonts))
@@ -597,14 +616,14 @@ do
     local gs_status = texts.new("", settings.Display_Box, settings)
     local gs_debug = texts.new("", settings.Debug_Box, settings)
 
-    -- Restore each box's saved position, allow dragging only while shown, then honour
-    -- its saved visibility.
+    -- Restore each box's saved appearance, allow dragging only while shown, then set
+    -- its visibility explicitly, both ways.
     apply_box_settings(gs_status, settings.Display_Box)
     apply_box_settings(gs_debug, settings.Debug_Box)
     gs_status:draggable(settings.visible and true or false)
     gs_debug:draggable(settings.debug and true or false)
-    if settings.visible then gs_status:show() end
-    if settings.debug then gs_debug:show() end
+    if settings.visible then gs_status:show() else gs_status:hide() end
+    if settings.debug then gs_debug:show() else gs_debug:hide() end
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 8 - SHARED CONSTANTS AND LOOKUP TABLES
@@ -616,7 +635,7 @@ do
 
     -- Spell types carrying a recast timer. pretargetcheck() consults this before
     -- spending a get_spell_recasts() call.
-    local HasRecastTimer = {
+    local HasRecastTimer                      = {
         ['WhiteMagic']   = true,
         ['BlackMagic']   = true,
         ['BlueMagic']    = true,
@@ -629,51 +648,64 @@ do
 
     -- Spell types that additionally arm the post-cast busy window in precast() and
     -- aftercast().
-    local RecastTimers = {
-        ['WhiteMagic'] = true,
-        ['BlackMagic'] = true,
-        ['Ninjutsu']   = true,
-        ['BardSong']   = true,
-        ['Geomancy']   = true,
+    local RecastTimers                        = {
+        ['WhiteMagic']   = true,
+        ['BlackMagic']   = true,
+        ['BlueMagic']    = true,
+        ['Ninjutsu']     = true,
+        ['BardSong']     = true,
+        ['Geomancy']     = true,
+        ['SummonerPact'] = true,
+        ['Trust']        = true,
     }
 
-    -- Interned buff ids and action-type strings. Reused rather than rebuilt so the hot
-    -- comparison paths allocate nothing.
-    local BUFF_ACCESSION   = 366
-    local BUFF_DIVINE_SEAL = 78
-    local BUFF_SLEEP, BUFF_STUN, BUFF_KO = 'Sleep', 'Stun', 'KO'
+    -- Named buff ids and action-type strings, so the comparison sites read as names.
+    local BUFF_ACCESSION                      = 366
+    local BUFF_DIVINE_SEAL                    = 78
+    local BUFF_SLEEP, BUFF_STUN, BUFF_KO      = 'Sleep', 'Stun', 'KO'
     local BUFF_PETRI, BUFF_CHARM, BUFF_TERROR = 'Petrification', 'Charm', 'Terror'
     local TYPE_JA, TYPE_WS, TYPE_MS, TYPE_SCH = 'JobAbility', 'WeaponSkill', 'Magic', 'Scholar'
 
     -- Action categories that count as tagging a mob for Treasure Hunter.
-    local TaggingCategories = S { 1, 2, 3, 4, 6, 11, 14 }
+    local TaggingCategories                   = S { 1, 2, 3, 4, 6, 11, 14 }
+
+    -- Action-message ids that report a death, matching the set GearSwap treats as
+    -- fatal. Keyed rather than S{} so the lookup is one table read.
+    local DeathMessages                       = {
+        [6] = true,   -- <actor> defeats <target>.
+        [20] = true,  -- <target> falls to the ground.
+        [113] = true, -- <actor> casts <spell>. <target> falls to the ground.
+        [406] = true, -- <actor> uses <weapon skill>. <target> falls to the ground.
+        [605] = true, -- Additional effect: <target> falls to the ground.
+        [646] = true, -- <actor> uses <ability>. <target> falls to the ground.
+    }
 
     -- Job, zone and element reference -------------------------------------------------------------
 
-    -- Single-target storm spells, used to select the matching obi.
-    local Storms = S { "Aurorastorm", "Voidstorm", "Firestorm", "Sandstorm", "Rainstorm", "Windstorm", "Hailstorm", "Thunderstorm",
+    -- Storm spells, which merge sets.Storms into the enhancing midcast build.
+    local Storms                              = S { "Aurorastorm", "Voidstorm", "Firestorm", "Sandstorm", "Rainstorm", "Windstorm", "Hailstorm", "Thunderstorm",
         "Aurorastorm II", "Voidstorm II", "Firestorm II", "Sandstorm II", "Rainstorm II", "Windstorm II", "Hailstorm II", "Thunderstorm II" }
 
-    -- Utsusemi variants, used by the shadow-count guard in do_Utsu_checks().
-    local UtsusemiSpell = S { 'Utsusemi: Ichi', 'Utsusemi: Ni', 'Utsusemi: San' }
+    -- Utsusemi variants, used by precastequip() and midcastequip() to route the shadow sets.
+    local UtsusemiSpell                       = S { 'Utsusemi: Ichi', 'Utsusemi: Ni', 'Utsusemi: San' }
 
     -- Dynamis Divergence zones, where the neck slot stays locked.
-    local Divergence_Zones = S { "Dynamis - San d'Oria [D]", "Dynamis - Bastok [D]", "Dynamis - Windurst [D]", "Dynamis - Jeuno [D]" }
+    local Divergence_Zones                    = S { "Dynamis - San d'Oria [D]", "Dynamis - Bastok [D]", "Dynamis - Windurst [D]", "Dynamis - Jeuno [D]" }
 
     -- Jobs treated as mages when deciding to auto-use a Remedy.
-    local Mage_Job = S { 'BLM', 'RDM', 'WHM', 'BRD', 'BLU', 'GEO', 'SCH', 'NIN', 'PLD', 'RUN', 'DRK', 'SMN' }
+    local Mage_Job                            = S { 'BLM', 'RDM', 'WHM', 'BRD', 'BLU', 'GEO', 'SCH', 'NIN', 'PLD', 'RUN', 'DRK', 'SMN' }
 
-    -- City zones, where town gear and idle behaviour apply.
-    local Cities = S { "Ru'Lude Gardens", "Upper Jeuno", "Lower Jeuno", "Port Jeuno", "Port Windurst", "Windurst Waters", "Windurst Woods", "Windurst Walls", "Heavens Tower", "Port San d'Oria", "Northern San d'Oria",
+    -- City zones, where automatic buffing is suppressed.
+    local Cities                              = S { "Ru'Lude Gardens", "Upper Jeuno", "Lower Jeuno", "Port Jeuno", "Port Windurst", "Windurst Waters", "Windurst Woods", "Windurst Walls", "Heavens Tower", "Port San d'Oria", "Northern San d'Oria",
         "Southern San d'Oria", "Chateau d'Oraguille", "Port Bastok", "Bastok Markets", "Bastok Mines", "Metalworks", "Aht Urhgan Whitegate", "The Colosseum", "Tavnazian Safehold", "Nashmau", "Selbina",
         "Mhaura", "Rabao", "Norg", "Kazham", "Eastern Adoulin", "Western Adoulin", "Celennia Memorial Library", "Mog Garden", "Leafallia" }
 
-    -- Buff names the cancel commands accept, keyed by the client's language.
-    local Language = windower.ffxi.get_info().language:lower()
+    -- The client's language, used to read buff names out of res.buffs for the cancel commands.
+    local Language                            = windower.ffxi.get_info().language:lower()
 
-    -- Skillchain properties keyed by chain name, giving the element(s) run_burst()
-    -- reports for magic burst timing.
-    local skillchains = {
+    -- Skillchain properties keyed by action-message id, giving the element(s)
+    -- run_burst() reports for magic burst timing. The chain name is the english field.
+    local skillchains                         = {
         [288] = { id = 288, english = 'Light', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
         [289] = { id = 289, english = 'Darkness', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
         [290] = { id = 290, english = 'Gravitation', elements = { 'Dark', 'Earth' } },
@@ -710,7 +742,7 @@ do
 
     -- Action types with no midcast build: precast chooses their final gear, and
     -- midcastequip returns immediately for them.
-    local PRECAST_FINAL = {
+    local PRECAST_FINAL                       = {
         WeaponSkill = true,
         JobAbility  = true,
         Item        = true,
@@ -734,7 +766,7 @@ do
     -- Canonical slot names. Covers exactly the 27 keys GearSwap itself accepts
     -- (statics.lua:150-176), so merge_into() can never drop a key GearSwap would
     -- have taken.
-    local CANON_SLOT = {
+    local CANON_SLOT                          = {
         main = 'main',
         sub = 'sub',
         range = 'range',
@@ -773,7 +805,7 @@ do
     -- Tracked spells. category selects the handler, equip names the set to wear, aoe
     -- marks inherently multi-target spells, and accession marks spells that become
     -- multi-target under Accession.
-    local spell_info = {
+    local spell_info                          = {
         -- Cursna
         [20] = { name = "Cursna", category = 'track_cursna', equip = "cursna_set", aoe = false, majesty = false, accession = true, divine = true },                       --Cursna
         -- Phalanx
@@ -830,7 +862,7 @@ do
     }
 
     -- Tracked job abilities, same shape as spell_info above.
-    local ability_info = {
+    local ability_info                        = {
         [190] = { name = "Curing Waltz", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false },     --Curing Waltz
         [191] = { name = "Curing Waltz II", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false },  --Curing Waltz II
         [192] = { name = "Curing Waltz III", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false }, --Curing Waltz III
@@ -849,71 +881,73 @@ do
     -- Combat, movement and timing -----------------------------------------------------------------
 
     -- Weapon traits refreshed on job or subjob change.
-    local DualWield = false
-    local TwoHand = false
+    local DualWield                           = false
+    local TwoHand                             = false
 
     -- The post-cast busy window. precast() arms it, main_engine() expires it, and
     -- is_Busy gates the automation that must not fire mid-action.
-    local SpellCastTime = 0
-    local Spellstart = os.clock()
+    local SpellCastTime                       = 0
+    local Spellstart                          = os.clock()
 
     -- Set by main_engine() from position deltas. Only ever true while disengaged.
-    local is_moving = false
+    local is_moving                           = false
 
     -- Last skillchain observed, used by run_burst() to report burst windows.
-    local last_skillchain_id = 0
-    local last_skillchain_time = 0
-    local last_skillchain_elements = {}
+    local last_skillchain_id                  = 0
+    local last_skillchain_time                = 0
+    local last_skillchain_elements            = {}
 
     -- main_engine() scheduling clocks: the 30 second housekeeping pass, the 2 second
     -- job-file Cycle_Timer, and the 0.1 second floor on the engine itself.
-    local UpdateTime1 = os.clock()
-    local UpdateTime2 = os.clock()
-    local main_engine_time = os.clock()
+    local UpdateTime1                         = os.clock()
+    local UpdateTime2                         = os.clock()
+    local main_engine_time                    = os.clock()
 
     -- Last sampled position, compared each tick to detect movement.
-    local Location = { x = 0, y = 0, z = 0 }
+    local Location                            = { x = 0, y = 0, z = 0 }
 
     -- Set when something changes that warrants a gear refresh; consumed by main_engine().
-    local Require_Update = false
+    local Require_Update                      = false
 
     -- Ammo remaining, recounted by do_bullet_checks().
-    local available_bullets = 0
+    local available_bullets                   = 0
 
     -- Multibox spell-received tracking ------------------------------------------------------------
 
     -- State for the IPC gear system: whether we are the caster, which predictions are
     -- live, who is currently casting on us, and the failsafe that releases the
     -- borrowed gear if a completion message never arrives.
-    local outgoing_cast_active = false
-    local accession_predicted = false
-    local divine_seal_predicted = false
-    local active_incoming_casters = {}
-    local cast_start_time = 0
-    local failsafe_active = false
-    local failsafe_trigger_time = 0
+    local outgoing_cast_active                = false
+    -- When receivers give up on the announce above; past it the flag is stale.
+    local outgoing_cast_deadline              = 0
+    local accession_predicted                 = false
+    local divine_seal_predicted               = false
+    local active_incoming_casters             = {}
+    local cast_start_time                     = 0
+    local failsafe_active                     = false
+    local failsafe_trigger_time               = 0
 
     -- Cached API handles --------------------------------------------------------------------------
 
     -- Windower API functions hoisted out of function scope. These are called from
     -- per-tick paths where the table lookups are worth avoiding.
-    local ffxi = windower.ffxi
-    local get_ability_recasts = ffxi.get_ability_recasts
-    local get_spell_recasts = ffxi.get_spell_recasts
-    local get_mob_by_id = ffxi.get_mob_by_id
-    local get_party = ffxi.get_party
-    local send_ipc = windower.send_ipc_message
+    local ffxi                                = windower.ffxi
+    local get_ability_recasts                 = ffxi.get_ability_recasts
+    local get_spell_recasts                   = ffxi.get_spell_recasts
+    local get_mob_by_id                       = ffxi.get_mob_by_id
+    local get_party                           = ffxi.get_party
+    local send_ipc                            = windower.send_ipc_message
 
-    -- Reused buffer for AoE party scans, so resolve_aoe_target_name() allocates nothing.
-    local NEARBY_MEMBERS_BUFFER = {}
+    -- Reused buffer for AoE party scans, so the member list costs no table per scan.
+    local NEARBY_MEMBERS_BUFFER               = {}
 
     -- Treasure Hunter -----------------------------------------------------------------------------
 
     -- Mobs tagged with TH, keyed by mob id and stamped with os.clock(). Entries are
     -- cleared on death, on zoning, and after three minutes of no activity.
-    local th_info = {}
-    th_info.tagged_mobs = T {}
-    th_info.last_player_target_index = 0
+    local th_info                             = {}
+    th_info.tagged_mobs                       = T {}
+    th_info.last_player_target_index          = 0
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 11 - CORE UTILITIES
@@ -930,8 +964,9 @@ do
         return table.concat(parts)
     end
 
-    -- The three user-facing channels, each gated by its own settings toggle: log for
-    -- developer tracing, info for normal feedback, warn for problems.
+    -- Gated user-facing channels, each behind its own settings toggle: log for
+    -- developer tracing, info for normal feedback, warn for problems, and
+    -- gear_report below for the set-selection trace.
     function log(...)
         if settings.debug then print(80, join(...)) end
     end
@@ -944,14 +979,20 @@ do
         if settings.warn then print(123, join(...)) end
     end
 
+    -- Mode and setting confirmations, and the reply to a command that asked a
+    -- question. The one channel with no settings gate.
+    function notice(...)
+        print(221, join(...))
+    end
+
     -- The midcast gear-selection trace, in light blue. Off by default;
     -- 'gs c gearreporting'.
     function gear_report(...)
         if settings.gear_reporting then print(207, join(...)) end
     end
 
-    -- Shared writer for the three channels above. Wraps long messages on word
-    -- boundaries so the chat log never truncates mid-word.
+    -- Shared writer for the channels above. Dispatches on the value's type and prints
+    -- a table one entry per line, up to four levels deep. Long lines are not wrapped.
     function print(mode, msg)
         if msg == nil then
             windower.add_to_chat(mode, 'Value is Nil')
@@ -1002,7 +1043,7 @@ do
         end
     end
 
-    -- Timestamped debug output, shown only while debug mode is on.
+    -- Debug-channel output, shown only while debug mode is on.
     local function debug(message)
         if not settings.debug then return end
         windower.add_to_chat(121, "[Mirdain Debug] " .. message)
@@ -1014,6 +1055,27 @@ do
     -- timestamps are comparable across separate game clients.
     local function get_time()
         return math.floor(socket.gettime() * 1000)
+    end
+
+    -- Spell-received announces -------------------------------------------------------------------
+
+    -- Pay the completion a broadcast owes its receivers, and clear the flag. They
+    -- equip and lock slots on the announce, so a cast cancelled after announcing
+    -- must say so or they hold gear until their own failsafe. Idempotent: the
+    -- second call owes nothing.
+    local function finish_outgoing_cast()
+        if not outgoing_cast_active then return end
+        outgoing_cast_active = false
+        send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
+    end
+
+    -- Is a broadcast still owed its completion? A flag past its settings.delay
+    -- deadline is stale, and is cleared here, silently.
+    local function outgoing_cast_busy()
+        if not outgoing_cast_active then return false end
+        if os.clock() < outgoing_cast_deadline then return true end
+        outgoing_cast_active = false
+        return false
     end
 
     -- Count the entries in the top level of a table.
@@ -1080,8 +1142,11 @@ do
         local count = 0
         for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
 
-        for slot, member in pairs(party) do
-            if type(member) == 'table' and member.name then
+        -- Every tracked AoE is party-scope, so only p0-p5 can receive it -- never
+        -- the a10-a25 alliance entries get_party() also returns.
+        for i = 0, 5 do
+            local member = party['p' .. i]
+            if member and member.name then
                 -- The party marshal already carries each member's mob table.
                 local m_mob = member.mob
                 if m_mob then
@@ -1105,6 +1170,33 @@ do
             return table.concat(NEARBY_MEMBERS_BUFFER, ",")
         end
         return target_name
+    end
+
+    -- Tell the other boxes a tracked action is incoming, and arm the completion
+    -- this one now owes them. The caller decides that the action is tracked and
+    -- whether it spreads; the name expansion, the send and the debug trace of
+    -- exactly what was sent live here.
+    local function announce_tracked_cast(kind, phase, spell, target_name, aoe)
+        outgoing_cast_active = true
+        outgoing_cast_deadline = os.clock() + settings.delay
+
+        local noun = (kind == 'ABILITY') and 'ability' or 'spell'
+        if settings.debug then
+            debug(player.name .. ' is using tracked ' .. noun .. ' measured at ' .. phase ..
+                ': ' .. spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
+        end
+
+        if aoe then
+            if settings.debug then debug('AoE ' .. noun .. ' cast detected. Calculating targets.') end
+            -- Only the AoE name expansion needs the mob table.
+            local target_mob = get_mob_by_id(spell.target.id)
+            if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
+        end
+
+        local message = string.format('MIRDAIN|%s|%s|%s|%s|%.0f', kind, player.name,
+            target_name, spell.id, get_time())
+        if settings.debug then debug('IPC message sent: ' .. message) end
+        send_ipc(message)
     end
 
     -- Recast helpers ------------------------------------------------------------------------------
@@ -1133,10 +1225,10 @@ do
             max_charges = 3
             charge_regen_time = 80
         elseif sch_level >= 30 then
-            max_charges = 3
+            max_charges = 2
             charge_regen_time = 120
         elseif sch_level >= 10 then
-            max_charges = 2
+            max_charges = 1
             charge_regen_time = 240
         end
 
@@ -1146,6 +1238,50 @@ do
         local current_charges = math.floor((full_recharge_window - charge_cooldown) / charge_regen_time)
 
         return math.max(0, current_charges)
+    end
+
+    -- Carried gear --------------------------------------------------------------------------------
+
+    -- The nine bags gear can be equipped from, name-keyed by GearSwap.
+    local CARRY_BAGS = {
+        'inventory', 'wardrobe', 'wardrobe2', 'wardrobe3', 'wardrobe4',
+        'wardrobe5', 'wardrobe6', 'wardrobe7', 'wardrobe8',
+    }
+
+    -- True when the item is in any of them. Stops at the first hit.
+    local function have_item(name)
+        for i = 1, #CARRY_BAGS do
+            local bag = player[CARRY_BAGS[i]]
+            if bag and bag[name] then return true end
+        end
+    end
+
+    -- Why this item cannot be worn right now, or nil when it can. Job, level, race and
+    -- slots all live on the resource row, so this mirrors GearSwap's own equip checks
+    -- and answers before anything is sent.
+    local function unwearable_reason(row)
+        local job_level = (player.jobs and player.jobs[player.main_job]) or player.main_job_level
+        if row.jobs and not row.jobs[player.main_job_id] then
+            return row.en .. ' cannot be worn by this job.'
+        elseif row.level and job_level and row.level > job_level then
+            return ('%s requires level %d; your %s is %d.'):format(
+                row.en, row.level, tostring(player.main_job), job_level)
+        elseif row.races and not row.races[player.race_id] then
+            return row.en .. ' cannot be worn by your race.'
+        elseif not row.slots then
+            return row.en .. ' cannot be worn.'
+        end
+    end
+
+    -- Total across all of them, so this one cannot stop early.
+    local function have_item_count(name)
+        local total = 0
+        for i = 1, #CARRY_BAGS do
+            local bag = player[CARRY_BAGS[i]]
+            local entry = bag and bag[name]
+            if entry then total = total + entry.count end
+        end
+        return total
     end
 
     ------------------------------------------------------------------------------------------------
@@ -1160,7 +1296,15 @@ do
     -- table allocation set_combine performs on every call, which matters because the
     -- set builders below merge dozens of layers per action.
     local function merge_into(base, layer)
-        if type(layer) ~= 'table' then return base end
+        if type(layer) ~= 'table' then
+            -- A hook that returned nothing is normal; one that returned a value which
+            -- is not a gear set is a job-file fault, and saying so costs nothing on
+            -- the success path because this branch is already the failure branch.
+            if layer ~= nil then
+                warn('a hook returned a ' .. type(layer) .. ', not a gear set; ignored')
+            end
+            return base
+        end
         for slot, item in pairs(layer) do
             local canon = CANON_SLOT[slot] or (type(slot) == 'string' and CANON_SLOT[slot:lower()])
             if canon then base[canon] = item end
@@ -1349,13 +1493,14 @@ do
     end
 
     -- merge_into plus fallback-path tracking. Each build records every merged set in
-    -- order, bracketed by two marks that separate the base layers, the chosen-set
-    -- branch, and the trailing merges. The flush reads the branch's path.
-    local mr_history, mr_count, mr_mark, mr_branch_end = {}, 0, 0, nil
+    -- order, bracketed by marks separating the base layers, the chosen-set branch and
+    -- the trailing merges. mr_am spans the Aftermath layers within that history.
+    local mr_history, mr_count, mr_mark, mr_branch_end, mr_am = {}, 0, 0, nil, { from = 0, to = 0 }
 
     -- Reset the tracking. Builders call this once at entry.
     local function merge_report_begin()
         mr_count, mr_mark, mr_branch_end = 0, 0, nil
+        mr_am.from, mr_am.to = 0, 0
     end
 
     -- End of the base layers; the spell-type branch merges from here on.
@@ -1376,6 +1521,26 @@ do
         return merge_into(base, layer)
     end
 
+    -- Merge a set and report it, or say which one is missing. The path is passed as a
+    -- literal rather than derived, so a set deleted from this file is still named in the
+    -- message; the merge itself still goes through merge_report, so the reported set name
+    -- and the gear-report history are unchanged. Pass key for a set chosen by a runtime
+    -- value: the message names path.key, and neither string is built unless it is needed.
+    local function merge_named(built_set, t, path, key)
+        local layer = t
+        if key ~= nil then layer = t and t[key] end
+        if layer then
+            merge_report(built_set, layer)
+            return true
+        end
+        if key ~= nil then
+            warn(path .. '.' .. tostring(key) .. ' not found!')
+        else
+            warn(path .. ' not found!')
+        end
+        return false
+    end
+
     -- Name a merged layer. Engine placeholders are named from the include-time
     -- record; everything else is recovered from the live tree.
     local function mr_name(t)
@@ -1387,7 +1552,9 @@ do
     -- chose the action's final gear, gear_report() for every phase.
     local function merge_report_flush(phase, spell)
         local mark, last = mr_mark, mr_branch_end or mr_count
+        local am_from, am_to = mr_am.from, mr_am.to
         mr_count, mr_mark, mr_branch_end = 0, 0, nil
+        mr_am.from, mr_am.to = 0, 0
 
         -- Warnings and the info summary belong to the phase that chose the
         -- action's final gear: midcast for spells, precast for abilities, items
@@ -1401,14 +1568,43 @@ do
         local label = phase == 'precast' and 'Precast: '
             or phase == 'aftercast' and 'Aftercast: ' or ''
 
-        -- The set the branch chose: the most specific nameable layer it merged.
-        -- Inline literals are unnameable and are stepped over.
+        -- The Aftermath overlay, named in a clause of its own rather than joined
+        -- into the fallback chain. Built past the gate above, so silence is free.
+        local am_info, am_trace = '', ''
+        if am_from > 0 and am_to >= am_from then
+            local parts, dressed_name, first_name = {}, nil, nil
+            for j = am_from, am_to do
+                local t = mr_history[j]
+                local n = mr_name(t)
+                if n then
+                    first_name = first_name or n
+                    if set_has_gear(t) then
+                        parts[#parts + 1] = n .. ' [Filled]'
+                        dressed_name = n
+                    else
+                        parts[#parts + 1] = n .. ' [Empty]'
+                    end
+                end
+            end
+            if #parts > 0 then
+                am_trace = ' + Aftermath ' .. table.concat(parts, ' -> ')
+                    .. (dressed_name and '' or ', added nothing')
+                am_info = dressed_name and (' + [' .. dressed_name .. '][Used]')
+                    or (' + [' .. first_name .. '][Empty]')
+            end
+        end
+
+        -- The set the branch chose: the most specific nameable layer it merged. Inline
+        -- literals are stepped over, and so are the Aftermath layers, which sit inside
+        -- the branch in precastequip and would otherwise take the head.
         local i, head, name = last, nil, nil
         while i > mark do
-            name = mr_name(mr_history[i])
-            if name then
-                head = mr_history[i]
-                break
+            if i < am_from or i > am_to then
+                name = mr_name(mr_history[i])
+                if name then
+                    head = mr_history[i]
+                    break
+                end
             end
             i = i - 1
         end
@@ -1416,9 +1612,9 @@ do
 
         -- The build wore the set it reached for: name it as the one it used.
         if set_has_gear(head) then
-            if can_info then info('[' .. name .. '][Used]') end
+            if can_info then info('[' .. name .. '][Used]' .. am_info) end
             if settings.gear_reporting then
-                gear_report(label .. 'Using ' .. name .. ' [Filled]')
+                gear_report(label .. 'Using ' .. name .. ' [Filled]' .. am_trace)
             end
             return
         end
@@ -1436,15 +1632,17 @@ do
         local covered, cover_name = false, nil
         i = i - 1
         while i > 0 do
-            local t = mr_history[i]
-            local n = mr_name(t)
-            if set_has_gear(t) then
-                if n then steps[#steps + 1] = 'Using ' .. n .. ' [Filled]' end
-                covered, cover_name = true, n
-                break
-            end
-            if i > mark and n then
-                steps[#steps + 1] = 'Attempted to use ' .. n .. ' [Empty]'
+            if i < am_from or i > am_to then
+                local t = mr_history[i]
+                local n = mr_name(t)
+                if set_has_gear(t) then
+                    if n then steps[#steps + 1] = 'Using ' .. n .. ' [Filled]' end
+                    covered, cover_name = true, n
+                    break
+                end
+                if i > mark and n then
+                    steps[#steps + 1] = 'Attempted to use ' .. n .. ' [Empty]'
+                end
             end
             i = i - 1
         end
@@ -1453,13 +1651,14 @@ do
         -- The compressed fallback: intended set and final cover only.
         if can_info then
             if covered then
-                info('[' .. name .. '][Not Usable] -> [' .. (cover_name or 'unnamed set') .. '][Used]')
+                info('[' .. name .. '][Not Usable] -> [' .. (cover_name or 'unnamed set')
+                    .. '][Used]' .. am_info)
             else
-                info('[' .. name .. '][Not Usable] -> nothing to equip.')
+                info('[' .. name .. '][Not Usable] -> nothing to equip.' .. am_info)
             end
         end
         if settings.gear_reporting then
-            gear_report(label .. table.concat(steps, ' falling back -> '))
+            gear_report(label .. table.concat(steps, ' falling back -> ') .. am_trace)
         end
     end
 
@@ -1469,15 +1668,13 @@ do
     local HOXNE_AMPULLA = 'Hoxne Ampulla'
     local BUFF_ENCHANTMENT = 162 -- res.buffs[162] = "enchantment"
 
-    -- Mode state. window marks an open critical window, slot names the slot it
-    -- borrowed, expires is its deadline, next_check and recheck_at pace the tick,
-    -- and use_not_before blocks a use attempt during the equip delay.
+    -- Mode state. window marks an open critical window, expires is its deadline,
+    -- next_check and recheck_at pace the tick, and use_not_before blocks a use
+    -- attempt during the equip delay.
     local hoxne = {
         window         = false, -- a critical action currently owns one slot
-        slot           = nil,   -- which slot it borrowed ('range' or 'ammo')
         expires        = 0,     -- os.clock() deadline for that window
-        resume         = nil,   -- 'aftercast' | 'delay'
-        next_check     = 0,     -- os.clock() gate for hoxne_tick (always 1s)
+        next_check     = 0,     -- os.clock() gate for hoxne_tick (1s; 2s after a relock)
         recheck_at     = 0,     -- os.clock() before which the bags are not re-scanned
         use_not_before = 0,     -- os.clock() before which no /item may be attempted
         release_tries  = 0,     -- remaining attempts to free a stranded Ampulla
@@ -1533,23 +1730,134 @@ do
         return s == 'range' or s == 'ammo'
     end
 
+    -- Slot ownership ------------------------------------------------------------------------------
+    --
+    -- Sits above Unlock and UnlockByMode because both call into it: a local referenced
+    -- above its declaration resolves to a global nil rather than raising.
+
+    -- The slot a running enchantment use is holding, or nil when idle. SECTION 13
+    -- sets it beside its own disable() and clears it beside the matching enable().
+    local ench_held_slot
+
+    -- Slots a lock mode is holding: [canonical slot] = { id, name }. locked_n keeps
+    -- the idle case to one integer test.
+    local locked = {}
+    local locked_n = 0
+
+    -- The highest-priority layer still claiming this slot, or nil for normal gear.
+    -- Order is the precedence stack: an item use, then the Hoxne hold, then gear
+    -- borrowed for a received spell, then a lock mode.
+    local function slot_claim(slot)
+        local s = CANON_SLOT[slot] or slot
+        if ench_held_slot and (CANON_SLOT[ench_held_slot] or ench_held_slot) == s then
+            return 'ench'
+        end
+        if hoxne_owns_slot(s) then return 'hoxne' end
+        -- Keyed by whatever spelling the job file's set used, so canonicalise both.
+        for held in pairs(active_external_locks) do
+            if (CANON_SLOT[held] or held) == s then return 'spell' end
+        end
+        if locked_n > 0 and locked[s] then return 'lock' end
+    end
+
+    -- Hand a slot to whoever should hold it next. Every release path calls this
+    -- rather than enable(), which would drop the slot to normal gear even while a
+    -- lower layer is still waiting for it. A layer above keeps its own hold, so
+    -- there is nothing to do; a lock is re-asserted here, and the enable, equip and
+    -- disable must stay in that order and in one event or the parked gear wins.
+    local function release_slot(slot)
+        local claim = slot_claim(slot)
+        if not claim then
+            enable(slot)
+            return
+        end
+        if claim ~= 'lock' then return end
+        local canon = CANON_SLOT[slot] or slot
+        local item = locked[canon]
+
+        -- Confirm it can still go on before holding the slot for it; otherwise drop
+        -- the lock, hand the slot back, and say why.
+        local why
+        if not have_item(item.name) then
+            why = item.name .. ' is no longer in your inventory or wardrobes.'
+        else
+            local row = res.items[item.id]
+            why = row and unwearable_reason(row)
+        end
+        if why then
+            locked[canon] = nil
+            locked_n = locked_n - 1
+            enable(slot)
+            info(why)
+            info(item.name .. ': mode [OFF]. Re-enable it when the item is back.')
+            return
+        end
+
+        enable(slot)
+        gs_equip({ [slot] = item.name })
+        disable(slot)
+    end
+
+    -- What a refusal calls each layer, so it names the reason rather than just failing.
+    local HOLDER_NAME = {
+        ench  = 'an item use',
+        hoxne = 'the Hoxne hold',
+        spell = 'received gear',
+    }
+
+    -- The slot this item is locked in, or nil when its mode is off.
+    local function locked_slot_of(id)
+        for canon, held in pairs(locked) do
+            if held.id == id then return canon end
+        end
+    end
+
+    -- Hand a locked slot back and forget it. Deregistered first: release_slot reads
+    -- the registry, so it would answer 'lock' and re-assert what is being let go.
+    local function unlock_slot(slot)
+        local canon = CANON_SLOT[slot] or slot
+        if not locked[canon] then return false end
+        locked[canon] = nil
+        locked_n = locked_n - 1
+        release_slot(canon)
+        return true
+    end
+
+    -- Drop every lock mode. Returns how many were on, so the caller can say so.
+    local function clear_locked_slots()
+        local n = 0
+        for canon in pairs(locked) do
+            locked[canon] = nil
+            locked_n = locked_n - 1
+            release_slot(canon)
+            n = n + 1
+        end
+        return n
+    end
+
     -- Slot locking --------------------------------------------------------------------------------
 
-    -- Release every slot. Reached only from 'gs c enableall', the manual recovery
-    -- command, so it deliberately ignores the Hoxne hold; hoxne_tick() re-asserts it
-    -- within a second.
+    -- Release every slot, from 'gs c enableall' and from the deferred startup pass.
+    -- Turns the lock modes off so they cannot retake what it just freed; the Hoxne
+    -- hold is left for hoxne_tick() to re-assert, which is what the message below says.
     function Unlock()
         log('Unlock Called')
+        if clear_locked_slots() > 0 then info('Lock modes off; releasing every slot.') end
+        if state.Hoxne.value ~= 'OFF' then
+            info('Hoxne Ampulla Mode is [' .. state.Hoxne.value .. ']; its hold returns shortly.')
+        end
         enable('main', 'sub', 'range', 'ammo', 'head', 'neck', 'ear1', 'ear2', 'body', 'hands', 'ring1', 'ring2', 'waist',
             'legs', 'feet', 'back')
         equip_set_command()
     end
 
-    -- Enable a list of slots, skipping any the Hoxne mode is currently holding.
+    -- Enable a list of slots, skipping any that another layer still claims -- an item
+    -- use, the Hoxne hold, gear borrowed for a received spell, or a lock mode. Held
+    -- slots are matched through CANON_SLOT, not by name.
     local function enable_except_held(slots)
         local list = {}
         for _, s in ipairs(slots) do
-            if not hoxne_owns_slot(s) then list[#list + 1] = s end
+            if not slot_claim(s) then list[#list + 1] = s end
         end
         if #list > 0 then enable(unpack(list)) end
     end
@@ -1562,7 +1870,6 @@ do
         local slots = { 'main', 'sub', 'range', 'ammo', 'head', 'ear1', 'ear2', 'body',
             'hands', 'ring1', 'ring2', 'waist', 'legs', 'feet', 'back' }
         if not Divergence_Zones:contains(world.area) then
-            -- Only unlock neck if not in divergence zone.
             slots[#slots + 1] = 'neck'
         end
         enable_except_held(slots)
@@ -1605,6 +1912,23 @@ do
         [14] = 'right_ring',
         [15] = 'back',
     }
+
+    -- Which slot this item goes in. Already worn beats a slot no layer claims, which
+    -- beats the first the item fits. The middle term keeps a two-slot item off a hand
+    -- something else is holding when the other is free; falling through to the first
+    -- is right, because an item use outranks a lock and may take it when it must.
+    local function pick_slot(row, name)
+        local worn, free, first
+        for id = 0, 15 do
+            if row.slots:contains(id) then
+                local s = ENCH_SLOT_NAMES[id]
+                first = first or s
+                if player.equipment[s] == name then worn = worn or s end
+                if not slot_claim(s) then free = free or s end
+            end
+        end
+        return worn or free or first
+    end
 
     -- Bags that can hold equippable gear: inventory, then wardrobes 1 through 8.
     local ENCH_BAGS = { 0, 8, 10, 11, 12, 13, 14, 15, 16 }
@@ -1687,7 +2011,8 @@ do
         if recast < 0 then recast = 0 end
         if activation < 0 then activation = 0 end
         -- Clocks say ready but the item disagrees: trust the flag, and treat the
-        -- unknown as an equip delay rather than a cooldown.
+        -- unknown as an equip delay rather than a cooldown. The 5 is a poll
+        -- interval, not a countdown - nothing behind it decrements.
         if recast == 0 and activation == 0 and ext.usable == false then
             activation = 5
         end
@@ -1720,13 +2045,14 @@ do
     local ench_active = nil
     local ench_next_check = 0
 
-    -- Release the slot and restore normal gear. Skips the enable when Hoxne is holding
-    -- that slot.
+    -- Release the slot and restore normal gear. release_slot() skips the enable when
+    -- another layer still claims that slot, and re-asserts a lock mode's item.
     local function finish_enchantment()
         local st = ench_active
         ench_active = nil
+        ench_held_slot = nil
         if not st then return end
-        if not hoxne_owns_slot(st.slot) then enable(st.slot) end
+        release_slot(st.slot)
         equip_set_command()
     end
 
@@ -1798,26 +2124,28 @@ do
             windower.send_command('gs c enchrepair')
             st.equipped_at = now
             st.next_step = now + st.cast_delay + ENCH_ACTIVATION_BUFFER + 1
+            -- The repair re-equips, so the settle time starts over.  The deadline
+            -- moves with it; left where it was, the next wake reaps a use that
+            -- has already recovered, and the attempts budget above is unreachable.
+            st.deadline = now + st.cast_delay + st.cast_time + 12
             return
         end
 
         local recast, activation = enchantment_waits(ext)
         recast, activation = recast or 0, activation or 0
         if recast > 0 then
-            -- A genuine cooldown discovered after we already equipped.  Short
-            -- ones are worth waiting out; long ones are not.
-            if recast < 15 then
-                st.next_step = now + recast + 0.5
-            else
-                -- Still the user's gs c use command (ench_active is only ever
-                -- set by use_enchantment), so answer unconditionally here too.
-                warn_unavailable(row, recast, true)
-                finish_enchantment()
-            end
+            -- A cooldown found after the equip refuses the use. Waiting one out
+            -- holds the slot for as long as the cooldown runs; the user asked for
+            -- this item, so answer unconditionally here too.
+            warn_unavailable(row, recast, true)
+            finish_enchantment()
             return
         end
         if activation > 0 then
-            -- Equip delay only: wait silently, however long it takes.
+            -- Equip delay only: wait silently. The deadline is deliberately not
+            -- extended - the initial budget already covers a full delay, and
+            -- activation_time restarts on every re-equip, so an extension here
+            -- could clear every later wake and the use would never time out.
             st.next_step = now + activation + 0.5
             return
         end
@@ -1846,20 +2174,10 @@ do
         end
 
         -- Reject unequippable items up front with a specific reason, instead of
-        -- letting the state machine time out. Mirrors GearSwap own equip checks.
-        local job_level = (player.jobs and player.jobs[player.main_job]) or player.main_job_level
-        if row.jobs and not row.jobs[player.main_job_id] then
-            info(i_name .. ' cannot be worn by this job.')
-            return
-        elseif row.level and job_level and row.level > job_level then
-            info(('%s requires level %d; your %s is %d.'):format(
-                i_name, row.level, tostring(player.main_job), job_level))
-            return
-        elseif row.races and not row.races[player.race_id] then
-            info(i_name .. ' cannot be worn by your race.')
-            return
-        elseif not row.slots then
-            info(i_name .. ' cannot be worn.')
+        -- letting the state machine time out.
+        local why = unwearable_reason(row)
+        if why then
+            info(why)
             return
         end
 
@@ -1881,18 +2199,7 @@ do
 
         -- Prefer the slot the item already occupies. Rings list both slots and
         -- pairs() order is undefined, so the choice must be made deliberately.
-        local slot, first
-        for id = 0, 15 do
-            if row.slots:contains(id) then
-                local name = ENCH_SLOT_NAMES[id]
-                first = first or name
-                if player.equipment[name] == i_name then
-                    slot = name
-                    break
-                end
-            end
-        end
-        slot = slot or first
+        local slot = pick_slot(row, i_name)
         -- The guard above rejects a nil slots field; this catches the rarer
         -- case of a slots set that exists but is empty.
         if not slot then
@@ -1934,7 +2241,104 @@ do
         enable(slot)
         gs_equip({ [slot] = i_name })
         disable(slot)
+        ench_held_slot = slot
         log('use_enchantment: ', i_name, ' -> ', slot)
+    end
+
+    -- Lock modes ----------------------------------------------------------------------------------
+
+    -- The items a lock mode can hold, by resource id. Keyed by command word, so the
+    -- command already knows its item and no name index is needed.
+    local LOCKABLE = {
+        aptitude = 27603, -- Aptitude Mantle
+        jubilee  = 27593, -- Jubilee Ring
+    }
+
+    -- Wear an item and hold its slot against normal gear. Guards mirror
+    -- use_enchantment's, because the ways this fails are the same ones.
+    local function lock_slot(row)
+        local name = row.en
+        if not have_item(name) then
+            info(name .. ': not found in inventory or wardrobes.')
+            return false
+        end
+        local why = unwearable_reason(row)
+        if why then
+            info(why)
+            return false
+        end
+
+        -- Re-issuing the command is the documented manual repair, so it must land on
+        -- the slot already registered. One item in two slots leaves the second empty
+        -- for good and has the sweep shuttling the one item between them.
+        local slot = locked_slot_of(row.id) or pick_slot(row, name)
+        if not slot then
+            info('No equippable slot for [' .. name .. '].')
+            return false
+        end
+
+        -- A lock is the lowest layer that can hold a slot, so it waits rather than
+        -- taking one. pick_slot falls through to the first slot the item fits for the
+        -- enchantment engine, which outranks a lock; here that fall-through would
+        -- seize a slot an item use or received gear is still wearing.
+        local claim = slot_claim(slot)
+        if claim and claim ~= 'lock' then
+            info(('%s: %s is held by %s right now.'):format(name, slot, HOLDER_NAME[claim]))
+            return false
+        end
+
+        enable(slot)
+        gs_equip({ [slot] = name })
+        disable(slot)
+        local canon = CANON_SLOT[slot] or slot
+        if not locked[canon] then locked_n = locked_n + 1 end
+        locked[canon] = { id = row.id, name = name }
+        return true
+    end
+
+    -- Put a locked item back on when something took its slot without telling us: an
+    -- in-game /equipset, a level-sync unequip, a console enable. None of those reach
+    -- an event, so this compares worn against held rather than waiting to be told.
+    -- Yields while a layer above holds the slot; that layer hands it back itself.
+    local function verify_locked_slots()
+        if locked_n == 0 then return end
+        for canon, held in pairs(locked) do
+            if player.equipment[canon] ~= held.name and slot_claim(canon) == 'lock' then
+                release_slot(canon)
+            end
+        end
+    end
+
+    -- Turn a lock mode on, off, or the other way from where it is. Setting one that is
+    -- already on re-asserts it, which is what makes the bare command a manual repair.
+    local function lock_mode(key, arg)
+        local row = res.items[LOCKABLE[key]]
+        local held = locked_slot_of(row.id)
+        local want
+        if arg == 'on' then
+            want = true
+        elseif arg == 'off' then
+            want = false
+        elseif arg then
+            warn(('%s: "%s" is not on or off.'):format(row.en, tostring(arg)))
+            warn(('Usage: //gs c %s [on|off]'):format(key))
+            return
+        else
+            want = not held
+        end
+
+        if not want then
+            if held then
+                unlock_slot(held)
+                notice(row.en .. ': [OFF]')
+            else
+                notice(row.en .. ': already [OFF]')
+            end
+            return
+        end
+        if lock_slot(row) then
+            notice(row.en .. ': [ON] held in ' .. tostring(locked_slot_of(row.id)) .. '.')
+        end
     end
 
     ------------------------------------------------------------------------------------------------
@@ -1963,6 +2367,45 @@ do
         return CRITICAL_TYPE[spell.type]
     end
 
+    -- Why ON-Locked turns a gated ability down, or nil when it does not. Stated
+    -- once so the command and a typed /ja cannot drift into two explanations.
+    -- ON-Locked holds the slot in disable_table, so the equip is diverted and the
+    -- action reaches the server wearing nothing; the server's refusal names the
+    -- character and no reason at all, which is what this replaces.
+    local function hoxne_locked_refusal(ja_id)
+        if state.Hoxne.value ~= 'ON-Locked' then return nil end
+        local crit = CRITICAL_JA[ja_id]
+        if not crit then return nil end
+        local row = res.job_abilities[ja_id]
+        return ('Hoxne ON-Locked holds %s. Use ON-Allow Critical or OFF for %s.')
+            :format(crit.slot, (row and row.en) or tostring(ja_id))
+    end
+
+    -- The slot and item a gated ability needs forced, or nil when nothing is owed.
+    -- A built set that already dressed the slot with the ability's own item wins.
+    local function critical_force_slot(built_set, spell)
+        if not spell or spell.type ~= TYPE_JA then return nil end
+        local crit = CRITICAL_JA[spell.id]
+        if not crit or not crit.force then return nil end
+        local want = CANON_SLOT[crit.slot] or crit.slot
+        if type(built_set) == 'table' then
+            for k, v in pairs(built_set) do
+                local canon = type(k) == 'string' and CANON_SLOT[k:lower()]
+                if canon == want then
+                    -- Only the ability's own item counts as dressed. Any other ammo
+                    -- leaves the action unusable, and an empty sets.JA entry falls
+                    -- back to a set that dresses the slot with something else.
+                    local name = (type(v) == 'table' and v.name) or v
+                    if type(name) == 'string' and name:lower() == crit.force:lower() then
+                        return nil
+                    end
+                    return want, crit.force
+                end
+            end
+        end
+        return want, crit.force
+    end
+
     -- A gated /ja waiting for its throwing item's equip to be confirmed, or nil.
     local gated_ja = nil
 
@@ -1976,28 +2419,34 @@ do
             warn(st.item_name .. ' never equipped. ' .. st.ja_name .. ' not used.')
             return
         end
-        local bag = windower.ffxi.get_items(st.bag_id)
-        if bag then
-            for _, it in ipairs(bag) do
-                if type(it) == 'table' and it.id == st.item_id and it.status == 5 then
-                    gated_ja = nil
-                    log('/ja "', st.ja_name, '" <t>')
-                    windower.chat.input('/ja "' .. st.ja_name .. '" <t>')
-                    return
+        -- Every equippable bag, because GearSwap equips whichever stack it picks:
+        -- watching one recorded bag lets a use time out on an item already worn.
+        -- player.equipment cannot serve here - this runs on a raw handler, where it
+        -- is stale - so the bag copy's status is the live reading available.
+        for _, bag_id in ipairs(ENCH_BAGS) do
+            local bag = windower.ffxi.get_items(bag_id)
+            if bag then
+                for _, it in ipairs(bag) do
+                    if type(it) == 'table' and it.id == st.item_id and it.status == 5 then
+                        gated_ja = nil
+                        log('/ja "', st.ja_name, '" <t>')
+                        windower.chat.input('/ja "' .. st.ja_name .. '" <t>')
+                        return
+                    end
                 end
             end
         end
     end
 
     -- Equip a job ability's throwing item and issue the ability once the equip is
-    -- confirmed. The client refuses a typed /ja for Tomahawk and Angon while the item
-    -- is not worn, and it checks before an equip sent in the same frame can arrive,
-    -- so the ability follows the equip confirmation. Call from a wrapped event.
+    -- confirmed. The server refuses the action while the item is not worn, so the
+    -- ability follows the confirmation rather than a timer. Call from a wrapped event.
     local function use_gated_ja(ja_id)
         local crit = CRITICAL_JA[ja_id]
         local ja_name = res.job_abilities[ja_id].en
-        if state.Hoxne.value == 'ON-Locked' then
-            info('Hoxne ON-Locked holds ammo. Use ON-Allow Critical or OFF for ' .. ja_name .. '.')
+        local refusal = hoxne_locked_refusal(ja_id)
+        if refusal then
+            info(refusal)
             return
         end
         -- The ability's own recast, checked before any gear moves: equipping for an
@@ -2008,28 +2457,32 @@ do
             info(('%s is on cooldown [%d:%02d].'):format(ja_name, math.floor(wait / 60), math.floor(wait % 60)))
             return
         end
-        local found_bag, worn
+        -- Every stack in every equippable bag. A worn copy anywhere settles it -
+        -- these expend from wherever they are equipped, wardrobes included - and
+        -- stopping at the first id match reads a worn later stack as merely carried,
+        -- then waits out the deadline for an equip that already happened.
+        local carried, worn = false, false
         for _, bag_id in ipairs(ENCH_BAGS) do
             local bag = windower.ffxi.get_items(bag_id)
             if bag then
                 for _, it in ipairs(bag) do
                     if type(it) == 'table' and it.id == crit.item_id then
-                        found_bag = bag_id
-                        worn = (it.status == 5)
-                        break
+                        carried = true
+                        if it.status == 5 then
+                            worn = true
+                            break
+                        end
                     end
                 end
             end
-            if found_bag then break end
+            if worn then break end
         end
-        if not found_bag then
+        if not carried then
             info(crit.force .. ': not found in inventory or wardrobes.')
             return
         end
         if state.Hoxne.value == 'ON-Allow Critical' then
             hoxne.window  = true
-            hoxne.slot    = crit.slot
-            hoxne.resume  = crit.resume
             hoxne.expires = os.clock() + 20 -- watchdog; aftercast sets the real countdown
         end
         if worn then
@@ -2043,7 +2496,6 @@ do
             item_id    = crit.item_id,
             item_name  = crit.force,
             ja_name    = ja_name,
-            bag_id     = found_bag,
             deadline   = os.clock() + 3,
             next_check = 0,
         }
@@ -2060,6 +2512,17 @@ do
         else
             gs_equip({ range = empty, ammo = HOXNE_AMPULLA })
         end
+    end
+
+    -- Re-arm the use lockout after our own re-equip, and return the recast still to
+    -- run so a caller can report it. The equip delay restarts on every re-equip but
+    -- the recast may outlast it: whichever is larger governs, with the equip lockout
+    -- as the floor against stale extdata.
+    local function hoxne_arm_use_lockout()
+        local _, hx_ext = find_enchantment(HOXNE_AMPULLA)
+        local hx_recast = enchantment_waits(hx_ext) or 0
+        hoxne.use_not_before = os.clock() + math.max(HOXNE_EQUIP_LOCKOUT, hx_recast)
+        return hx_recast
     end
 
     -- Free a stranded Ampulla, one step per call. Step one re-asserts the truly worn
@@ -2086,10 +2549,6 @@ do
     -- because the tick runs on a raw handler.
     local function hoxne_relock()
         hoxne.window = false
-        hoxne.slot   = nil
-        hoxne.resume = nil
-        -- Routed through self_command because equip() from a raw handler is
-        -- discarded.
         windower.send_command('gs c hoxnerelock')
         log('Hoxne: critical window closed, re-locking Ampulla.')
     end
@@ -2125,6 +2584,11 @@ do
             disable('range', 'ammo')
         end
 
+        -- Above the repair branch: the ammo slot cannot be filled while dead, so a
+        -- death with the Ampulla displaced would otherwise scan the bags and send a
+        -- relock every 2 s until reraise. The hold above still re-asserts.
+        if player.status == 'Dead' or player.status == 'Engaged dead' then return end
+
         -- Neither hold stops the game itself: equipping an instrument clears
         -- ammo, and in-game /equipset bypasses GearSwap entirely - so repair
         -- the slot here, routed through self_command because equip() from this
@@ -2139,7 +2603,6 @@ do
 
         if buffactive[BUFF_ENCHANTMENT] then return end
         if is_Busy or is_moving or midaction() or pet_midaction() then return end
-        if player.status == 'Dead' or player.status == 'Engaged dead' then return end
 
         -- Never attempt a use inside the equip-delay window after our own
         -- re-equip (see HOXNE_EQUIP_LOCKOUT).
@@ -2164,7 +2627,7 @@ do
             return
         end
         -- Assume the use lands.  If it did, buff 162 short-circuits this function
-        -- long before the gate matters; if it did not, we retry within 10 seconds.
+        -- long before the gate matters; if it did not, we retry within 5 seconds.
         hoxne.recheck_at = now + math.min(row.recast_delay or 60, 5)
 
         log('/item "', HOXNE_AMPULLA, '" <me>')
@@ -2177,11 +2640,125 @@ do
     -- Assemble the equipment set for a given moment. Each returns a table for its
     -- caller to equip; none equips anything itself.
 
+    -- Merge the strongest active Aftermath tier that root defines for the current weapon
+    -- mode. Returns that tier row, whose labels the caller names the player with, or nil
+    -- when no tier applies.
+    local apply_aftermath
+    -- The tier table lives inside this block, not beside it: the main chunk sits at
+    -- Lua 5.1's 200-local ceiling, and a closed block gives its register back.
+    do
+        -- Strongest first. The buff name, the set key and the two label spellings are
+        -- one fact per tier.
+        local AFTERMATH_TIER = {
+            { buff = 'Aftermath: Lv.3', key = 'AM3', ws_label = 'Level 3 Aftermath', ra_label = 'Aftermath 3' },
+            { buff = 'Aftermath: Lv.2', key = 'AM2', ws_label = 'Level 2 Aftermath', ra_label = 'Aftermath 2' },
+            { buff = 'Aftermath: Lv.1', key = 'AM1', ws_label = 'Level 1 Aftermath', ra_label = 'Aftermath 1' },
+            { buff = 'Aftermath',       key = 'AM',  ws_label = 'Aftermath',         ra_label = 'Aftermath' },
+        }
+        apply_aftermath = function(built_set, root)
+            if not root then return nil end
+            local mode = state.WeaponMode.value
+            for i = 1, #AFTERMATH_TIER do
+                local tier = AFTERMATH_TIER[i]
+                local set = root[tier.key]
+                if buffactive[tier.buff] and set then
+                    -- The tier set dresses every weapon; its weapon-mode child refines
+                    -- it. An untouched placeholder counts as absent and is not merged.
+                    -- The tier is returned when the base carries gear or a child exists.
+                    local child, dressed = set[mode], false
+                    mr_am.from = mr_count + 1
+                    if PLACEHOLDER_NAME[set] == nil then
+                        merge_report(built_set, set)
+                        dressed = set_has_gear(set)
+                    end
+                    if child then
+                        merge_report(built_set, child)
+                        dressed = true
+                    end
+                    mr_am.to = mr_count
+                    if dressed then return tier end
+                end
+            end
+            return nil
+        end
+    end
+
+    -- Apply state.WeaponMode to a build: the worn weapons when Locked, otherwise the
+    -- mode's own set plus an offhand. dual_wield_set merges sets.DualWield, quiet
+    -- reports nothing missing, shield_needs_mode_set withholds the shield.
+    local function apply_weapon_mode(built_set, dual_wield_set, shield_needs_mode_set, quiet)
+        if state.WeaponMode.value == "Locked" then
+            merge_report(built_set,
+                { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
+            return
+        end
+        if not sets.Weapons then
+            if not quiet then warn('sets.Weapons not found!') end
+            return
+        end
+        local mode_set = sets.Weapons[state.WeaponMode.value]
+        if mode_set then
+            merge_report(built_set, mode_set)
+        else
+            if not quiet then warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!') end
+            if shield_needs_mode_set then return end
+        end
+        if not TwoHand and not DualWield then
+            if sets.Weapons.Shield then
+                merge_report(built_set, sets.Weapons.Shield)
+            elseif not quiet then
+                warn('sets.Weapons.Shield not found!')
+            end
+        elseif dual_wield_set and DualWield then
+            if sets.DualWield then
+                merge_report(built_set, sets.DualWield)
+            elseif not quiet then
+                warn('sets.DualWield not found!')
+            end
+        end
+    end
+
+    -- Precast action types whose gear is a family parent plus an optional child keyed
+    -- by the action name, and the section 2 root each one reads.
+    local PRECAST_SET_FAMILY = {
+        Scholar     = 'JA',
+        Ward        = 'JA',
+        Rune        = 'JA',
+        Effusion    = 'JA',
+        CorsairRoll = 'PhantomRoll',
+        CorsairShot = 'QuickDraw',
+        Waltz       = 'Waltz',
+        Jig         = 'Jig',
+        Samba       = 'Samba',
+        Step        = 'Step',
+        Flourish1   = 'Flourish',
+        Flourish2   = 'Flourish',
+        Flourish3   = 'Flourish',
+    }
+
+    -- Merge a family parent and, where the job file defines one, the child for this
+    -- action. The root is resolved by name at call time, so a job file that replaces
+    -- the parent wholesale still resolves.
+    local function apply_set_family(built_set, root_name, spell)
+        local root = sets[root_name]
+        if not root then
+            warn('sets.' .. root_name .. ' not found!')
+            return
+        end
+        merge_report(built_set, root)
+        if root[spell.english] then
+            merge_report(built_set, root[spell.english])
+        end
+    end
+
     -- Build the set for the player's current state. This is the idle and engaged
     -- builder, called on movement, buff changes, status changes and 'gs c update',
     -- so it must stay cheap and must never write to chat.
     function choose_set()
         merge_report_begin()
+        -- Above the Sleep return on purpose: a locked item should not come off
+        -- because you were slept.
+        verify_locked_slots()
         if buffactive['Sleep'] then return {} end
         local built_set = {}
         -- Combat Checks
@@ -2193,30 +2770,9 @@ do
                     merge_report(built_set, sets.OffenseMode[state.OffenseMode.value])
                     merge_report_branch_end()
                     -- Check the weapons
+                    -- The engaged build is the only one that offers sets.DualWield.
                     if state.WeaponMode.value ~= "Locked" then
-                        if sets.Weapons then
-                            if sets.Weapons[state.WeaponMode.value] then
-                                merge_report(built_set, sets.Weapons[state.WeaponMode.value])
-                            else
-                                warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
-                            end
-                        else
-                            warn('sets.Weapons not found!')
-                        end
-                        -- Equip sub weapon based off mode
-                        if not DualWield and not TwoHand then
-                            if sets.Weapons.Shield then
-                                merge_report(built_set, sets.Weapons.Shield)
-                            else
-                                warn('sets.Weapons.Shield not found!')
-                            end
-                        elseif DualWield then
-                            if sets.DualWield then
-                                merge_report(built_set, sets.DualWield)
-                            else
-                                warn('sets.DualWield not found!')
-                            end
-                        end
+                        apply_weapon_mode(built_set, true, false, false)
                     end
                     -- Ranged Mode
                     if state.JobMode.value == "Ranged" then
@@ -2227,17 +2783,7 @@ do
                             warn('sets.Idle.' .. state.OffenseMode.value .. ' not found!')
                         end
                     end
-                    -- Check if AM3 is active
-                    if buffactive['Aftermath: Lv.3'] and sets.OffenseMode.AM3 and sets.OffenseMode.AM3[state.WeaponMode.value] then
-                        merge_report(built_set, sets.OffenseMode.AM3[state.WeaponMode.value])
-                    elseif buffactive['Aftermath: Lv.2'] and sets.OffenseMode.AM2 and sets.OffenseMode.AM2[state.WeaponMode.value] then
-                        merge_report(built_set, sets.OffenseMode.AM2[state.WeaponMode.value])
-                    elseif buffactive['Aftermath: Lv.1'] and sets.OffenseMode.AM1 and sets.OffenseMode.AM1[state.WeaponMode.value] then
-                        merge_report(built_set, sets.OffenseMode.AM1[state.WeaponMode.value])
-                    elseif buffactive['Aftermath'] and sets.OffenseMode.AM and sets.OffenseMode.AM[state.WeaponMode.value] then
-                        merge_report(built_set, sets.OffenseMode.AM[state.WeaponMode.value])
-                    end
-                    -- Check if TreasureMode is activew
+                    apply_aftermath(built_set, sets.OffenseMode)
                     if state.TreasureMode.value ~= 'None' then
                         if sets.TreasureHunter then
                             -- Equip TH gear if mob is not marked as tagged
@@ -2269,71 +2815,28 @@ do
                 merge_report_mark()
 
                 -- Idle state
-                if sets.Idle[state.OffenseMode.value] then
-                    merge_report(built_set, sets.Idle[state.OffenseMode.value])
-                else
-                    warn('sets.Idle.' .. state.OffenseMode.value .. ' not found!')
-                end
+                merge_named(built_set, sets.Idle, 'sets.Idle', state.OffenseMode.value)
 
                 -- Resting condition
                 if player.status == "Resting" then
-                    if sets.Idle.Resting then
-                        merge_report(built_set, sets.Idle.Resting)
-                    else
-                        warn('sets.Idle.Resting not found!')
-                    end
+                    merge_named(built_set, sets.Idle.Resting, 'sets.Idle.Resting')
                 end
                 merge_report_branch_end()
 
                 -- Check the weapons
-                if state.WeaponMode.value == "Locked" then
-                    merge_report(built_set,
-                        { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
-                    log(built_set)
-                else
-                    if sets.Weapons then
-                        if sets.Weapons[state.WeaponMode.value] then
-                            merge_report(built_set, sets.Weapons[state.WeaponMode.value])
-                        else
-                            warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
-                        end
-                    else
-                        warn('sets.Weapons not found!')
-                    end
-
-                    -- Check for sub weapon
-                    if not TwoHand and not DualWield then
-                        if sets.Weapons.Shield then
-                            merge_report(built_set, sets.Weapons.Shield)
-                        else
-                            warn('sets.Weapons.Shield not found!')
-                        end
-                    end
-                end
+                apply_weapon_mode(built_set, false, false, false)
 
                 --Pet specific checks
                 if pet.isvalid then
-                    if sets.Idle.Pet then
-                        merge_report(built_set, sets.Idle.Pet)
-                    else
-                        warn('sets.Idle.Pet not found!')
-                    end
+                    merge_named(built_set, sets.Idle.Pet, 'sets.Idle.Pet')
                 end
                 -- Equip Sublimation gear
                 if buffactive[187] then
-                    if sets.Idle.Sublimation then
-                        merge_report(built_set, sets.Idle.Sublimation)
-                    else
-                        warn('sets.Idle.Sublimation not found!')
-                    end
+                    merge_named(built_set, sets.Idle.Sublimation, 'sets.Idle.Sublimation')
                 end
                 -- Equip movement gear
                 if is_moving then
-                    if sets.Movement then
-                        merge_report(built_set, sets.Movement)
-                    else
-                        warn('sets.Movement not found!')
-                    end
+                    merge_named(built_set, sets.Movement, 'sets.Movement')
                 end
             else
                 warn('sets.Idle not found!')
@@ -2365,21 +2868,18 @@ do
         if pet.isvalid and pet_midaction() then return end
         --Default gearset
         local built_set = {}
-        -- Merge the Idle incase a midcast is not set
+        -- Merge the Idle in case a midcast is not set
         if sets.Idle then merge_report(built_set, sets.Idle) end
         merge_report_mark()
         -- WeaponSkill
         if spell.type == 'WeaponSkill' then
             if sets.WS then
                 merge_report(built_set, sets.WS)
-                local message = ''
+                -- Facts, not text: the line is built past the settings gate below.
+                local message, am_mode, show_bullets = '', nil, false
                 if spell.skill == "Marksmanship" or spell.skill == "Archery" then
                     -- Try to equip a generic ranged WS set
-                    if sets.WS.RA then
-                        merge_report(built_set, sets.WS.RA)
-                    else
-                        warn('sets.WS.RA not found!')
-                    end
+                    merge_named(built_set, sets.WS.RA, 'sets.WS.RA')
 
                     -- Set is defined
                     if sets.WS[spell.english] then
@@ -2400,21 +2900,9 @@ do
                     end
 
                     -- Check if Aftermath is active
-                    if sets.WS.RA then
-                        if buffactive['Aftermath: Lv.3'] and sets.WS.RA.AM3 and sets.WS.RA.AM3[state.WeaponMode.value] then
-                            merge_report(built_set, sets.WS.RA.AM3[state.WeaponMode.value])
-                            message = 'Level 3 Aftermath [' .. state.WeaponMode.value .. ']'
-                        elseif buffactive['Aftermath: Lv.2'] and sets.WS.RA.AM2 and sets.WS.RA.AM2[state.WeaponMode.value] then
-                            merge_report(built_set, sets.WS.RA.AM2[state.WeaponMode.value])
-                            message = 'Level 2 Aftermath [' .. state.WeaponMode.value .. ']'
-                        elseif buffactive['Aftermath: Lv.1'] and sets.WS.RA.AM1 and sets.WS.RA.AM1[state.WeaponMode.value] then
-                            merge_report(built_set, sets.WS.RA.AM1[state.WeaponMode.value])
-                            message = 'Level 1 Aftermath [' .. state.WeaponMode.value .. ']'
-                        elseif buffactive['Aftermath'] and sets.WS.RA.AM and sets.WS.RA.AM[state.WeaponMode.value] then
-                            merge_report(built_set, sets.WS.RA.AM[state.WeaponMode.value])
-                            message = 'Aftermath [' .. state.WeaponMode.value .. ']'
-                        end
-                    end
+                    local am_tier = apply_aftermath(built_set, sets.WS.RA)
+                    if am_tier then message = am_tier.ws_label end
+                    if message ~= '' then am_mode = state.WeaponMode.value end
 
                     -- Bullet Check
                     do_bullet_checks(spell, built_set)
@@ -2425,8 +2913,7 @@ do
                             { ammo = Ammo[state.OffenseMode.value] })
                     end
 
-                    message = (message ~= '' and message .. ' ' or '')
-                        .. '[' .. available_bullets .. 'x]'
+                    show_bullets = true
                 else
                     -- Set is defined
                     if sets.WS[spell.english] then
@@ -2447,26 +2934,25 @@ do
                     end
 
                     -- Check if Aftermath is active
-                    if buffactive['Aftermath: Lv.3'] and sets.WS.AM3 and sets.WS.AM3[state.WeaponMode.value] then
-                        merge_report(built_set, sets.WS.AM3[state.WeaponMode.value])
-                        message = 'Level 3 Aftermath'
-                    elseif buffactive['Aftermath: Lv.2'] and sets.WS.AM2 and sets.WS.AM2[state.WeaponMode.value] then
-                        merge_report(built_set, sets.WS.AM2[state.WeaponMode.value])
-                        message = 'Level 2 Aftermath'
-                    elseif buffactive['Aftermath: Lv.1'] and sets.WS.AM1 and sets.WS.AM1[state.WeaponMode.value] then
-                        merge_report(built_set, sets.WS.AM1[state.WeaponMode.value])
-                        message = 'Level 1 Aftermath'
-                    elseif buffactive['Aftermath'] and sets.WS.AM and sets.WS.AM[state.WeaponMode.value] then
-                        merge_report(built_set, sets.WS.AM[state.WeaponMode.value])
-                        message = 'Aftermath'
-                    end
+                    local am_tier = apply_aftermath(built_set, sets.WS)
+                    if am_tier then message = am_tier.ws_label end
                 end
 
                 -- Check if an Obi or Orpheus is to be Equiped
                 if Elemental_WS:contains(spell.name) then built_set = elemental_check(spell, built_set) end
 
                 -- Aftermath and ammo only; the set itself is named by the build report.
-                if message ~= '' then info(message) end
+                -- Built past the gate: this runs on every weaponskill, and a silenced
+                -- client should pay nothing for a line it will not print.
+                if settings.info and (message ~= '' or show_bullets) then
+                    local text = message
+                    if am_mode then text = text .. ' [' .. am_mode .. ']' end
+                    if show_bullets then
+                        text = (text ~= '' and text .. ' ' or '')
+                            .. '[' .. available_bullets .. 'x]'
+                    end
+                    info(text)
+                end
             else
                 warn('sets.WS not found!')
             end
@@ -2476,24 +2962,12 @@ do
                 merge_report(built_set, sets.Precast)
                 if sets.Precast.RA then
                     merge_report(built_set, sets.Precast.RA)
-                    if buffactive[265] then -- Flurry
-                        if sets.Precast.RA.Flurry then
-                            merge_report(built_set, sets.Precast.RA.Flurry)
-                        else
-                            warn('sets.Precast.RA.Flurry not found!')
-                        end
+                    if buffactive[265] then     -- Flurry
+                        merge_named(built_set, sets.Precast.RA.Flurry, 'sets.Precast.RA.Flurry')
                     elseif buffactive[581] then -- Flurry II
-                        if sets.Precast.RA.Flurry_II then
-                            merge_report(built_set, sets.Precast.RA.Flurry_II)
-                        else
-                            warn('sets.Precast.RA.Flurry_II not found!')
-                        end
+                        merge_named(built_set, sets.Precast.RA.Flurry_II, 'sets.Precast.RA.Flurry_II')
                     elseif buffactive[228] then -- Embrava
-                        if sets.Precast.RA.Flurry_II then
-                            merge_report(built_set, sets.Precast.RA.Flurry_II)
-                        else
-                            warn('sets.Precast.RA.Flurry_II not found!')
-                        end
+                        merge_named(built_set, sets.Precast.RA.Flurry_II, 'sets.Precast.RA.Flurry_II')
                     end
 
                     -- Variable Ammo
@@ -2515,20 +2989,12 @@ do
             if sets.JA then
                 merge_report(built_set, sets.JA)
                 if spell.name == 'Double-Up' then -- Double Up for distance
-                    if sets.PhantomRoll then
-                        merge_report(built_set, sets.PhantomRoll)
-                    else
-                        warn('sets.PhantomRoll not found!')
-                    end
+                    merge_named(built_set, sets.PhantomRoll, 'sets.PhantomRoll')
                 elseif sets.JA[spell.english] then
                     merge_report(built_set, sets.JA[spell.english])
                     --Summon the correct jug pet
                     if spell.name == 'Bestial Loyalty' or spell.name == 'Call Beast' then
-                        if sets.Jugs[state.JobMode.value] then
-                            merge_report(built_set, sets.Jugs[state.JobMode.value])
-                        else
-                            warn('sets.Jugs.' .. state.JobMode.value .. ' not found!')
-                        end
+                        merge_named(built_set, sets.Jugs, 'sets.Jugs', state.JobMode.value)
                     end
                 end
                 -- Check for bounty shot ammo
@@ -2556,154 +3022,34 @@ do
                     warn('sets.Holy_Water not found!')
                 end
             else
-                if sets.Idle then
-                    merge_report(built_set, sets.Idle)
-                else
-                    warn('sets.Idle not found!')
+                merge_named(built_set, sets.Idle, 'sets.Idle')
+            end
+            -- Family actions. The type-specific work that is not gear stays here, each
+            -- piece on the side of the merge it ran on.
+        elseif PRECAST_SET_FAMILY[spell.type] then
+            if spell.type == 'Scholar' then
+                if spell.name == "Accession" and not accession_predicted then
+                    accession_predicted = true
+                    if settings.debug then debug("Accession detected while tracking. Accession_Predicted = True") end
+                end
+            elseif spell.type == 'CorsairRoll' then
+                log('CorsairRoll')
+            elseif spell.type == 'Jig' then
+                -- Sneak blocks Spectral Jig's own Sneak, so clear it before the JA fires.
+                if spell.name == "Spectral Jig" and buffactive["Sneak"] then
+                    send_command('cancel 71;')
                 end
             end
-            -- Scholar
-        elseif spell.type == 'Scholar' then
-            if spell.name == "Accession" and not accession_predicted then
-                accession_predicted = true
-                if settings.debug then debug("Accession detected while tracking. Accession_Predicted = True") end
-            end
-            if sets.JA then
-                merge_report(built_set, sets.JA)
-                if sets.JA[spell.english] then
-                    merge_report(built_set, sets.JA[spell.english])
-                end
-            else
-                warn('sets.JA not found!')
-            end
-            -- Ward
-        elseif spell.type == 'Ward' then
-            if sets.JA then
-                merge_report(built_set, sets.JA)
-                if sets.JA[spell.english] then
-                    merge_report(built_set, sets.JA[spell.english])
-                end
-            else
-                warn('sets.JA not found!')
-            end
-            -- Rune
-        elseif spell.type == 'Rune' then
-            if sets.JA then
-                merge_report(built_set, sets.JA)
-                if sets.JA[spell.english] then
-                    merge_report(built_set, sets.JA[spell.english])
-                end
-            else
-                warn('sets.JA not found!')
-            end
-            -- Effusion
-        elseif spell.type == 'Effusion' then
-            if sets.JA then
-                merge_report(built_set, sets.JA)
-                if sets.JA[spell.english] then
-                    merge_report(built_set, sets.JA[spell.english])
-                end
-            else
-                warn('sets.JA not found!')
-            end
-            -- CorsairRoll
-        elseif spell.type == 'CorsairRoll' then
-            log('CorsairRoll')
-            if sets.PhantomRoll then
-                merge_report(built_set, sets.PhantomRoll)
-                if sets.PhantomRoll[spell.english] then
-                    merge_report(built_set, sets.PhantomRoll[spell.english])
-                end
-            else
-                warn('sets.PhantomRoll not found!')
-            end
-            -- CorsairShot
-        elseif spell.type == 'CorsairShot' then
-            if sets.QuickDraw then
-                merge_report(built_set, sets.QuickDraw)
-                if sets.QuickDraw[spell.english] then
-                    merge_report(built_set, sets.QuickDraw[spell.english])
-                end
-            else
-                warn('sets.QuickDraw not found!')
-            end
-            -- Waltz
-        elseif spell.type == 'Waltz' then
-            if sets.Waltz then
-                merge_report(built_set, sets.Waltz)
-                if sets.Waltz[spell.english] then
-                    merge_report(built_set, sets.Waltz[spell.english])
-                end
-            else
-                warn('sets.Waltz not found!')
-            end
+
+            apply_set_family(built_set, PRECAST_SET_FAMILY[spell.type], spell)
 
             --Check for ability casts that are tracked for spell-received gear swapping
             --Notify eligible targets via IPC that a tracked spell is incoming
-            if state.SpellReceived.value ~= "OFF" then
+            if spell.type == 'Waltz' and state.SpellReceived.value ~= "OFF" then
                 local a_info = ability_info[spell.id]
-                if a_info and player and spell.target.name and not outgoing_cast_active then
-                    local target_name = spell.target.name
-                    outgoing_cast_active = true
-                    if settings.debug then
-                        debug(player.name .. ' is using tracked ability measured at precast: ' ..
-                            spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
-                    end
-
-                    --AoE Checks
-                    if a_info.aoe then
-                        if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
-                        -- Only the AoE name expansion needs the mob table.
-                        local target_mob = get_mob_by_id(spell.target.id)
-                        if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
-                    end
-                    if settings.debug then
-                        debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
-                            spell.id, get_time()))
-                    end
-                    send_ipc(string.format("MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name, spell.id,
-                        get_time()))
+                if a_info and player and spell.target.name and not outgoing_cast_busy() then
+                    announce_tracked_cast('ABILITY', 'precast', spell, spell.target.name, a_info.aoe)
                 end
-            end
-            -- Jig
-        elseif spell.type == 'Jig' then
-            if sets.Jig then
-                merge_report(built_set, sets.Jig)
-                if sets.Jig[spell.english] then
-                    merge_report(built_set, sets.Jig[spell.english])
-                end
-            else
-                warn('sets.Jig not found!')
-            end
-            -- Samba
-        elseif spell.type == 'Samba' then
-            if sets.Samba then
-                merge_report(built_set, sets.Samba)
-                if sets.Samba[spell.english] then
-                    merge_report(built_set, sets.Samba[spell.english])
-                end
-            else
-                warn('sets.Samba not found!')
-            end
-            -- Step
-        elseif spell.type == 'Step' then
-            if sets.Step then
-                merge_report(built_set, sets.Step)
-                if sets.Step[spell.english] then
-                    merge_report(built_set, sets.Step[spell.english])
-                end
-            else
-                warn('sets.Step not found!')
-            end
-            -- Flourishes
-        elseif spell.type == 'Flourish1' or spell.type == 'Flourish2' or spell.type == 'Flourish3' then
-            if sets.Flourish then
-                merge_report(built_set, sets.Flourish)
-                if sets.Flourish[spell.english] then
-                    merge_report(built_set, sets.Flourish[spell.english])
-                end
-            else
-                warn('sets.Flourish not found!')
             end
             -- Magic based actions
         else
@@ -2715,100 +3061,32 @@ do
                     merge_report(built_set, sets.Precast.FastCast)
                     -- Augment with Enhancing set
                     if spell.skill == 'Enhancing Magic' then
-                        if sets.Precast.Enhancing then
-                            merge_report(built_set, sets.Precast.Enhancing)
-                        else
-                            warn('sets.Precast.Enhancing not found!')
-                        end
+                        merge_named(built_set, sets.Precast.Enhancing, 'sets.Precast.Enhancing')
                     end
                     -- Specified Sets
                     if sets.Precast[spell.english] then
                         merge_report(built_set, sets.Precast[spell.english])
                         -- Augment with Cure Casting set
                     elseif spell.name:contains('Cure') or spell.name:contains('Cura') then
-                        if sets.Precast.Cure then
-                            merge_report(built_set, sets.Precast.Cure)
-                        else
-                            warn('sets.Precast.Cure not found!')
-                        end
+                        merge_named(built_set, sets.Precast.Cure, 'sets.Precast.Cure')
                         -- Augment with Healing Magic set
                     elseif Healing_Magic:contains(spell.name) then
-                        if sets.Precast.Healing then
-                            merge_report(built_set, sets.Precast.Healing)
-                        else
-                            warn('sets.Precast.Healing not found!')
-                        end
+                        merge_named(built_set, sets.Precast.Healing, 'sets.Precast.Healing')
                         -- Ninjutsu
                     elseif spell.type == 'Ninjutsu' and UtsusemiSpell:contains(spell.name) then
                         do_Utsu_checks(spell)
-                        if sets.Precast.Utsusemi then
-                            merge_report(built_set, sets.Precast.Utsusemi)
-                        else
-                            warn('sets.Precast.Utsusemi not found!')
-                        end
+                        merge_named(built_set, sets.Precast.Utsusemi, 'sets.Precast.Utsusemi')
                         -- Blue Magic
                     elseif spell.type == 'BlueMagic' then
-                        if sets.Precast.BlueMagic then
-                            merge_report(built_set, sets.Precast.BlueMagic)
-                        else
-                            warn('sets.Precast.BlueMagic not found!')
-                        end
+                        merge_named(built_set, sets.Precast.BlueMagic, 'sets.Precast.BlueMagic')
                         -- BardSong
                     elseif spell.type == 'BardSong' then
                         if buffactive['Nightingale'] then
                             -- Default BRD song gear is in Midcast
-                            if sets.Midcast then
-                                merge_report(built_set, sets.Midcast)
-                            else
-                                warn('sets.Midcast not found!')
-                            end
-                            -- Song Count for Dummy Songs
-                            if SongCount:contains(spell.name) then
-                                if sets.Midcast.DummySongs then
-                                    merge_report(built_set, sets.Midcast.DummySongs)
-                                else
-                                    warn('sets.Midcast.DummySongs not found!')
-                                end
-                                merge_into(built_set, { range = Instrument.Count })
-                                -- Potency / Instruments
-                            else
-                                -- Defined Gear Set
-                                if sets.Midcast[spell.english] then
-                                    merge_report(built_set, sets.Midcast[spell.english])
-                                    -- Equip Harp
-                                elseif spell.name:contains('Horde') then
-                                    if sets.Midcast.Enfeebling then
-                                        merge_report(built_set, sets.Midcast.Enfeebling)
-                                    else
-                                        warn('sets.Midcast.Enfeebling not found!')
-                                    end
-                                    merge_into(built_set, { range = Instrument.AOE_Sleep })
-                                    -- Normal Enfeebles
-                                elseif Enfeebling_Song:contains(spell.english) then
-                                    if sets.Midcast.Enfeebling then
-                                        merge_report(built_set, sets.Midcast.Enfeebling)
-                                    else
-                                        warn('sets.Midcast.Enfeebling not found!')
-                                    end
-                                    merge_into(built_set, { range = Instrument.Potency })
-                                    -- Augment the buff songs
-                                else
-                                    merge_into(built_set, { range = Instrument.Potency })
-                                end
-                                -- Augment the specific Song if set. The instrument is
-                                -- re-applied after it so the song set cannot displace it.
-                                local song_instrument = built_set['range']
-                                merge_report(built_set, equip_song_gear(spell))
-                                if song_instrument then
-                                    merge_into(built_set, { range = song_instrument })
-                                end
-                            end
+                            merge_named(built_set, sets.Midcast, 'sets.Midcast')
+                            build_song_set(spell, built_set)
                         else
-                            if sets.Precast.Songs then
-                                merge_report(built_set, sets.Precast.Songs)
-                            else
-                                warn('sets.Precast.Songs not found!')
-                            end
+                            merge_named(built_set, sets.Precast.Songs, 'sets.Precast.Songs')
                         end
                     end
                 else
@@ -2820,88 +3098,30 @@ do
             --Check for spell casts that are tracked for spell-received gear swapping
             --Notify eligible targets via IPC that a tracked spell is incoming
             local s_info = spell_info[spell.id]
-            if s_info and spell.target.name and state.SpellReceived.value ~= "OFF" and not outgoing_cast_active then
-                local target_name = spell.target.name
-                outgoing_cast_active = true
-
-                if settings.debug then
-                    debug(player.name ..
-                        ' is using tracked spell measured at precast: ' ..
-                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
-                end
+            if s_info and spell.target.name and state.SpellReceived.value ~= "OFF" and not outgoing_cast_busy() then
                 local active_buffs = buffactive
                 local accession_active = active_buffs[366] or active_buffs['Accession']
                 local majesty_active = active_buffs[621] or active_buffs['Majesty']
                 local divine_veil_active = active_buffs[78] or active_buffs['Divine Seal']
-
-                --AoE Checks
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
-                if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
-                    if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
-                    -- Only the AoE name expansion needs the mob table.
-                    local target_mob = get_mob_by_id(spell.target.id)
-                    if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
-                end
-                if settings.debug then
-                    debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name,
-                        target_name, spell.id, get_time()))
-                end
-                send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
+                local spreads = (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine))
+                announce_tracked_cast('SPELL', 'precast', spell, spell.target.name, spreads)
             end
         end
 
         merge_report_branch_end()
 
         -- Weapon Checks for precast
-        -- If it set to unlocked it will not swap the weapons even if defined in the built_set job lua
+        -- Skipped while the mode is Unlocked, and for Corsair rolls and Double-Up.
         if state.WeaponMode.value ~= "Unlocked" and spell.type ~= 'CorsairRoll' and spell.name ~= 'Double-Up' then
             log('Update Weapons - Precast')
-            if state.WeaponMode.value == "Locked" then
-                merge_report(built_set,
-                    { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
-            else
-                if sets.Weapons then
-                    if sets.Weapons[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Weapons[state.WeaponMode.value])
-                        if not TwoHand and not DualWield then
-                            if sets.Weapons.Shield then
-                                merge_report(built_set, sets.Weapons.Shield)
-                            else
-                                warn('sets.Weapons.Shield not found!')
-                            end
-                        end
-                    else
-                        warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
-                    end
-                else
-                    warn('sets.Weapons not found!')
-                end
-            end
+            -- Precast withholds the shield when the mode named no set of its own.
+            apply_weapon_mode(built_set, false, true, false)
         end
 
         --Swap in bard song weapons no matter the mode
         if spell.type == 'BardSong' then --and spell.target.type ~= 'MONSTER' then
-            if sets.Weapons then
-                if sets.Weapons.Songs then
-                    merge_report(built_set, sets.Weapons.Songs)
-                    if sets.Weapons.Songs.Midcast then
-                        if not DualWield and not TwoHand then
-                            if sets.Weapons.Shield then
-                                merge_report(built_set, sets.Weapons.Shield)
-                            else
-                                warn('sets.Weapons.Shield not found!')
-                            end
-                        end
-                        merge_report(built_set, sets.Weapons.Songs.Midcast)
-                    else
-                        warn('sets.Weapons.Songs.Midcast not found!')
-                    end
-                else
-                    warn('sets.Weapons.Songs not found!')
-                end
-            else
-                warn('sets.Weapons not found!')
-            end
+            build_song_weapons(built_set, true)
         end
 
         -- If TH mode is on - check if new mob and not casting a spell and then equip TH gear
@@ -2919,6 +3139,19 @@ do
         return built_set
     end
 
+    -- Merge the accuracy, potency or duration tier an enfeebling spell classifies into,
+    -- first match winning. Dark Magic passes skip_acc, having already tested its own
+    -- accuracy, absorb and enhancing arms against sets.Midcast.Dark.
+    local function apply_enfeebling(built_set, spell, skip_acc)
+        if not skip_acc and Enfeeble_Acc:contains(spell.name) then
+            merge_named(built_set, sets.Midcast.Enfeebling.MACC, 'sets.Midcast.Enfeebling.MACC')
+        elseif Enfeeble_Potency:contains(spell.name) then
+            merge_named(built_set, sets.Midcast.Enfeebling.Potency, 'sets.Midcast.Enfeebling.Potency')
+        elseif Enfeeble_Duration:contains(spell.name) then
+            merge_named(built_set, sets.Midcast.Enfeebling.Duration, 'sets.Midcast.Enfeebling.Duration')
+        end
+    end
+
     -- Build the set applied while an action is in flight, which is what determines its
     -- potency.
     function midcastequip(spell)
@@ -2933,9 +3166,9 @@ do
 
         --Default gearset
         local built_set = {}
-        -- Merge the Idle incase a midcast is not set
+        -- Merge the Idle in case a midcast is not set
         if sets.Idle then merge_report(built_set, sets.Idle) end
-        -- Merget the Midcast Set
+        -- Merge the Midcast set.
         if sets.Midcast then
             merge_report(built_set, sets.Midcast)
             -- Spell interruption Down for the rest of the actions
@@ -2948,7 +3181,8 @@ do
             -- Ranged Attack
             if spell.action_type == 'Ranged Attack' then
                 if sets.Midcast.RA then
-                    local message = ''
+                    -- Facts, not text: the line is built past the settings gate below.
+                    local message, am_label = '', nil
                     merge_report(built_set, sets.Midcast.RA)
 
                     -- Augment based off Mode
@@ -2976,30 +3210,19 @@ do
                     end
 
                     -- Check if Aftermath is active
-                    if buffactive['Aftermath: Lv.3'] and sets.Midcast.RA.AM3 and sets.Midcast.RA.AM3[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Midcast.RA.AM3[state.WeaponMode.value])
-                        message = message .. ' and with Aftermath 3 [' .. state.WeaponMode.value .. ']'
-                    elseif buffactive['Aftermath: Lv.2'] and sets.Midcast.RA.AM2 and sets.Midcast.RA.AM2[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Midcast.RA.AM2[state.WeaponMode.value])
-                        message = message .. ' and with Aftermath 2 [' .. state.WeaponMode.value .. ']'
-                    elseif buffactive['Aftermath: Lv.1'] and sets.Midcast.RA.AM1 and sets.Midcast.RA.AM1[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Midcast.RA.AM1[state.WeaponMode.value])
-                        message = message .. ' and with Aftermath 1 [' .. state.WeaponMode.value .. ']'
-                    elseif buffactive['Aftermath'] and sets.Midcast.RA.AM and sets.Midcast.RA.AM[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Midcast.RA.AM[state.WeaponMode.value])
-                        message = message .. ' and with Aftermath [' .. state.WeaponMode.value .. ']'
-                    end
+                    local am_tier = apply_aftermath(built_set, sets.Midcast.RA)
+                    if am_tier then am_label = am_tier.ra_label end
 
                     -- Buffs
                     if buffactive['Triple Shot'] and sets.Midcast.RA.TripleShot then
                         merge_report(built_set, sets.Midcast.RA.TripleShot)
-                        message = 'Using Triple Shot Set'
+                        message, am_label = 'Using Triple Shot Set', nil
                     elseif buffactive['Double Shot'] and sets.Midcast.RA.DoubleShot then
                         merge_report(built_set, sets.Midcast.RA.DoubleShot)
-                        message = 'Using Double Shot Set'
+                        message, am_label = 'Using Double Shot Set', nil
                     elseif buffactive['Barrage'] and sets.Midcast.RA.Barrage then
                         merge_report(built_set, sets.Midcast.RA.Barrage)
-                        message = 'Using Barrage Set'
+                        message, am_label = 'Using Barrage Set', nil
                     end
 
                     -- Variable Ammo
@@ -3008,8 +3231,14 @@ do
                             { ammo = Ammo[state.OffenseMode.value] })
                     end
 
-                    message = message .. ' [' .. available_bullets .. 'x]'
-                    info(message)
+                    -- Built past the gate: this runs on every shot.
+                    if settings.info then
+                        if am_label then
+                            message = message .. ' and with ' .. am_label
+                                .. ' [' .. state.WeaponMode.value .. ']'
+                        end
+                        info(message .. ' [' .. available_bullets .. 'x]')
+                    end
                 else
                     warn('sets.Midcast.RA not found!')
                 end
@@ -3020,32 +3249,16 @@ do
                     merge_report(built_set, sets.Midcast[spell.english])
                     -- Utsusemi Spells
                 elseif UtsusemiSpell:contains(spell.name) then
-                    if sets.Midcast.Utsusemi then
-                        merge_report(built_set, sets.Midcast.Utsusemi)
-                    else
-                        warn('sets.Midcast.Utsusemi not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Utsusemi, 'sets.Midcast.Utsusemi')
                     -- Enhancing Magic
                 elseif spell.target.type == 'SELF' then
-                    if sets.Midcast.Enhancing then
-                        merge_report(built_set, sets.Midcast.Enhancing)
-                    else
-                        warn('sets.Midcast.Enhancing not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
                     -- Enfeebling
                 elseif Enfeebling_Ninjitsu:contains(spell.english) then
-                    if sets.Midcast.Enfeebling then
-                        merge_report(built_set, sets.Midcast.Enfeebling)
-                    else
-                        warn('sets.Midcast.Enfeebling not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling')
                     -- Defaults to Nukes if not the above
                 else
-                    if sets.Midcast.Nuke then
-                        merge_report(built_set, sets.Midcast.Nuke)
-                    else
-                        warn('sets.Midcast.Nuke not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Nuke, 'sets.Midcast.Nuke')
                     -- Check for an elemental set
                     built_set = elemental_check(spell, built_set)
                 end
@@ -3053,158 +3266,73 @@ do
             elseif spell.type == 'WhiteMagic' then
                 -- Cure
                 if spell.name:contains('Cure') then
-                    if sets.Midcast.Cure then
-                        merge_report(built_set, sets.Midcast.Cure)
-                    else
-                        warn('sets.Midcast.Cure not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Cure, 'sets.Midcast.Cure')
                     -- Check if an Obi or Orpheus is to be Equiped
                     built_set = elemental_check(spell, built_set)
                     -- Curaga
                 elseif spell.name:contains('Curaga') then
-                    if sets.Midcast.Curaga then
-                        merge_report(built_set, sets.Midcast.Curaga)
-                    else
-                        warn('sets.Midcast.Curaga not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Curaga, 'sets.Midcast.Curaga')
                     -- Check if an Obi or Orpheus is to be Equiped
                     built_set = elemental_check(spell, built_set)
                     -- Cura
                 elseif spell.name:contains('Cura') then
-                    if sets.Midcast.Cura then
-                        merge_report(built_set, sets.Midcast.Cura)
-                    else
-                        warn('sets.Midcast.Cura not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Cura, 'sets.Midcast.Cura')
                     -- Check if an Obi or Orpheus is to be Equiped
                     built_set = elemental_check(spell, built_set)
                     -- Cursna: its own set layered over the Enhancing base
                 elseif spell.name == 'Cursna' then
-                    if sets.Midcast.Enhancing then
-                        merge_report(built_set, sets.Midcast.Enhancing)
-                    else
-                        warn('sets.Midcast.Enhancing not found!')
-                    end
-                    if sets.Midcast.Cursna then
-                        merge_report(built_set, sets.Midcast.Cursna)
-                    else
-                        warn('sets.Midcast.Cursna not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
+                    merge_named(built_set, sets.Midcast.Cursna, 'sets.Midcast.Cursna')
                     -- Defined Gear Set
                 elseif sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
                     -- All other Healing Magic - Raise, Reraise, status cures - uses the
                     -- plain Enhancing set, no subcategories
                 elseif spell.skill == 'Healing Magic' then
-                    if sets.Midcast.Enhancing then
-                        merge_report(built_set, sets.Midcast.Enhancing)
-                    else
-                        warn('sets.Midcast.Enhancing not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
                     -- Enhancing
                 elseif spell.skill == 'Enhancing Magic' then
                     if sets.Midcast.Enhancing then
                         merge_report(built_set, sets.Midcast.Enhancing)
                         -- Augment the set for Others if defined
                         if spell.target.type ~= 'SELF' or (spell.target.type == 'SELF' and buffactive['Accession']) then
-                            if sets.Midcast.Enhancing.Others then
-                                merge_report(built_set, sets.Midcast.Enhancing.Others)
-                            else
-                                warn('sets.Midcast.Enhancing.Others not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Enhancing.Others, 'sets.Midcast.Enhancing.Others')
                         end
                         -- Refresh
                         if spell.name:contains('Refresh') then
-                            if sets.Midcast.Refresh then
-                                merge_report(built_set, sets.Midcast.Refresh)
-                            else
-                                warn('sets.Midcast.Refresh not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Refresh, 'sets.Midcast.Refresh')
                             -- Regen
                         elseif spell.name:contains('Regen') then
-                            if sets.Midcast.Regen then
-                                merge_report(built_set, sets.Midcast.Regen)
-                            else
-                                warn('sets.Midcast.Regen not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Regen, 'sets.Midcast.Regen')
                         elseif Storms:contains(spell.name) then
-                            if sets.Storms then
-                                merge_report(built_set, sets.Storms)
-                            else
-                                warn('sets.Storms not found!')
-                            end
+                            merge_named(built_set, sets.Storms, 'sets.Storms')
                             -- Gain Spells
                         elseif spell.name:contains('Gain') then
-                            if sets.Midcast.Enhancing.Gain then
-                                merge_report(built_set, sets.Midcast.Enhancing.Gain)
-                            else
-                                warn('sets.Midcast.Enhancing.Gain not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Enhancing.Gain, 'sets.Midcast.Enhancing.Gain')
                             -- Phalanx
                         elseif spell.name:contains('Phalanx') then
-                            if sets.Midcast.Phalanx then
-                                merge_report(built_set, sets.Midcast.Phalanx)
-                            else
-                                warn('sets.Midcast.Phalanx not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Phalanx, 'sets.Midcast.Phalanx')
                             -- Bar Spells
                         elseif Elemental_Bar:contains(spell.name) then
-                            if sets.Midcast.Enhancing.Elemental then
-                                merge_report(built_set, sets.Midcast.Enhancing.Elemental)
-                            else
-                                warn('sets.Midcast.Enhancing.Elemental not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Enhancing.Elemental, 'sets.Midcast.Enhancing.Elemental')
                             -- Bar Status
                         elseif Status_Bar:contains(spell.name) then
-                            if sets.Midcast.Enhancing.Status then
-                                merge_report(built_set, sets.Midcast.Enhancing.Status)
-                            else
-                                warn('sets.Midcast.Enhancing.Status not found!')
-                            end
-                            -- Enhancing SKill
+                            merge_named(built_set, sets.Midcast.Enhancing.Status, 'sets.Midcast.Enhancing.Status')
+                            -- Enhancing Skill
                         elseif Enhancing_Skill:contains(spell.name) then
-                            if sets.Midcast.Enhancing.Skill then
-                                merge_report(built_set, sets.Midcast.Enhancing.Skill)
-                            else
-                                warn('sets.Midcast.Enhancing.Skill not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Enhancing.Skill, 'sets.Midcast.Enhancing.Skill')
                         end
                     else
                         warn('sets.Midcast.Enhancing not found!')
                     end
                     -- Divine Spells
                 elseif Divine_Skill:contains(spell.name) then
-                    if sets.Midcast.Divine then
-                        merge_report(built_set, sets.Midcast.Divine)
-                    else
-                        warn('sets.Midcast.Divine not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Divine, 'sets.Midcast.Divine')
                     -- Enfeebling Magic
                 elseif spell.skill == 'Enfeebling Magic' then
                     if sets.Midcast.Enfeebling then
                         merge_report(built_set, sets.Midcast.Enfeebling)
-                        -- Accuracy
-                        if Enfeeble_Acc:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.MACC then
-                                merge_report(built_set, sets.Midcast.Enfeebling.MACC)
-                            else
-                                warn('sets.Midcast.Enfeebling.MACC not found!')
-                            end
-                            -- Potency
-                        elseif Enfeeble_Potency:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.Potency then
-                                merge_report(built_set, sets.Midcast.Enfeebling.Potency)
-                            else
-                                warn('sets.Midcast.Enfeebling.Potency not found!')
-                            end
-                            -- Duration
-                        elseif Enfeeble_Duration:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.Duration then
-                                merge_report(built_set, sets.Midcast.Enfeebling.Duration)
-                            else
-                                warn('sets.Midcast.Enfeebling.Duration not found!')
-                            end
-                        end
+                        apply_enfeebling(built_set, spell)
                     else
                         info('No sets.Midcast.Enfeebling defined!')
                     end
@@ -3221,46 +3349,17 @@ do
                     end
                     -- Aspir Gear
                 elseif spell.name:contains('Aspir') then
-                    if sets.Midcast.Aspir then
-                        merge_report(built_set, sets.Midcast.Aspir)
-                    else
-                        warn('sets.Midcast.Aspir not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Aspir, 'sets.Midcast.Aspir')
                     -- Drain Gear
                 elseif spell.name:contains('Drain') then
-                    if sets.Midcast.Drain then
-                        merge_report(built_set, sets.Midcast.Drain)
-                    else
-                        warn('sets.Midcast.Drain not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Drain, 'sets.Midcast.Drain')
                     -- Enfeebling Magic
                 elseif spell.skill == 'Enfeebling Magic' then
                     if sets.Midcast.Enfeebling then
                         merge_report(built_set, sets.Midcast.Enfeebling)
-                        -- Accuracy
-                        if Enfeeble_Acc:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.MACC then
-                                merge_report(built_set, sets.Midcast.Enfeebling.MACC)
-                            else
-                                warn('sets.Midcast.Enfeebling.MACC not found!')
-                            end
-                            -- Potency
-                        elseif Enfeeble_Potency:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.Potency then
-                                merge_report(built_set, sets.Midcast.Enfeebling.Potency)
-                            else
-                                warn('sets.Midcast.Enfeebling.Potency not found!')
-                            end
-                            -- Duration
-                        elseif Enfeeble_Duration:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.Duration then
-                                merge_report(built_set, sets.Midcast.Enfeebling.Duration)
-                            else
-                                warn('sets.Midcast.Enfeebling.Duration not found!')
-                            end
-                        end
+                        apply_enfeebling(built_set, spell)
                     else
-                        info('No sets.Midcast.Enfeebling not found!')
+                        info('No sets.Midcast.Enfeebling defined!')
                     end
                     -- Dark Magic
                 elseif spell.skill == 'Dark Magic' then
@@ -3268,59 +3367,27 @@ do
                         merge_report(built_set, sets.Midcast.Dark)
                         -- Accuracy
                         if Dark_Acc:contains(spell.name) then
-                            if sets.Midcast.Dark.MACC then
-                                merge_report(built_set, sets.Midcast.Dark.MACC)
-                            else
-                                warn('sets.Midcast.Dark.MACC not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Dark.MACC, 'sets.Midcast.Dark.MACC')
                             -- Absorb
                         elseif Dark_Absorb:contains(spell.name) then
-                            if sets.Midcast.Dark.Absorb then
-                                merge_report(built_set, sets.Midcast.Dark.Absorb)
-                            else
-                                warn('sets.Midcast.Dark.Absorb not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Dark.Absorb, 'sets.Midcast.Dark.Absorb')
                             -- Enhancing
                         elseif Dark_Enhancing:contains(spell.name) then
-                            if sets.Midcast.Dark.Enhancing then
-                                merge_report(built_set, sets.Midcast.Dark.Enhancing)
-                            else
-                                warn('sets.Midcast.Dark.Enhancing not found!')
-                            end
-                            -- Potency
-                        elseif Enfeeble_Potency:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.Potency then
-                                merge_report(built_set, sets.Midcast.Enfeebling.Potency)
-                            else
-                                warn('sets.Midcast.Enfeebling.Potency not found!')
-                            end
-                            -- Duration
-                        elseif Enfeeble_Duration:contains(spell.name) then
-                            if sets.Midcast.Enfeebling.Duration then
-                                merge_report(built_set, sets.Midcast.Enfeebling.Duration)
-                            else
-                                warn('sets.Midcast.Enfeebling.Duration not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.Dark.Enhancing, 'sets.Midcast.Dark.Enhancing')
+                        else
+                            apply_enfeebling(built_set, spell, true)
                         end
                     else
-                        info('No sets.Midcast.Dark not found!')
+                        info('No sets.Midcast.Dark defined!')
                     end
                     -- Enhancing Magic
                 elseif spell.skill == 'Enhancing Magic' then
-                    if sets.Midcast.Enhancing then
-                        merge_report(built_set, sets.Midcast.Enhancing)
-                    else
-                        warn('sets.Midcast.Enhancing not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
                     -- Enfeebling Elemental Magic
                 elseif Elemental_Enfeeble:contains(spell.name) then
                     if sets.Midcast.Enfeebling then
                         merge_report(built_set, sets.Midcast.Enfeebling)
-                        if sets.Midcast.Enfeebling.MACC then
-                            merge_report(built_set, sets.Midcast.Enfeebling.MACC)
-                        else
-                            warn('sets.Midcast.Enfeebling.MACC not found!')
-                        end
+                        merge_named(built_set, sets.Midcast.Enfeebling.MACC, 'sets.Midcast.Enfeebling.MACC')
                     else
                         warn('sets.Midcast.Enfeebling not found!')
                     end
@@ -3330,34 +3397,18 @@ do
                     local element_name = res.elements[element].en
                     if spell.target.id == last_skillchain_id and os.clock() - last_skillchain_time < 8 and last_skillchain_elements[element_name] then
                         info("Burst Detected!")
-                        if sets.Midcast.Burst then
-                            merge_report(built_set, sets.Midcast.Burst)
-                        else
-                            warn('sets.Midcast.Burst not found!')
-                        end
+                        merge_named(built_set, sets.Midcast.Burst, 'sets.Midcast.Burst')
                     else
-                        if sets.Midcast.Nuke then
-                            merge_report(built_set, sets.Midcast.Nuke)
-                        else
-                            warn('sets.Midcast.Nuke not found!')
-                        end
+                        merge_named(built_set, sets.Midcast.Nuke, 'sets.Midcast.Nuke')
                     end
                     -- Check for Helix
                     if spell.name:contains('helix') then
                         if sets.Helix then
                             merge_report(built_set, sets.Helix)
                             if spell.element == 'Dark' then
-                                if sets.Helix.Dark then
-                                    merge_report(built_set, sets.Helix.Dark)
-                                else
-                                    warn('sets.Helix.Dark not found!')
-                                end
+                                merge_named(built_set, sets.Helix.Dark, 'sets.Helix.Dark')
                             elseif spell.element == 'Light' then
-                                if sets.Helix.Light then
-                                    merge_report(built_set, sets.Helix.Light)
-                                else
-                                    warn('sets.Helix.Light not found!')
-                                end
+                                merge_named(built_set, sets.Helix.Light, 'sets.Helix.Light')
                             end
                         else
                             warn('sets.Helix not found!')
@@ -3373,47 +3424,7 @@ do
                 end
                 -- Bard Song
             elseif spell.type == 'BardSong' then
-                -- Song Count for Dummy Songs
-                if SongCount:contains(spell.name) then
-                    if sets.Midcast.DummySongs then
-                        merge_report(built_set, sets.Midcast.DummySongs)
-                    else
-                        warn('sets.Midcast.DummySongs not found!')
-                    end
-                    merge_into(built_set, { range = Instrument.Count })
-                    -- Potency / Instruments
-                else
-                    -- Defined Gear Set
-                    if sets.Midcast[spell.english] then
-                        merge_report(built_set, sets.Midcast[spell.english])
-                        -- Equip Harp
-                    elseif spell.name:contains('Horde') then
-                        if sets.Midcast.Enfeebling then
-                            merge_report(built_set, sets.Midcast.Enfeebling)
-                        else
-                            warn('sets.Midcast.Enfeebling not found!')
-                        end
-                        merge_into(built_set, { range = Instrument.AOE_Sleep })
-                        -- Normal Enfeebles
-                    elseif Enfeebling_Song:contains(spell.english) then
-                        if sets.Midcast.Enfeebling then
-                            merge_report(built_set, sets.Midcast.Enfeebling)
-                        else
-                            warn('sets.Midcast.Enfeebling not found!')
-                        end
-                        merge_into(built_set, { range = Instrument.Enfeebling })
-                        -- Augment the buff songs
-                    else
-                        merge_into(built_set, { range = Instrument.Potency })
-                    end
-                    -- Augment the specific Song if set. The instrument is re-applied
-                    -- after it so the song set cannot displace it.
-                    local song_instrument = built_set['range']
-                    merge_report(built_set, equip_song_gear(spell))
-                    if song_instrument then
-                        merge_into(built_set, { range = song_instrument })
-                    end
-                end
+                build_song_set(spell, built_set)
                 -- BlueMagic
             elseif spell.type == 'BlueMagic' then
                 -- Defined Set
@@ -3427,61 +3438,29 @@ do
                         -- accuracy, DEX/Accuracy and physical Attack.  Deliberately skips
                         -- elemental_check -- obi and Orpheus scale magic damage only.
                         if BluePhysical:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Physical then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Physical)
-                            else
-                                warn('sets.Midcast.BlueMagic.Physical not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Physical, 'sets.Midcast.BlueMagic.Physical')
                             -- Breath damage scales off the caster's HP and level only.
                             -- MAB, INT and Blue Magic Skill contribute nothing, so this
                             -- also skips elemental_check.
                         elseif BlueBreath:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Breath then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Breath)
-                            else
-                                warn('sets.Midcast.BlueMagic.Breath not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Breath, 'sets.Midcast.BlueMagic.Breath')
                             -- Defined Blue Nukes
                         elseif BlueNuke:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Nuke then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Nuke)
-                            else
-                                warn('sets.Midcast.BlueMagic.Nuke not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Nuke, 'sets.Midcast.BlueMagic.Nuke')
                             built_set = elemental_check(spell, built_set)
-                            -- Spells that benifit from Blue Magic Skill
+                            -- Spells that benefit from Blue Magic Skill
                         elseif BlueSkill:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Skill then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Skill)
-                            else
-                                warn('sets.Midcast.BlueMagic.Skill not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Skill, 'sets.Midcast.BlueMagic.Skill')
                             -- Fixed-potency buffs: only duration is influenced by gear,
                             -- so these must not borrow the skill set.
                         elseif BlueBuff:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Buff then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Buff)
-                            else
-                                warn('sets.Midcast.BlueMagic.Buff not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Buff, 'sets.Midcast.BlueMagic.Buff')
                         elseif BlueTank:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Enmity then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Enmity)
-                            else
-                                warn('sets.Midcast.BlueMagic.Enmity not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Enmity, 'sets.Midcast.BlueMagic.Enmity')
                         elseif BlueHealing:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.Healing then
-                                merge_report(built_set, sets.Midcast.BlueMagic.Healing)
-                            else
-                                warn('sets.Midcast.BlueMagic.Healing not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.Healing, 'sets.Midcast.BlueMagic.Healing')
                         elseif BlueACC:contains(spell.english) then
-                            if sets.Midcast.BlueMagic.ACC then
-                                merge_report(built_set, sets.Midcast.BlueMagic.ACC)
-                            else
-                                warn('sets.Midcast.BlueMagic.ACC not found!')
-                            end
+                            merge_named(built_set, sets.Midcast.BlueMagic.ACC, 'sets.Midcast.BlueMagic.ACC')
                         end
                         if buffactive["Diffusion"] then
                             if sets.Diffusion then
@@ -3518,18 +3497,16 @@ do
                         end
                         -- Bubble Equipment
                     elseif Geomancy_List:contains(spell.english) then
-                        if sets.Geomancy.Geo then
-                            merge_report(built_set, sets.Geomancy.Geo)
-                        else
-                            warn('sets.Geomancy.Geo not found!')
-                        end
+                        merge_named(built_set, sets.Geomancy.Geo, 'sets.Geomancy.Geo')
                     end
                 else
                     warn('sets.Geomancy not found!')
                 end
                 -- Trust
             elseif spell.type == 'Trust' then
-                log('Nothing Defined')
+                -- No gear affects a Trust summon; re-merge the base so the
+                -- report names the set the cast wore.
+                merge_report(built_set, sets.Midcast)
                 -- BloodPactRage and BloodPactWard
             elseif spell.type == "BloodPactWard" or spell.type == "BloodPactRage" then
                 -- BP Timer gear needs to swap here if not under Astral Conduit
@@ -3547,32 +3524,20 @@ do
                 end
                 -- Monster
             elseif spell.type == 'Monster' then
-                if sets.Ready then
-                    merge_report(built_set, sets.Ready)
-                else
-                    warn('sets.Ready not found!')
-                end
+                merge_named(built_set, sets.Ready, 'sets.Ready')
                 -- Elemental Siphon
             elseif spell.name == "Elemental Siphon" then
                 if sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
                 else
-                    if sets.Midcast.SummoningMagic then
-                        merge_report(built_set, sets.Midcast.SummoningMagic)
-                    else
-                        warn('sets.Midcast.SummoningMagic not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.SummoningMagic, 'sets.Midcast.SummoningMagic')
                 end
                 -- Summon Avatar
             elseif spell.type == "SummonerPact" then
                 if sets.Midcast[spell.english] then
                     merge_report(built_set, sets.Midcast[spell.english])
                 else
-                    if sets.Midcast.Summon then
-                        merge_report(built_set, sets.Midcast.Summon)
-                    else
-                        warn('sets.Midcast.Summon not found!')
-                    end
+                    merge_named(built_set, sets.Midcast.Summon, 'sets.Midcast.Summon')
                 end
             end
         else
@@ -3584,60 +3549,23 @@ do
             send_command('cancel 37;')
         elseif spell.name == "Sneak" and buffactive["Sneak"] and spell.target.type == "SELF" then
             send_command('cancel 71;')
-        elseif spell.name == "Spectral Jig" and buffactive["Sneak"] then
-            send_command('cancel 71;')
         elseif spell.name == "Utsusemi: Ichi" and buffactive["Copy Image"] then
             send_command('wait .5;cancel 66;')
         end
         -- Weapon Checks for midcast
-        -- If it set to unlocked it will not swap the weapons even if defined in the built_set job lua
+        -- Skipped while the mode is Unlocked.
         if state.WeaponMode.value ~= "Unlocked" then
             if spell.type == 'Geomancy' then
                 log('Swap Weapon due to Geomancy')
-            elseif state.WeaponMode.value == "Locked" then
-                merge_report(built_set,
-                    { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
-                log(built_set)
             else
-                if sets.Weapons then
-                    if sets.Weapons[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Weapons[state.WeaponMode.value])
-                    else
-                        warn('sets.Weapons.' .. state.WeaponMode.value .. ' not found!')
-                    end
-                    if not TwoHand and not DualWield then
-                        if sets.Weapons.Shield then
-                            merge_report(built_set, sets.Weapons.Shield)
-                        else
-                            warn('sets.Weapons.Shield not found!')
-                        end
-                    end
-                else
-                    warn('sets.Weapons not found!')
-                end
+                apply_weapon_mode(built_set, false, false, false)
             end
         end
 
         --Swap in bard song weapons no matter the mode
         if spell.type == 'BardSong' then --and spell.target.type ~= 'MONSTER' then
             -- Weapons
-            if sets.Weapons.Songs then
-                merge_report(built_set, sets.Weapons.Songs)
-                if sets.Weapons.Songs.Midcast then
-                    merge_report(built_set, sets.Weapons.Songs.Midcast)
-                    if not DualWield and not TwoHand then
-                        if sets.Weapons.Shield then
-                            merge_report(built_set, sets.Weapons.Shield)
-                        else
-                            warn('sets.Weapons.Shield not found!')
-                        end
-                    end
-                else
-                    warn('sets.Weapons.Songs.Midcast not found!')
-                end
-            else
-                warn('sets.Weapons.Songs not found!')
-            end
+            build_song_weapons(built_set, false)
 
             -- Instruments for pianissimo buffs
             if spell.target.id ~= player.id and not SongCount:contains(spell.name) and (spell.target.type == 'PLAYER' or spell.target.type == 'NPC') then
@@ -3663,6 +3591,19 @@ do
         return built_set
     end
 
+    -- The current-state build plus the job file's own choose_set_custom layer. Returns
+    -- rather than equips: one caller hands the set back to the action pipeline and the
+    -- rest equip it themselves.
+    local function build_current_set()
+        local built_set = choose_set()
+        if choose_set_custom then
+            merge_into(built_set, choose_set_custom())
+        else
+            warn('choose_set_custom() not found!')
+        end
+        return built_set
+    end
+
     -- Build the set restored once an action completes.
     function aftercastequip(spell)
         -- Dont change gear as the pet is still performing an action
@@ -3670,13 +3611,7 @@ do
             merge_report_begin()
             return
         else
-            local built_set = choose_set()
-            if choose_set_custom then
-                built_set = set_combine(built_set, choose_set_custom())
-            else
-                info('choose_set_custom() not found!')
-            end
-            return built_set
+            return build_current_set()
         end
     end
 
@@ -3687,27 +3622,10 @@ do
         if spell.name:contains('Cure') or spell.name:contains('Cura') then
             if world.weather_element == spell.element or spell.element == world.day_element then
                 -- Verify player has the gear
-                local Obi = player.inventory["Hachirin-no-Obi"] or player.wardrobe["Hachirin-no-Obi"] or
-                    player.wardrobe2["Hachirin-no-Obi"]
-                    or player.wardrobe3["Hachirin-no-Obi"] or player.wardrobe4["Hachirin-no-Obi"] or
-                    player.wardrobe5["Hachirin-no-Obi"]
-                    or player.wardrobe6["Hachirin-no-Obi"] or player.wardrobe7["Hachirin-no-Obi"] or
-                    player.wardrobe8["Hachirin-no-Obi"]
-
-                local Staff = player.inventory["Chatoyant Staff"] or player.wardrobe["Chatoyant Staff"] or
-                    player.wardrobe2["Chatoyant Staff"]
-                    or player.wardrobe3["Chatoyant Staff"] or player.wardrobe4["Chatoyant Staff"] or
-                    player.wardrobe5["Chatoyant Staff"]
-                    or player.wardrobe6["Chatoyant Staff"] or player.wardrobe7["Chatoyant Staff"] or
-                    player.wardrobe8["Chatoyant Staff"]
-
+                local Obi = have_item("Hachirin-no-Obi")
+                local Staff = have_item("Chatoyant Staff")
                 --Twilight Cape will only be used for Cura and Curaga.  Prefer Alaunus' cape for single target cures.
-                local Cape = player.inventory["Twilight Cape"] or player.wardrobe["Twilight Cape"] or
-                    player.wardrobe2["Twilight Cape"]
-                    or player.wardrobe3["Twilight Cape"] or player.wardrobe4["Twilight Cape"] or
-                    player.wardrobe5["Twilight Cape"]
-                    or player.wardrobe6["Twilight Cape"] or player.wardrobe7["Twilight Cape"] or
-                    player.wardrobe8["Twilight Cape"]
+                local Cape = have_item("Twilight Cape")
 
                 -- Check for bonus
                 if spell.element == world.day_element then
@@ -3730,19 +3648,17 @@ do
             end
             -- This function swaps in the Orpheus or Hachirin as needed
         else
-            -- Check for player gear
-            local Osash = player.inventory["Orpheus's Sash"] or player.wardrobe["Orpheus's Sash"] or
-                player.wardrobe2["Orpheus's Sash"]
-                or player.wardrobe3["Orpheus's Sash"] or player.wardrobe4["Orpheus's Sash"] or
-                player.wardrobe5["Orpheus's Sash"]
-                or player.wardrobe6["Orpheus's Sash"] or player.wardrobe7["Orpheus's Sash"] or
-                player.wardrobe8["Orpheus's Sash"]
-            local Obi = player.inventory["Hachirin-no-Obi"] or player.wardrobe["Hachirin-no-Obi"] or
-                player.wardrobe2["Hachirin-no-Obi"]
-                or player.wardrobe3["Hachirin-no-Obi"] or player.wardrobe4["Hachirin-no-Obi"] or
-                player.wardrobe5["Hachirin-no-Obi"]
-                or player.wardrobe6["Hachirin-no-Obi"] or player.wardrobe7["Hachirin-no-Obi"] or
-                player.wardrobe8["Hachirin-no-Obi"]
+            -- Every arm below tests a world or distance condition as well as the
+            -- item, so ask the bags only once a condition can still match. The three
+            -- obi arms all imply obi_wanted; the sash arm is the distance test itself.
+            local sash_wanted = spell.target and spell.target.distance
+                and spell.target.model_size
+                and spell.target.distance < (6 + spell.target.model_size)
+            local Osash = sash_wanted and have_item("Orpheus's Sash")
+
+            local obi_wanted = spell.element == world.day_element
+                or spell.element == world.weather_element
+            local Obi = obi_wanted and have_item("Hachirin-no-Obi")
 
             -- Matching double weather (w/o day conflict).
             if spell.element == world.weather_element and world.weather_intensity == 2 and Obi then
@@ -3770,110 +3686,102 @@ do
         return built_set
     end
 
-    -- Return the gear set for a bard song's family, or nil when none matches. The
-    -- set is handed back as-is: the caller re-applies the instrument afterwards, so
-    -- nothing is ever written into a set the job file owns.
-    function equip_song_gear(spell)
-        local song_set
-        if string.find(spell.english, 'Finale') and sets.Midcast.Finale then
-            song_set = sets.Midcast.Finale
-        elseif string.find(spell.english, 'Lullaby') and sets.Midcast.Lullaby then
-            song_set = sets.Midcast.Lullaby
-        elseif string.find(spell.english, 'Threnody') and sets.Midcast.Threnody then
-            song_set = sets.Midcast.Threnody
-        elseif string.find(spell.english, 'Elegy') and sets.Midcast.Elegy then
-            song_set = sets.Midcast.Elegy
-        elseif string.find(spell.english, 'Requiem') and sets.Midcast.Requiem then
-            song_set = sets.Midcast.Requiem
-        elseif string.find(spell.english, 'March') and sets.Midcast.March then
-            song_set = sets.Midcast.March
-        elseif string.find(spell.english, 'Minuet') and sets.Midcast.Minuet then
-            song_set = sets.Midcast.Minuet
-        elseif string.find(spell.english, 'Madrigal') and sets.Midcast.Madrigal then
-            song_set = sets.Midcast.Madrigal
-        elseif string.find(spell.english, 'Ballad') and sets.Midcast.Ballad then
-            song_set = sets.Midcast.Ballad
-        elseif string.find(spell.english, 'Scherzo') and sets.Midcast.Scherzo then
-            song_set = sets.Midcast.Scherzo
-        elseif string.find(spell.english, 'Mazurka') and sets.Midcast.Mazurka then
-            song_set = sets.Midcast.Mazurka
-        elseif string.find(spell.english, 'Paeon') and sets.Midcast.Paeon then
-            song_set = sets.Midcast.Paeon
-        elseif string.find(spell.english, 'Carol') and sets.Midcast.Carol then
-            song_set = sets.Midcast.Carol
-        elseif string.find(spell.english, 'Minne') and sets.Midcast.Minne then
-            song_set = sets.Midcast.Minne
-        elseif string.find(spell.english, 'Mambo') and sets.Midcast.Mambo then
-            song_set = sets.Midcast.Mambo
-        elseif string.find(spell.english, 'Etude') and sets.Midcast.Etude then
-            song_set = sets.Midcast.Etude
-        elseif string.find(spell.english, 'Prelude') and sets.Midcast.Prelude then
-            song_set = sets.Midcast.Prelude
-        elseif string.find(spell.english, 'Dirge') and sets.Midcast.Dirge then
-            song_set = sets.Midcast.Dirge
-        elseif string.find(spell.english, 'Sirvente') and sets.Midcast.Sirvente then
-            song_set = sets.Midcast.Sirvente
-        elseif string.find(spell.english, 'Aria') and sets.Midcast.Aria then
-            song_set = sets.Midcast.Aria
-        elseif string.find(spell.english, 'Fugue') and sets.Midcast.Fugue then
-            song_set = sets.Midcast.Fugue
-        elseif string.find(spell.english, 'Hymnus') and sets.Midcast.Hymnus then
-            song_set = sets.Midcast.Hymnus
-        elseif string.find(spell.english, 'Hum') and sets.Midcast.Hum then
-            song_set = sets.Midcast.Hum
-        elseif string.find(spell.english, 'Virelai') and sets.Midcast.Virelai then
-            song_set = sets.Midcast.Virelai
-        elseif string.find(spell.english, 'Nocturne') and sets.Midcast.Nocturne then
-            song_set = sets.Midcast.Nocturne
+    -- The bard-song weapon block, shared by both phases. Each phase reads its own
+    -- child set, and the shield merges last, only when no offhand weapon can be worn.
+    function build_song_weapons(built_set, precast)
+        if not sets.Weapons then
+            warn('sets.Weapons not found!')
+            return built_set
         end
+        if not sets.Weapons.Songs then
+            warn('sets.Weapons.Songs not found!')
+            return built_set
+        end
+        merge_report(built_set, sets.Weapons.Songs)
+        if precast then
+            merge_named(built_set, sets.Weapons.Songs.Precast, 'sets.Weapons.Songs.Precast')
+        else
+            merge_named(built_set, sets.Weapons.Songs.Midcast, 'sets.Weapons.Songs.Midcast')
+        end
+        if not DualWield and not TwoHand then
+            merge_named(built_set, sets.Weapons.Shield, 'sets.Weapons.Shield')
+        end
+        return built_set
+    end
+
+    -- The song gear ladder. Midcast always calls it; precast also calls it while
+    -- Nightingale is up.
+    function build_song_set(spell, built_set)
+        if SongCount:contains(spell.name) then
+            merge_named(built_set, sets.Midcast.DummySongs, 'sets.Midcast.DummySongs')
+            merge_into(built_set, { range = Instrument.Count })
+            -- Potency / Instruments
+        else
+            -- Defined Gear Set
+            if sets.Midcast[spell.english] then
+                merge_report(built_set, sets.Midcast[spell.english])
+                -- Equip Harp
+            elseif spell.name:contains('Horde') then
+                merge_named(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling')
+                merge_into(built_set, { range = Instrument.AOE_Sleep })
+                -- Normal Enfeebles
+            elseif Enfeebling_Song:contains(spell.english) then
+                merge_named(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling')
+                merge_into(built_set, { range = Instrument.Enfeebling })
+                -- Augment the buff songs
+            else
+                merge_into(built_set, { range = Instrument.Potency })
+            end
+            -- Augment the specific Song if set. The instrument is re-applied
+            -- after it so the song set cannot displace it.
+            local song_instrument = built_set['range']
+            merge_report(built_set, equip_song_gear(spell))
+            if song_instrument then
+                merge_into(built_set, { range = song_instrument })
+            end
+        end
+        return built_set
+    end
+
+    -- Song families in the order they are tested: a name carrying more than one
+    -- must resolve to the first listed, which is why Hymnus precedes Hum.
+    local SONG_FAMILIES = {
+        'Finale', 'Lullaby', 'Threnody', 'Elegy', 'Requiem', 'March', 'Minuet',
+        'Madrigal', 'Ballad', 'Scherzo', 'Mazurka', 'Paeon', 'Carol', 'Minne',
+        'Mambo', 'Etude', 'Prelude', 'Dirge', 'Sirvente', 'Aria', 'Fugue',
+        'Hymnus', 'Hum', 'Virelai', 'Nocturne',
+    }
+
+    -- First family the song name carries that `declared` holds an entry for.
+    -- Being declared is part of the match, so an undeclared family falls through
+    -- to the next rather than selecting nothing.
+    local function song_family_entry(name, declared)
+        if not declared then return nil end
+        for i = 1, #SONG_FAMILIES do
+            local family = SONG_FAMILIES[i]
+            if string.find(name, family) and declared[family] then return declared[family] end
+        end
+    end
+
+    function equip_song_gear(spell)
         -- No warning here: the set is merged by the caller, so an undeclared one
         -- becomes the report's head and is named through the usual three channels.
-        return song_set
+        return song_family_entry(spell.english, sets.Midcast)
     end
 
     -- Select the instrument for a Pianissimo song.
     function equip_pianissimo_gear(spell)
         if spell.english == "Honor March" or spell.english == "Aria of Passion" then return end
-        if Instrument then
-            if Instrument.Pianissimo then
-                log('Check Pianissimo Instrument')
-                if string.find(spell.english, 'March') and Instrument.Pianissimo.March then
-                    return Instrument.Pianissimo.March
-                elseif string.find(spell.english, 'Minuet') and Instrument.Pianissimo.Minuet then
-                    return Instrument.Pianissimo.Minuet
-                elseif string.find(spell.english, 'Madrigal') and Instrument.Pianissimo.Madrigal then
-                    return Instrument.Pianissimo.Madrigal
-                elseif string.find(spell.english, 'Ballad') and Instrument.Pianissimo.Ballad then
-                    return Instrument.Pianissimo.Ballad
-                elseif string.find(spell.english, 'Scherzo') and Instrument.Pianissimo.Scherzo then
-                    return Instrument.Pianissimo.Scherzo
-                elseif string.find(spell.english, 'Mazurka') and Instrument.Pianissimo.Mazurka then
-                    return Instrument.Pianissimo.Mazurka
-                elseif string.find(spell.english, 'Paeon') and Instrument.Pianissimo.Paeon then
-                    return Instrument.Pianissimo.Paeon
-                elseif string.find(spell.english, 'Carol') and Instrument.Pianissimo.Carol then
-                    return Instrument.Pianissimo.Carol
-                elseif string.find(spell.english, 'Minne') and Instrument.Pianissimo.Minne then
-                    return Instrument.Pianissimo.Minne
-                elseif string.find(spell.english, 'Mambo') and Instrument.Pianissimo.Mambo then
-                    return Instrument.Pianissimo.Mambo
-                elseif string.find(spell.english, 'Etude') and Instrument.Pianissimo.Etude then
-                    return Instrument.Pianissimo.Etude
-                elseif string.find(spell.english, 'Prelude') and Instrument.Pianissimo.Prelude then
-                    return Instrument.Pianissimo.Prelude
-                elseif string.find(spell.english, 'Dirge') and Instrument.Pianissimo.Dirge then
-                    return Instrument.Pianissimo.Dirge
-                elseif string.find(spell.english, 'Sirvente') and Instrument.Pianissimo.Sirvente then
-                    return Instrument.Pianissimo.Sirvente
-                else
-                    return Instrument.Pianissimo
-                end
-            else
-                warn('Instrument.Pianissimo not found!')
-            end
-        else
+        if not Instrument then
             warn('Instrument not found!')
+            return
         end
+        if not Instrument.Pianissimo then
+            warn('Instrument.Pianissimo not found!')
+            return
+        end
+        log('Check Pianissimo Instrument')
+        return song_family_entry(spell.english, Instrument.Pianissimo) or Instrument.Pianissimo
     end
 
     -- Return gear an action cannot be performed without, such as Marsyas for Honor
@@ -3891,18 +3799,8 @@ do
             built_set = { range = "Loughnashade" }
             --Equip body for Impact
         elseif spell.name == "Impact" then
-            local Crepuscular = player.inventory["Crepuscular Cloak"] or player.wardrobe["Crepuscular Cloak"] or
-                player.wardrobe2["Crepuscular Cloak"]
-                or player.wardrobe3["Crepuscular Cloak"] or player.wardrobe4["Crepuscular Cloak"] or
-                player.wardrobe5["Crepuscular Cloak"]
-                or player.wardrobe6["Crepuscular Cloak"] or player.wardrobe7["Crepuscular Cloak"] or
-                player.wardrobe8["Crepuscular Cloak"]
-            local Twilight = player.inventory["Twilight Cloak"] or player.wardrobe["Twilight Cloak"] or
-                player.wardrobe2["Twilight Cloak"]
-                or player.wardrobe3["Twilight Cloak"] or player.wardrobe4["Twilight Cloak"] or
-                player.wardrobe5["Twilight Cloak"]
-                or player.wardrobe6["Twilight Cloak"] or player.wardrobe7["Twilight Cloak"] or
-                player.wardrobe8["Twilight Cloak"]
+            local Crepuscular = have_item("Crepuscular Cloak")
+            local Twilight = have_item("Twilight Cloak")
             -- Crepuscular Cloak Found
             if Crepuscular then
                 log("Crepuscular Found")
@@ -3935,56 +3833,26 @@ do
                 end
             end
 
-            available_bullets = 0
-
-            if player.inventory[bullet_name] then
-                available_bullets = available_bullets +
-                    player.inventory[bullet_name].count
-            end
-            if player.wardrobe[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe[bullet_name].count
-            end
-            if player.wardrobe2[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe2[bullet_name].count
-            end
-            if player.wardrobe3[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe3[bullet_name].count
-            end
-            if player.wardrobe4[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe4[bullet_name].count
-            end
-            if player.wardrobe5[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe5[bullet_name].count
-            end
-            if player.wardrobe6[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe6[bullet_name].count
-            end
-            if player.wardrobe7[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe7[bullet_name].count
-            end
-            if player.wardrobe8[bullet_name] then
-                available_bullets = available_bullets +
-                    player.wardrobe8[bullet_name].count
-            end
+            available_bullets = have_item_count(bullet_name)
 
             log('Bullet Count [', available_bullets, ']')
 
             if available_bullets == 0 then
+                -- The one ammo a weaponskill may be finished with when its own has
+                -- run out: the standard shot ammo of the active ranged type. Job
+                -- files spell that key .RA or .TP; anything else in the slot is
+                -- held back for another purpose and the action cancels instead.
+                local type_ammo = Ammo and Ammo[state.RAMode.value]
+                local standard_ammo = type_ammo and (type_ammo.RA or type_ammo.TP)
+
                 -- If no ammo is available, give appropriate warning and end.
                 if spell.type == 'CorsairShot' and player.equipment.ammo ~= 'empty' then
                     windower.add_to_chat(104,
                         'No Quick Draw ammo left.  Using what\'s currently equipped (' .. player.equipment.ammo .. ').')
                     return
-                elseif spell.type == 'WeaponSkill' and player.equipment.ammo == Ammo.Bullet.RA then
+                elseif spell.type == 'WeaponSkill' and standard_ammo and player.equipment.ammo == standard_ammo then
                     windower.add_to_chat(104,
-                        'No weaponskill ammo left.  Using what\'s currently equipped (standard ranged bullets: ' ..
+                        'No weaponskill ammo left.  Using what\'s currently equipped (standard ranged ammo: ' ..
                         player.equipment.ammo .. ').')
                     return
                 else
@@ -4004,8 +3872,7 @@ do
             -- Low ammo warning.
             if spell.type ~= 'CorsairShot' and state.warned.value == false and available_bullets > 1 and available_bullets <= Ammo_Warning_Limit then
                 local msg = '*****  LOW AMMO WARNING: ' .. tostring(available_bullets) .. 'x ' .. bullet_name .. ' *****'
-                local border = ""
-                for i = 2, #msg do border = border .. "*" end
+                local border = string.rep('*', #msg)
                 windower.send_command('send @others input /echo ' .. msg .. '')
                 windower.add_to_chat(167, border)
                 windower.add_to_chat(167, msg)
@@ -4042,8 +3909,7 @@ do
             -- Notify player is low
             if display_message then
                 local msg = '*****  LOW TOOL WARNING: ' .. tostring(count) .. 'x *****'
-                local border = ""
-                for i = 1, #msg do border = border .. "*" end
+                local border = string.rep('*', #msg)
                 windower.send_command('send @others input /echo ' .. msg .. '')
                 windower.add_to_chat(167, border)
                 windower.add_to_chat(167, msg)
@@ -4058,9 +3924,9 @@ do
     -- The functions GearSwap calls directly. Each combines the engine's set with the
     -- matching job-file hook, then equips the result.
 
-    -- Validate an action before GearSwap composes its packet. Every rejection here
-    -- calls cancel_spell(), which sets a flag rather than returning, so execution
-    -- continues to the end of the function.
+    -- Validate an action before GearSwap composes its packet. A rejection calls
+    -- cancel_spell() and returns, except the stratagem-exhausted path, which falls
+    -- through to the end.
     function pretargetcheck(spell, action)
         if pet.isvalid and pet_midaction() then
             cancel_spell()
@@ -4140,26 +4006,7 @@ do
                 end
                 local a_info = ability_info[spell.id]
                 if a_info and player and spell.target.name then
-                    local target_name = spell.target.name
-                    outgoing_cast_active = true
-                    if settings.debug then
-                        debug(player.name .. ' is using tracked ability measured at pretarget: ' ..
-                            spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
-                    end
-
-                    --AoE Checks
-                    if a_info.aoe then
-                        if settings.debug then debug("AoE Ability Cast Detected.  Calculating targets.") end
-                        -- Only the AoE name expansion needs the mob table.
-                        local target_mob = get_mob_by_id(spell.target.id)
-                        if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
-                    end
-                    if settings.debug then
-                        debug(string.format("IPC message sent: MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name,
-                            spell.id, get_time()))
-                    end
-                    send_ipc(string.format("MIRDAIN|ABILITY|%s|%s|%s|%.0f", player.name, target_name, spell.id,
-                        get_time()))
+                    announce_tracked_cast('ABILITY', 'pretarget', spell, spell.target.name, a_info.aoe)
                 end
             end
         elseif HasRecastTimer[s_type] then
@@ -4176,33 +4023,12 @@ do
             --Notify eligible targets via IPC that a tracked spell is incoming
             local s_info = spell_info[spell.id]
             if s_info and spell.target.name and state.SpellReceived.value ~= "OFF" then
-                local target_name = spell.target.name
-                outgoing_cast_active = true
-
-                if settings.debug then
-                    debug(player.name ..
-                        ' is using tracked spell measured at pretarget: ' ..
-                        spell.name .. ' on ' .. target_name .. ' at ' .. get_time())
-                end
-
                 local accession_active = active_buffs[366] or active_buffs['Accession']
                 local majesty_active = active_buffs[621] or active_buffs['Majesty']
                 local divine_veil_active = active_buffs[78] or active_buffs['Divine Seal']
-
-                --AoE checks
                 local has_yagrush = (s_info.divine and get_slot_item_name(sets.Midcast["Cursna"], 'main') == "Yagrush")
-                if (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine)) then
-                    if settings.debug then debug("AoE Spell Cast Detected. Calculating targets.") end
-                    -- Only the AoE name expansion needs the mob table.
-                    local target_mob = get_mob_by_id(spell.target.id)
-                    if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
-                end
-                if settings.debug then
-                    debug(string.format("IPC message sent: MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name,
-                        spell.id,
-                        get_time()))
-                end
-                send_ipc(string.format("MIRDAIN|SPELL|%s|%s|%s|%.0f", player.name, target_name, spell.id, get_time()))
+                local spreads = (s_info.aoe or ((accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine))
+                announce_tracked_cast('SPELL', 'pretarget', spell, spell.target.name, spreads)
             end
         elseif s_type == TYPE_SCH then
             local available_charges = get_current_stratagem_count()
@@ -4223,9 +4049,6 @@ do
         --Calls the function in the include file for basic checks
         pretargetcheck(spell, action)
 
-        -- Open the Hoxne critical window here: after the include's guards, before
-        -- pretarget_custom, so a job file's instrument equips flow through the
-        -- Allow-Critical filter rather than being stripped.
         local hoxne_opened = false
         if state.Hoxne.value == 'ON-Allow Critical' then
             local crit = critical_action_for(spell)
@@ -4235,8 +4058,6 @@ do
                 else
                     hoxne_opened  = true
                     hoxne.window  = true
-                    hoxne.slot    = crit.slot
-                    hoxne.resume  = crit.resume
                     hoxne.expires = os.clock() + 20 -- watchdog only; aftercast sets the real countdown
                     -- Gear-gated songs need their implement now; Tomahawk and Angon
                     -- need their forced ammo. Ordinary songs and Geomancy need
@@ -4255,6 +4076,11 @@ do
         --Calls the job specific function
         if pretarget_custom then pretarget_custom(spell, action) end
 
+        -- A job file may cancel here, after pretargetcheck has already announced.
+        -- Same debt as the busy gate: receivers are holding for a cast that is not
+        -- coming.
+        if _global.cancel_spell then finish_outgoing_cast() end
+
         -- If the job file cancelled after the window opened, collapse it soon.
         -- The 2 second grace covers the common cancel-equip-reissue pattern: a
         -- re-issued command re-opens the window before the tick re-locks.
@@ -4267,6 +4093,15 @@ do
     -- Runs after the packet is composed but before it is sent, so gear set here still
     -- reaches the action. Also arms the busy window.
     function precast(spell)
+        -- Refuse a gated ability under ON-Locked, above the busy gate, naming the reason.
+        if spell.type == TYPE_JA then
+            local locked = hoxne_locked_refusal(spell.id)
+            if locked then
+                info(locked)
+                cancel_spell()
+                return
+            end
+        end
         -- Spell timed out
         if is_Busy and os.clock() - Spellstart > SpellCastTime then
             is_Busy = false
@@ -4277,7 +4112,7 @@ do
                 local cast_spell = res.spells[spell.id]
                 -- assume 80% FC
                 SpellCastTime = cast_spell.cast_time * .2 + 2.5
-                -- Spell not delay set to default 2 sec
+                -- Chainspell and Nightingale casts finish in about a second.
                 if buffactive["Chainspell"] or buffactive["Nightingale"] then
                     SpellCastTime = 1
                 end
@@ -4292,6 +4127,10 @@ do
             is_Busy = true
         else
             log('Player is Busy [', spell.english, ']')
+            -- pretargetcheck may already have announced this cast. Receivers are
+            -- holding gear and locked slots for it right now, so tell them rather
+            -- than leaving them to time out.
+            finish_outgoing_cast()
             cancel_spell()
             return
         end
@@ -4302,8 +4141,6 @@ do
             if crit then
                 if not hoxne.window then
                     hoxne.window  = true
-                    hoxne.slot    = crit.slot
-                    hoxne.resume  = crit.resume
                     hoxne.expires = os.clock() + 20
                     if crit.force then equip({ [crit.slot] = crit.force }) end
                     log('Hoxne: critical window open at precast for ', spell.english, ' (', crit.slot, ')')
@@ -4311,8 +4148,6 @@ do
                     -- A new critical action inside an open window pushes the
                     -- deadline back out; without this it inherits the previous
                     -- action's countdown.
-                    hoxne.slot    = crit.slot
-                    hoxne.resume  = crit.resume
                     hoxne.expires = os.clock() + 20
                     log('Hoxne: critical window refreshed at precast for ', spell.english)
                 end
@@ -4320,36 +4155,39 @@ do
         end
 
         --Generate the correct set from the include file and custom function
-        local built_set = precastequip(spell)
+        local built_set = precastequip(spell) or {}
         merge_report_flush('precast', spell)
         -- Process a custom set if enabled
         if precast_custom then
-            built_set = set_combine(built_set, precast_custom(spell))
+            merge_into(built_set, precast_custom(spell))
         else
             warn('precast_custom() not found!')
         end
         -- Check the gear
         local equipment_spell_set = check_equipment_spells(spell)
-        if equipment_spell_set then built_set = set_combine(built_set, equipment_spell_set) end
-        -- Here is where gear is actually equipped
+        if equipment_spell_set then merge_into(built_set, equipment_spell_set) end
+        -- The floor under a job file that declares no set for a gated ability.
+        -- Applied after every merge so a file that dresses the slot itself keeps
+        -- its choice.
+        local force_slot, force_item = critical_force_slot(built_set, spell)
+        if force_slot then built_set[force_slot] = force_item end
         equip(built_set)
     end
 
     -- Runs while the action is in flight.
     function midcast(spell)
         --Generate the correct set from the include file and custom function
-        local built_set = midcastequip(spell)
+        local built_set = midcastequip(spell) or {}
         merge_report_flush('midcast')
         -- Process a custom set if enabled
         if midcast_custom then
-            built_set = set_combine(built_set, midcast_custom(spell))
+            merge_into(built_set, midcast_custom(spell))
         else
             warn('midcast_custom() not found!')
         end
         -- Check the gear
         local equipment_spell_set = check_equipment_spells(spell)
-        if equipment_spell_set then built_set = set_combine(built_set, equipment_spell_set) end
-        -- Here is where gear is actually equipped
+        if equipment_spell_set then merge_into(built_set, equipment_spell_set) end
         equip(built_set)
     end
 
@@ -4358,22 +4196,20 @@ do
     function aftercast(spell)
         --Reset state for spell-received gear tracking
         if state.SpellReceived.value ~= 'OFF' and outgoing_cast_active then
-            outgoing_cast_active = false
             if settings.debug then
                 debug(string.format("IPC message sent: MIRDAIN|COMPLETE|%s|%.0f", player.name,
                     get_time()))
             end
-            send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
+            finish_outgoing_cast()
         end
         --Generate the correct set from the include file and custom function
-        local built_set = aftercastequip(spell)
+        local built_set = aftercastequip(spell) or {}
         merge_report_flush('aftercast')
         if aftercast_custom then
-            built_set = set_combine(built_set, aftercast_custom(spell))
+            merge_into(built_set, aftercast_custom(spell))
         else
             warn('aftercast_custom() not found!')
         end
-        -- here is where gear is actually equipped
         equip(built_set)
         -- Begin Reset Process - Spells have a hard delay where the JA's have a small delay
         if RecastTimers[spell.type] then
@@ -4399,18 +4235,12 @@ do
     function buff_change(name, gain)
         if not is_Busy then
             --calls the include file and custom on a buff change
-            local built_set = choose_set()
-            if choose_set_custom then
-                built_set = set_combine(built_set, choose_set_custom())
-            else
-                warn('choose_set_custom() not found!')
-            end
+            local built_set = build_current_set()
             if buff_change_custom then
-                built_set = set_combine(built_set, buff_change_custom(name, gain))
+                merge_into(built_set, buff_change_custom(name, gain))
             else
                 warn('buff_change_custom(name,gain) not found!')
             end
-            -- Here is where gear is actually equipped
             equip(built_set)
         end
     end
@@ -4418,36 +4248,23 @@ do
     -- Runs on any player status change.
     function status_change(new, old)
         --calls the include file and custom on a state change
-        local built_set = choose_set()
-        if choose_set_custom then
-            built_set = set_combine(built_set, choose_set_custom())
-        else
-            warn('choose_set_custom() not found!')
-        end
+        local built_set = build_current_set()
         if status_change_custom then
-            built_set = set_combine(built_set, status_change_custom(new, old))
+            merge_into(built_set, status_change_custom(new, old))
         else
-            warn('status_change_custom(name,gain) not found!')
+            warn('status_change_custom(new,old) not found!')
         end
-        -- Here is where gear is actually equipped
         equip(built_set)
     end
 
     -- Runs when a pet appears or disappears.
     function pet_change(pet, gain)
-        -- A new pet is found
-        local built_set = choose_set()
-        if choose_set_custom then
-            built_set = set_combine(built_set, choose_set_custom())
-        else
-            warn('choose_set_custom() not found!')
-        end
+        local built_set = build_current_set()
         if pet_change_custom then
-            built_set = set_combine(built_set, pet_change_custom(pet, gain))
+            merge_into(built_set, pet_change_custom(pet, gain))
         else
             warn('pet_change_custom() not found!')
         end
-        -- Here is where gear is actually equipped
         equip(built_set)
     end
 
@@ -4472,22 +4289,12 @@ do
             if pet_midcast_custom then
                 merge_into(built_set, pet_midcast_custom(spell))
             end
-            -- Weapon Checks for precast
-            -- If it set to unlocked it will not swap the weapons even if defined in the built_set job lua
+            -- Weapon Checks for pet midcast
+            -- Skipped while the mode is Unlocked.
             if state.WeaponMode.value ~= "Unlocked" then
-                if state.WeaponMode.value == "Locked" then
-                    merge_report(built_set,
-                        { main = player.equipment.main, sub = player.equipment.sub, range = player.equipment.range })
-                else
-                    if sets.Weapons[state.WeaponMode.value] then
-                        merge_report(built_set, sets.Weapons[state.WeaponMode.value])
-                        if not TwoHand and not DualWield then
-                            if sets.Weapons.Shield then
-                                merge_report(built_set, sets.Weapons.Shield)
-                            end
-                        end
-                    end
-                end
+                -- The pet build reports nothing missing, and withholds the shield
+                -- when the mode named no set of its own.
+                apply_weapon_mode(built_set, false, true, true)
                 log('Midcast set equiping Offense Mode Gear')
             end
             merge_report_flush('midcast', spell)
@@ -4501,7 +4308,7 @@ do
     function pet_aftercast(spell)
         local built_set = choose_set()
         if pet_aftercast_custom then
-            built_set = set_combine(built_set, pet_aftercast_custom(spell))
+            merge_into(built_set, pet_aftercast_custom(spell))
         end
         equip(built_set)
     end
@@ -4513,15 +4320,22 @@ do
     -- casting on this one, and releases it the moment the spell lands. Driven by the
     -- IPC messages registered in the final section.
 
-    -- The set each spell_info/ability_info equip key selects, for the empty-set warning.
-    local SR_SET_NAME = {
-        cure_set          = 'sets.Cure_Received',
-        cursna_set        = 'sets.Cursna_Received',
-        phalanx_set       = 'sets.Phalanx_Received',
-        protect_shell_set = 'sets.Protect_Shell_Received',
-        regen_set         = 'sets.Regen_Received',
-        refresh_set       = 'sets.Refresh_Received',
-        waltz_set         = 'sets.Waltz_Received',
+    -- The section 2 set each spell_info/ability_info equip key selects. This is
+    -- the only mapping: the set is fetched, named and reported through it.
+    local SR_SET_KEY = {
+        cure_set          = 'Cure_Received',
+        cursna_set        = 'Cursna_Received',
+        phalanx_set       = 'Phalanx_Received',
+        protect_shell_set = 'Protect_Shell_Received',
+        regen_set         = 'Regen_Received',
+        refresh_set       = 'Refresh_Received',
+        waltz_set         = 'Waltz_Received',
+    }
+
+    -- Announce tags this box acts on, and the lookup each selects on arrival.
+    local IPC_CAST_KIND = {
+        SPELL   = 'spell',
+        ABILITY = 'ability',
     }
 
     -- Does a comma-joined IPC target list name this character exactly? Finds the name,
@@ -4548,23 +4362,20 @@ do
         failsafe_active = false
         failsafe_trigger_time = 0
         active_incoming_casters = {}
-        for slot, _ in pairs(active_external_locks) do
-            enable(slot)
-        end
+        -- Deregister before releasing: release_slot reads this table to decide who
+        -- owns the slot, so a slot still registered here answers "spell-received"
+        -- and would be left held by the layer that is letting go of it.
+        local held = active_external_locks
         active_external_locks = {}
+        for slot, _ in pairs(held) do
+            release_slot(slot)
+        end
     end
 
-    -- Tear down spell-received state when the mode is switched off. Without this the
-    -- borrowed slots stay disabled: the failsafe that would release them returns early
-    -- once the mode reads OFF. A set outgoing_cast_active means a broadcast went out
-    -- and peers are owed the matching completion, so that is sent whatever the mode
-    -- now says. The Accession and Divine Seal predictions are deliberately left alone;
-    -- they belong to the buff lifecycle, not to this mode.
+    -- Tear down spell-received state when the mode is switched off: complete any
+    -- outgoing cast, then release the borrowed slots.
     local function reset_spell_received_state()
-        if outgoing_cast_active then
-            outgoing_cast_active = false
-            send_ipc(string.format("MIRDAIN|COMPLETE|%s|%.0f", player.name, get_time()))
-        end
+        finish_outgoing_cast()
         release_spell_received_gear()
     end
 
@@ -4583,60 +4394,20 @@ do
             return
         end
 
-        --Calculate delta since cast start time in milliseconds
-        --local elapsed_ms = get_time() - cast_start_time
-
+        local set_key = SR_SET_KEY[s_info.equip]
+        local set_name = set_key and ('sets.' .. set_key)
         local spell_received_set = {}
-        if s_info.equip == "cure_set" then
-            if sets.Cure_Received then
-                spell_received_set = sets.Cure_Received
-            else
-                warn("sets.Cure_Received not found!")
-            end
-        elseif s_info.equip == "cursna_set" then
-            if sets.Cursna_Received then
-                spell_received_set = sets.Cursna_Received
-            else
-                warn("sets.Cursna_Received not found!")
-            end
-        elseif s_info.equip == "phalanx_set" then
-            if sets.Phalanx_Received then
-                spell_received_set = sets.Phalanx_Received
-            else
-                warn("sets.Phalanx_Received not found!")
-            end
-        elseif s_info.equip == "protect_shell_set" then
-            if sets.Protect_Shell_Received then
-                spell_received_set = sets.Protect_Shell_Received
-            else
-                warn("sets.Protect_Shell_Received not found!")
-            end
-        elseif s_info.equip == "regen_set" then
-            if sets.Regen_Received then
-                spell_received_set = sets.Regen_Received
-            else
-                warn("sets.Regen_Received not found!")
-            end
-        elseif s_info.equip == "refresh_set" then
-            if sets.Refresh_Received then
-                spell_received_set = sets.Refresh_Received
-            else
-                warn("sets.Refresh_Received not found!")
-            end
-        elseif s_info.equip == "waltz_set" then
-            if sets.Waltz_Received then
-                spell_received_set = sets.Waltz_Received
-            else
-                warn("sets.Waltz_Received not found!")
-            end
-        else
+        if not set_key then
             warn("Unknown Equip Set for Spell Received Gear")
+        elseif sets[set_key] then
+            spell_received_set = sets[set_key]
+        else
+            warn(set_name .. " not found!")
         end
 
         if type(spell_received_set) == 'table' then
             -- Report the chosen set the way a cast does. There is no fallback
             -- chain here: the set either dresses the slots or nothing does.
-            local set_name = SR_SET_NAME[s_info.equip]
             if set_name then
                 if warn_if_empty(spell_received_set, set_name) then
                     info('[' .. set_name .. '][Not Usable] -> nothing to equip.')
@@ -4644,11 +4415,24 @@ do
                     info('[' .. set_name .. '][Used]')
                 end
             end
+            -- Received gear outranks a lock mode, but an equip into the slot the
+            -- lock disabled would be diverted, so free those first. Slots an item
+            -- use or the Hoxne hold owns outrank this and are left alone.
+            local taken = {}
+            for slot in pairs(spell_received_set) do
+                local claim = slot_claim(slot)
+                if claim ~= 'ench' and claim ~= 'hoxne' then
+                    taken[slot] = true
+                    enable(slot)
+                end
+            end
             equip(spell_received_set)
             if state.SpellReceived.value == "ON" then
                 --Lock the slots of items from the spell received set to prevent other
-                --actions from overwriting until cast completion
-                for slot, item in pairs(spell_received_set) do
+                --actions from overwriting until cast completion. Only the ones this
+                --set actually dressed: an equip into a slot a higher layer holds was
+                --diverted, so claiming it would hold gear that never went on.
+                for slot in pairs(taken) do
                     disable(slot)
 
                     if settings.debug then debug("Locking " .. tostring(slot)) end
@@ -4672,13 +4456,7 @@ do
             -- If it's different than the last known mob, then we've actually changed targets.
             if player.target.index == new_index and new_index ~= th_info.last_player_target_index then
                 th_info.last_player_target_index = player.target.index
-                local built_set = choose_set()
-                if choose_set_custom then
-                    built_set = set_combine(built_set, choose_set_custom())
-                else
-                    warn('choose_set_custom() not found!')
-                end
-                equip(built_set)
+                equip(build_current_set())
             end
         end
     end
@@ -4691,12 +4469,9 @@ do
             local message_id = data:unpack('H', 0x19) % 32768
             -- Remove mobs that die from our tagged mobs list.
             if th_info.tagged_mobs[target_id] then
-                -- 6 == actor defeats target
-                -- 20 == target falls to the ground
-                if message_id == 6 or message_id == 20 then
+                if DeathMessages[message_id] then
                     if settings.debug then
-                        windower.add_to_chat(123, 'Mob ' ..
-                            target_id .. ' died. Removing from tagged mobs table.')
+                        debug('Mob ' .. target_id .. ' died. Removing from tagged mobs table.')
                     end
                     th_info.tagged_mobs[target_id] = nil
                 end
@@ -4713,44 +4488,41 @@ do
         if state.Hoxne.value ~= 'OFF' then
             state.Hoxne:set('OFF')
             hoxne.window        = false
-            hoxne.slot          = nil
-            hoxne.resume        = nil
             hoxne.release_tries = 10
             hoxne.release_next  = os.clock() + 3
-            info('Hoxne Ampulla Mode: [OFF] (zoned)')
+            notice('Hoxne Ampulla Mode: [OFF] (zoned)')
             display_box_update()
         end
+        -- A use cannot survive the zone: the /item never lands, and its slot hold
+        -- would ride into the new zone. Cancel before UnlockByMode so the slot
+        -- comes back with everything else.
+        local zoned_use = cancel_enchantment()
+        if zoned_use then info('Cancelled [' .. zoned_use .. '] (zoned).') end
+        -- Lock modes do not survive a zone either, and the slots must be free before
+        -- UnlockByMode builds its list or it would skip them as still claimed.
+        if clear_locked_slots() > 0 then info('Lock modes released (zoned).') end
         UnlockByMode()
-        if settings.debug then windower.add_to_chat(123, 'Zoning. Clearing tagged mobs table.') end
+        if settings.debug then debug('Zoning. Clearing tagged mobs table.') end
         th_info.tagged_mobs:clear()
         -- Turn off for zones
         state.AutoBuff:set('OFF')
     end
 
-    -- Drop mobs with no activity for three minutes, covering deaggro and player death.
+    -- Drop mobs the player has not acted on for three minutes, covering deaggro
+    -- and player death. Only the player's own actions refresh an entry.
     function cleanup_tagged_mobs()
-        -- If it's been more than 3 minutes since an action on or by a tagged mob,
-        -- remove them from the tagged mobs list.
         local current_time = os.clock()
-        local remove_mobs = S {}
 
-        --log('The TH table contains ['..tostring(#th_info.tagged_mobs)..'] entries.')
-
-        -- Search list and flag old entries.
+        -- Clearing a key that already exists is defined during a pairs() walk in
+        -- 5.1, so the stale entry goes on the spot rather than into a flag set.
         for target_id, action_time in pairs(th_info.tagged_mobs) do
-            local time_since_last_action = current_time - action_time
-            if time_since_last_action > 180 then
-                remove_mobs:add(target_id)
+            if current_time - action_time > 180 then
+                th_info.tagged_mobs[target_id] = nil
                 if settings.debug then
-                    windower.add_to_chat(123,
-                        'Over 3 minutes since last action on mob ' .. target_id .. '. Removing from tagged mobs list.')
+                    debug('Over 3 minutes since last action on mob ' ..
+                        target_id .. '. Removing from tagged mobs list.')
                 end
             end
-        end
-
-        -- Clean out mobs flagged for removal.
-        for mob_id, _ in pairs(remove_mobs) do
-            th_info.tagged_mobs[mob_id] = nil
         end
     end
 
@@ -4851,7 +4623,7 @@ do
         then
             log('There was a skillchain')
             local t = get_mob_by_id(data.targets[1].id)
-            -- valid party target and within range
+            -- Monster target, and within burst range.
             if t and t.spawn_type == 16 and t.distance:sqrt() < 21 then
                 -- Update the enemy to track
                 last_skillchain_id = t.id
@@ -4884,8 +4656,6 @@ do
         if not command then return end
         local status_id_tab = command:split(',')
         status_id_tab.n = nil
-        local ids = {}
-        local buffs = {}
         for _, v in pairs(player.buffs) do
             for _, r in pairs(status_id_tab) do
                 if windower.wc_match(res.buffs[v][Language], r) or windower.wc_match(tostring(v), r) then
@@ -4911,21 +4681,26 @@ do
         end
     end
 
-    -- Weapon skill ids the game treats as two-handed.
-    local TWO_HAND_SKILL = { [4] = true, [6] = true, [7] = true, [8] = true, [10] = true, [12] = true }
-
     -- Whether a named weapon is two-handed. res.items:with scans every item in the
     -- game and the answer never changes for a name, so each is resolved once per
     -- load; misses are kept too.
-    local two_hand_memo = {}
-    local function name_is_two_handed(name)
-        local known = two_hand_memo[name]
-        if known == nil then
-            local row = res.items:with('en', name)
-            known = row ~= nil and TWO_HAND_SKILL[row.skill] ~= nil
-            two_hand_memo[name] = known
+    local name_is_two_handed
+    -- The skill table and the memo live inside this block, not beside it: the main
+    -- chunk sits at Lua 5.1's 200-local ceiling, and a closed block gives its
+    -- registers back.
+    do
+        -- Weapon skill ids the game treats as two-handed.
+        local TWO_HAND_SKILL = { [4] = true, [6] = true, [7] = true, [8] = true, [10] = true, [12] = true }
+        local two_hand_memo = {}
+        name_is_two_handed = function(name)
+            local known = two_hand_memo[name]
+            if known == nil then
+                local row = res.items:with('en', name)
+                known = row ~= nil and TWO_HAND_SKILL[row.skill] ~= nil
+                two_hand_memo[name] = known
+            end
+            return known
         end
-        return known
     end
 
     -- Refresh the two-handed weapon flag from the current weapon set. A mode naming
@@ -4982,12 +4757,10 @@ do
                     if player_status ~= "Engaged" then
                         is_moving = true
                         Require_Update = true
-                        --windower.chat.input('/echo Moving! Status: '..player.status..'')
                     end
                 elseif not movement and is_moving then
                     is_moving = false
                     Require_Update = true
-                    --windower.chat.input('/echo Stopped Moving! Status: '..player.status..'')
                 end
                 Location.x = position.x
                 Location.y = position.y
@@ -5036,7 +4809,7 @@ do
         label = '150,150,150',
         value = '235,235,235',
         chev = '110,110,110',
-        idle = '120,120,120', -- Hollow "off" circle
+        idle = '120,120,120', -- Dimmed "off" square
         good = '80,220,110',  -- Fully on - green
         warn = '255,170,60',  -- Partially on - amber for TH tag
         cyan = '90,200,255',  -- TH SATA mode
@@ -5048,7 +4821,7 @@ do
     -- Column separator.
     local SEP = '  '
 
-    -- Modes rendered as a coloured circle rather than a labelled cell, with the value
+    -- Modes rendered as a coloured square rather than a labelled cell, with the value
     -- that counts as off and the colour for each active value.
     local GLYPH_FIELDS = {
         {
@@ -5071,36 +4844,40 @@ do
         },
     }
 
-    -- Three-letter labels for known mode names.
-    local UI_SHORT_ALIASES = {
-        ['mode'] = 'MDE',
-        ['pet'] = 'PET',
-        ['tp mode'] = 'TPM',
-        ['auto tank'] = 'TNK',
-        ['tank'] = 'TNK',
-        ['runes'] = 'RUN',
-        ['rune'] = 'RUN',
-    }
-
     -- Derive a three-letter label from a mode name: alias first, otherwise the first
     -- three letters of a single word, or two letters of the first word plus the
     -- initial of the last.
-    local function derive_short(name)
-        local alias = UI_SHORT_ALIASES[name:lower()]
-        if alias then return alias end
+    local derive_short
+    -- The alias table lives inside this block, not beside it: the main chunk sits at
+    -- Lua 5.1's 200-local ceiling, and a closed block gives its register back.
+    do
+        -- Three-letter labels for known mode names.
+        local UI_SHORT_ALIASES = {
+            ['mode'] = 'MDE',
+            ['pet'] = 'PET',
+            ['tp mode'] = 'TPM',
+            ['auto tank'] = 'TNK',
+            ['tank'] = 'TNK',
+            ['runes'] = 'RUN',
+            ['rune'] = 'RUN',
+        }
+        derive_short = function(name)
+            local alias = UI_SHORT_ALIASES[name:lower()]
+            if alias then return alias end
 
-        local words = {}
-        for w in name:gmatch('%a+') do words[#words + 1] = w end
+            local words = {}
+            for w in name:gmatch('%a+') do words[#words + 1] = w end
 
-        local short
-        if #words == 0 then
-            short = name:upper()
-        elseif #words == 1 then
-            short = words[1]:upper()
-        else
-            short = (words[1]:sub(1, 2) .. words[#words]:sub(1, 1)):upper()
+            local short
+            if #words == 0 then
+                short = name:upper()
+            elseif #words == 1 then
+                short = words[1]:upper()
+            else
+                short = (words[1]:sub(1, 2) .. words[#words]:sub(1, 1)):upper()
+            end
+            return (short .. '   '):sub(1, 3)
         end
-        return (short .. '   '):sub(1, 3)
     end
 
     -- Layout --------------------------------------------------------------------------------------
@@ -5160,7 +4937,7 @@ do
 
         local header_w = 0
         for i, g in ipairs(GLYPH_FIELDS) do
-            header_w = header_w + #g.label + 2 -- label + space + circle
+            header_w = header_w + #g.label + 2 -- label + space + glyph
             if i > 1 then header_w = header_w + #SEP end
         end
 
@@ -5228,6 +5005,9 @@ do
 
     -- Redraw the mode box from current state.
     function display_box_update()
+        -- Nothing to paint while the box is hidden; the display handler sets the
+        -- flag before it calls back here, so re-showing still repaints.
+        if not settings.visible then return end
         if not layout then build_layout() end
 
         local head = T {}
@@ -5252,14 +5032,25 @@ do
         end
     end
 
-    -- Reset both boxes to the top-left corner.
+    -- The config library declines to write while no character is resolvable, so
+    -- the outcome is reported instead of assumed. Every save goes through here.
+    local function save_settings(saved_msg)
+        if not windower.ffxi.get_info().logged_in then
+            notice('Cannot save while zoning - try again in a moment.')
+            return false
+        end
+        config.save(settings)
+        notice(saved_msg or 'Settings saved')
+        return true
+    end
+
+    -- Return the mode box to the top-left corner and the debug box just below it.
     function display_zero_command()
         gs_status:pos_x(0)
         gs_status:pos_y(0)
         gs_debug:pos_x(0)
         gs_debug:pos_y(100)
-        config.save(settings)
-        windower.add_to_chat(80, "Displays reset and settings saved")
+        save_settings("Displays reset and settings saved")
     end
 
     -- Last rendered debug values, compared to skip redundant redraws.
@@ -5359,9 +5150,11 @@ do
     -- Commands that accept an argument, matched on their first word. Every other
     -- command matches only as a complete string.
     local command_takes_arg = {
+        ["aptitude"] = true,
         ["autobuff"] = true,
         ["enchinfo"] = true,
         ["hoxne"] = true,
+        ["jubilee"] = true,
         ["jobmode"] = true,
         ["jobmode2"] = true,
         ["offensemode"] = true,
@@ -5381,19 +5174,13 @@ do
     local empty_set_gate = 0
 
     command_handlers["update auto"] = function(cmd, command)
-        local built_set = choose_set()
-        if choose_set_custom then
-            built_set = set_combine(built_set, choose_set_custom())
-        else
-            warn('choose_set_custom() not found!')
-        end
+        local built_set = build_current_set()
         -- An empty result means no chosen set carries any gear. Sleep is the one
         -- deliberate empty set, and the warning repeats at most every 30 seconds.
         if next(built_set) == nil and not buffactive['Sleep'] and os.clock() >= empty_set_gate then
             empty_set_gate = os.clock() + 30
             warn('Chosen set is [Empty] - nothing to equip. gs c checksets lists your sets.')
         end
-        -- Order the gear and then equip
         equip(built_set)
         return true
     end
@@ -5404,20 +5191,19 @@ do
 
     command_handlers["displaymode"] = function(cmd, command)
         settings.oneline = not settings.oneline
-        info('One line display is: [' .. (settings.oneline and "ON" or "OFF") .. ']')
+        notice('One line display is: [' .. (settings.oneline and "ON" or "OFF") .. ']')
         display_box_update()
-        config.save(settings)
-        windower.add_to_chat(80, "Settings saved")
+        save_settings()
     end
 
-    -- Toggles the TH state
+    -- Cycles Treasure Hunter mode, or sets it from an argument.
     command_handlers["treasurehunter"] = function(cmd, command)
         if command == "treasurehunter" then
             state.TreasureMode:cycle()
-            info('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
+            notice('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
             display_box_update()
         elseif set_mode_arg(state.TreasureMode, 'Treasure Hunter', 'TreasureHunter', command_arg(cmd)) then
-            info('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
+            notice('Treasure Hunter Mode: [' .. state.TreasureMode.value .. ']')
             display_box_update()
         else
             return true
@@ -5429,15 +5215,18 @@ do
     command_handlers["spellreceived"] = function(cmd, command)
         if command == "spellreceived" then
             state.SpellReceived:cycle()
-            info('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
+            notice('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
             display_box_update()
         elseif set_mode_arg(state.SpellReceived, 'Spell Received', 'SpellReceived', command_arg(cmd)) then
-            info('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
+            notice('Spell Received Mode: [' .. state.SpellReceived.value .. ']')
             display_box_update()
         else
             return true
         end
-        if state.SpellReceived.value == "OFF" then reset_spell_received_state() end
+        -- Unconditional, not only on the way to OFF. Both delivery paths claim into
+        -- one registry, and each releases under its own mode, so a claim made in one
+        -- mode and left behind by a switch would never be handed back.
+        reset_spell_received_state()
         equip_set_command()
         return true
     end
@@ -5448,12 +5237,7 @@ do
         -- flight, so an async re-lock can never stomp a borrowed instrument.
         if state.Hoxne.value ~= 'OFF' and not hoxne.window then
             hoxne_equip_ampulla()
-            -- The equip delay restarts on every re-equip, but the recast
-            -- may be longer still: whichever is larger governs, with the
-            -- equip lockout as the floor against stale extdata.
-            local _, hx_ext = find_enchantment(HOXNE_AMPULLA)
-            local hx_recast = enchantment_waits(hx_ext) or 0
-            hoxne.use_not_before = os.clock() + math.max(HOXNE_EQUIP_LOCKOUT, hx_recast)
+            hoxne_arm_use_lockout()
             equip_set_command()
         end
         return true
@@ -5486,18 +5270,18 @@ do
         local name = command_arg(cmd)
         local row, ext, carried, equipped = find_enchantment(name or '')
         if not row then
-            info('enchinfo: unknown item [' .. tostring(name) .. ']')
+            notice('enchinfo: unknown item [' .. tostring(name) .. ']')
         elseif not carried then
-            info(row.en .. ': not in inventory or wardrobes.')
+            notice(row.en .. ': not in inventory or wardrobes.')
         elseif not ext then
-            info(row.en .. ': carried, but extdata did not decode.')
+            notice(row.en .. ': carried, but extdata did not decode.')
         else
             local now_t = os.time() - EXTDATA_TS_CORRECTION
             local recast, activation = enchantment_waits(ext)
-            info(('%s: equipped=%s usable=%s charges=%s activation %+ds next_use %+ds (epoch-corrected)'):format(
+            notice(('%s: equipped=%s usable=%s charges=%s activation %+ds next_use %+ds (epoch-corrected)'):format(
                 row.en, tostring(equipped), tostring(ext.usable), tostring(ext.charges_remaining),
                 (ext.activation_time or now_t) - now_t, (ext.next_use_time or now_t) - now_t))
-            info(('  -> engine sees: cooldown %ds (warns/refuses), equip delay %ds (waits quietly)'):format(
+            notice(('  -> engine sees: cooldown %ds (warns/refuses), equip delay %ds (waits quietly)'):format(
                 recast or 0, activation or 0))
         end
         return true
@@ -5511,12 +5295,12 @@ do
         -- The two sources are printed separately and labelled because they disagree:
         -- player.equipment has been seen inverted after a reload while the bag status
         -- stayed correct. If these two lines contradict each other, believe the second.
-        info(('Hoxne [%s]  buff=%s  window=%s  release attempts left=%d'):format(
+        notice(('Hoxne [%s]  buff=%s  window=%s  release attempts left=%d'):format(
             state.Hoxne.value, tostring(buffactive[BUFF_ENCHANTMENT] and true or false),
             tostring(hoxne.window), hoxne.release_tries))
-        info(('  player.equipment: ammo=[%s] range=[%s]'):format(
+        notice(('  player.equipment: ammo=[%s] range=[%s]'):format(
             tostring(player.equipment.ammo), tostring(player.equipment.range)))
-        info(('  live bag status:  ampulla carried=%s equipped=%s cooldown=%ds equip delay=%ds'):format(
+        notice(('  live bag status:  ampulla carried=%s equipped=%s cooldown=%ds equip delay=%ds'):format(
             tostring(carried), tostring(equipped), recast or 0, activation or 0))
         return true
     end
@@ -5526,32 +5310,40 @@ do
         invalidate_set_index()
         reset_set_warnings()
         local gear, empty, undeclared = set_diagnostics()
-        info(('Sets with gear: %d.  Engine placeholders left undeclared: %d.'):format(#gear, #undeclared))
+        notice(('Sets with gear: %d.  Engine placeholders left undeclared: %d.'):format(#gear, #undeclared))
         if #empty == 0 then
-            info('Declared [Empty] sets: none.')
+            notice('Declared [Empty] sets: none.')
         else
-            info('Declared [Empty] sets: ' .. table.concat(empty, ', '))
+            notice('Declared [Empty] sets: ' .. table.concat(empty, ', '))
         end
         return true
+    end
+
+    -- Neither returns true, matching the other shortcuts, so self_command_custom
+    -- still sees the command and a job file's own handling keeps working.
+    command_handlers["aptitude"] = function(cmd, command)
+        lock_mode('aptitude', command_arg(cmd))
+    end
+
+    command_handlers["jubilee"] = function(cmd, command)
+        lock_mode('jubilee', command_arg(cmd))
     end
 
     command_handlers["hoxne"] = function(cmd, command)
         if command == "hoxne" then
             state.Hoxne:cycle()
-            info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
+            notice('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
             display_box_update()
         elseif set_mode_arg(state.Hoxne, 'Hoxne Ampulla', 'Hoxne', command_arg(cmd)) then
-            info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
+            notice('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
             display_box_update()
         else
             return true
         end
         if state.Hoxne.value ~= 'OFF' then
-            local _, _, carried = find_enchantment('Hoxne Ampulla')
+            local _, _, carried = find_enchantment(HOXNE_AMPULLA)
             if carried then
                 hoxne.window     = false
-                hoxne.slot       = nil
-                hoxne.resume     = nil
                 hoxne.recheck_at = 0
                 if state.Hoxne.value == 'ON-Allow Critical' then
                     -- Allow-Critical holds without disable(); this also clears a hold
@@ -5559,29 +5351,25 @@ do
                     enable('range', 'ammo')
                 end
                 hoxne_equip_ampulla()
-                local _, hx_ext = find_enchantment(HOXNE_AMPULLA)
-                local hx_recast = enchantment_waits(hx_ext) or 0
-                hoxne.use_not_before = os.clock() + math.max(HOXNE_EQUIP_LOCKOUT, hx_recast)
+                local hx_recast = hoxne_arm_use_lockout()
                 -- Answer once here; the tick's own warnings are throttled.
                 if hx_recast > 0 then
-                    info(('Hoxne Ampulla is on cooldown for %ds; it will be used as soon as it is ready.')
+                    notice(('Hoxne Ampulla is on cooldown for %ds; it will be used as soon as it is ready.')
                         :format(math.ceil(hx_recast)))
                 end
                 if state.Hoxne.value == 'ON-Allow Critical' then
-                    info('Hoxne locked. Songs, Geomancy, Tomahawk and Angon may borrow range/ammo.')
+                    notice('Hoxne locked. Songs, Geomancy, Tomahawk and Angon may borrow range/ammo.')
                 else
-                    info('Hoxne locked. Range and ammo are held; instruments and Angon/Tomahawk will not equip.')
+                    notice('Hoxne locked. Range and ammo are held; instruments and Angon/Tomahawk will not equip.')
                 end
             else
                 warn("Hoxne Ampulla not found.  Not locking range/ammo")
                 state.Hoxne:set('OFF')
-                info('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
+                notice('Hoxne Ampulla Mode: [' .. state.Hoxne.value .. ']')
                 display_box_update()
             end
         else
             hoxne.window     = false
-            hoxne.slot       = nil
-            hoxne.resume     = nil
             hoxne.recheck_at = 0
             enable('range', 'ammo')
             -- Start the release and let the tick verify it: one call is not enough
@@ -5590,7 +5378,7 @@ do
                 hoxne.release_tries = 5
                 hoxne.release_next  = os.clock() + 2
             end
-            info('Hoxne mode disabled.  Range and ammo unlocked.')
+            notice('Hoxne mode disabled.  Range and ammo unlocked.')
         end
         equip_set_command()
         return true
@@ -5600,9 +5388,9 @@ do
     command_handlers["autobuff"] = function(cmd, command)
         if command == 'autobuff' then
             state.AutoBuff:cycle()
-            info('Auto Buff is [' .. state.AutoBuff.value .. ']')
+            notice('Auto Buff is [' .. state.AutoBuff.value .. ']')
         elseif set_mode_arg(state.AutoBuff, 'Auto Buff', 'AutoBuff', command_arg(cmd)) then
-            info('Auto Buff is [' .. state.AutoBuff.value .. ']')
+            notice('Auto Buff is [' .. state.AutoBuff.value .. ']')
         else
             return true
         end
@@ -5611,35 +5399,29 @@ do
         return true
     end
 
-    -- Shuts down instnace
+    -- Shuts down this instance
     command_handlers["shutdown"] = function(cmd, command)
         send_command('terminate')
     end
 
-    -- Saves the location of HUD
+    -- Writes the whole settings file, HUD positions included.
     command_handlers["save"] = function(cmd, command)
-        if windower.ffxi.get_info().logged_in then
-            config.save(settings)
-            windower.add_to_chat(80, 'Settings saved')
-        else
-            windower.add_to_chat(80, 'Cannot save while zoning - try again in a moment.')
-        end
+        save_settings()
     end
 
-    -- Toggles dispay of the HUD
+    -- Toggles display of the HUD
     command_handlers["display"] = function(cmd, command)
         if settings.visible == true then
             settings.visible = false
             gs_status:hide()
             gs_status:draggable(false)
-            windower.add_to_chat(80, 'The UI is now hidden')
         else
             settings.visible = true
             gs_status:draggable(true)
             gs_status:show()
             display_box_update()
-            windower.add_to_chat(80, 'The UI is now shown')
         end
+        notice(settings.visible and 'The UI is now shown' or 'The UI is now hidden')
     end
 
     command_handlers["debug"] = function(cmd, command)
@@ -5647,47 +5429,42 @@ do
             settings.debug = false
             gs_debug:hide()
             gs_debug:draggable(false)
-            windower.add_to_chat(121, '[Mirdain Debug] Debugging is now [OFF]')
         else
             settings.debug = true
             gs_debug:draggable(true)
             gs_debug:show()
             debug_box_reset()
             debug_box_update()
-            log('Debugging is now [ON]')
-            debug('Debugging is now [ON]')
         end
+        notice('Debugging is now [' .. (settings.debug and 'ON' or 'OFF') .. ']')
     end
 
     command_handlers["warn"] = function(cmd, command)
         if settings.warn == true then
             settings.warn = false
-            windower.add_to_chat(123, 'The set warning is now [OFF]')
         else
             settings.warn = true
-            warn('The set warning is now [ON]')
         end
+        notice('The set warning is now [' .. (settings.warn and 'ON' or 'OFF') .. ']')
     end
 
     -- Traces which gear set each midcast chose, and what it fell back through.
     command_handlers["gearreporting"] = function(cmd, command)
         if settings.gear_reporting == true then
             settings.gear_reporting = false
-            windower.add_to_chat(207, 'Gear reporting is now [OFF]')
         else
             settings.gear_reporting = true
-            gear_report('Gear reporting is now [ON]')
         end
+        notice('Gear reporting is now [' .. (settings.gear_reporting and 'ON' or 'OFF') .. ']')
     end
 
     command_handlers["info"] = function(cmd, command)
         if settings.info == true then
             settings.info = false
-            windower.add_to_chat(8, 'Information is now [OFF]')
         else
             settings.info = true
-            info('Information is now [ON]')
         end
+        notice('Information is now [' .. (settings.info and 'ON' or 'OFF') .. ']')
     end
 
     command_handlers["two_hand_check"] = function(cmd, command)
@@ -5747,120 +5524,62 @@ do
         use_enchantment("Dim. Ring (Mea)")
     end
 
-    -- CP Ring
-    command_handlers["cp"] = function(cmd, command)
+    -- CP Ring (Trizek)
+    command_handlers["trizek"] = function(cmd, command)
         use_enchantment("Trizek Ring")
     end
 
-    -- Toggles the current player stances
+    -- Cycles Offense Mode, or sets it from an argument.
     command_handlers["offensemode"] = function(cmd, command)
         if command == 'offensemode' then
-            for i, v in ipairs(state.OffenseMode) do
-                if state.OffenseMode.value == v then
-                    if state.OffenseMode.value ~= state.OffenseMode[#state.OffenseMode] then
-                        state.OffenseMode:set(state.OffenseMode[i + 1])
-                    else
-                        state.OffenseMode:set(state.OffenseMode[1])
-                    end
-                    info('Offense Mode: [' .. state.OffenseMode.value .. ']')
-                    display_box_update()
-                    equip_set_command()
-                    return true
-                end
-            end
-        elseif set_mode_arg(state.OffenseMode, 'Offense Mode', 'OffenseMode', command_arg(cmd)) then
-            info('Offense Mode: [' .. state.OffenseMode.value .. ']')
-            display_box_update()
-            equip_set_command()
-            return true
-        else
+            state.OffenseMode:cycle()
+        elseif not set_mode_arg(state.OffenseMode, 'Offense Mode', 'OffenseMode', command_arg(cmd)) then
             return true
         end
+        notice('Offense Mode: [' .. state.OffenseMode.value .. ']')
+        display_box_update()
+        equip_set_command()
+        return true
     end
 
     command_handlers["weaponmode"] = function(cmd, command)
         if command == 'weaponmode' then
-            for i, v in ipairs(state.WeaponMode) do
-                if state.WeaponMode.value == v then
-                    if state.WeaponMode.value ~= state.WeaponMode[#state.WeaponMode] then
-                        state.WeaponMode:set(state.WeaponMode[i + 1])
-                    else
-                        state.WeaponMode:set(state.WeaponMode[1])
-                    end
-                    info('Weapon Mode: [' .. state.WeaponMode.value .. ']')
-                    display_box_update()
-                    if self_command_custom then self_command_custom(command) end
-                    two_hand_check()
-                    equip_set_command()
-                    return true
-                end
-            end
-        elseif set_mode_arg(state.WeaponMode, 'Weapon Mode', 'WeaponMode', command_arg(cmd)) then
-            info('Weapon Mode: [' .. state.WeaponMode.value .. ']')
-            display_box_update()
-            if self_command_custom then self_command_custom(command) end
-            two_hand_check()
-            equip_set_command()
-            return true
-        else
+            state.WeaponMode:cycle()
+        elseif not set_mode_arg(state.WeaponMode, 'Weapon Mode', 'WeaponMode', command_arg(cmd)) then
             return true
         end
+        notice('Weapon Mode: [' .. state.WeaponMode.value .. ']')
+        display_box_update()
+        if self_command_custom then self_command_custom(command) end
+        two_hand_check()
+        equip_set_command()
+        return true
     end
 
     command_handlers["jobmode2"] = function(cmd, command)
         if command == 'jobmode2' then
-            for i, v in ipairs(state.JobMode2) do
-                if state.JobMode2.value == v then
-                    if state.JobMode2.value ~= state.JobMode2[#state.JobMode2] then
-                        state.JobMode2:set(state.JobMode2[i + 1])
-                    else
-                        state.JobMode2:set(state.JobMode2[1])
-                    end
-                    info(UI_Name2 .. ': [' .. state.JobMode2.value .. ']')
-                    display_box_update()
-                    if self_command_custom then self_command_custom(command) end
-                    equip_set_command()
-                    return true
-                end
-            end
-        elseif set_mode_arg(state.JobMode2, UI_Name2 ~= '' and UI_Name2 or 'Job Mode 2', 'JobMode2', command_arg(cmd)) then
-            info(UI_Name2 .. ': [' .. state.JobMode2.value .. ']')
-            display_box_update()
-            if self_command_custom then self_command_custom(command) end
-            equip_set_command()
-            return true
-        else
+            state.JobMode2:cycle()
+        elseif not set_mode_arg(state.JobMode2, UI_Name2 ~= '' and UI_Name2 or 'Job Mode 2', 'JobMode2', command_arg(cmd)) then
             return true
         end
+        notice(UI_Name2 .. ': [' .. state.JobMode2.value .. ']')
+        display_box_update()
+        if self_command_custom then self_command_custom(command) end
+        equip_set_command()
+        return true
     end
 
     command_handlers["jobmode"] = function(cmd, command)
         if command == 'jobmode' then
-            for i, v in ipairs(state.JobMode) do
-                if state.JobMode.value == v then
-                    if state.JobMode.value ~= state.JobMode[#state.JobMode] then
-                        state.JobMode:set(state.JobMode[i + 1])
-                    else
-                        state.JobMode:set(state.JobMode[1])
-                    end
-                    info(UI_Name .. ': [' .. state.JobMode.value .. ']')
-                    display_box_update()
-                    -- Issue a command to the lua for the job specific command
-                    if self_command_custom then self_command_custom(command) end
-                    equip_set_command()
-                    return true
-                end
-            end
-        elseif set_mode_arg(state.JobMode, UI_Name ~= '' and UI_Name or 'Job Mode', 'JobMode', command_arg(cmd)) then
-            info(UI_Name .. ': [' .. state.JobMode.value .. ']')
-            display_box_update()
-            -- Issue a command to the lua for the job specific command
-            if self_command_custom then self_command_custom(command) end
-            equip_set_command()
-            return true
-        else
+            state.JobMode:cycle()
+        elseif not set_mode_arg(state.JobMode, UI_Name ~= '' and UI_Name or 'Job Mode', 'JobMode', command_arg(cmd)) then
             return true
         end
+        notice(UI_Name .. ': [' .. state.JobMode.value .. ']')
+        display_box_update()
+        if self_command_custom then self_command_custom(command) end
+        equip_set_command()
+        return true
     end
 
     -- This profile mode is used to load a Silmaril profile and execute a script
@@ -5870,7 +5589,7 @@ do
             table.insert(modes, mode)
         end
         local smModePath = table.concat(modes, '_', 2, #modes)
-        info('Profile: [' .. modes[#modes] .. ']')
+        notice('Profile: [' .. modes[#modes] .. ']')
         windower.send_command('exec ' .. smModePath .. '/' .. player.main_job ..
             '_' .. player.sub_job .. '_' .. player.name)
     end
@@ -5885,7 +5604,7 @@ do
     end
 
     command_handlers["version"] = function(cmd, command)
-        info('Include Version is [' .. Mirdain_GS .. ']')
+        notice('Include Version is [' .. Mirdain_GS .. ']')
     end
 
     -------Custom Commands for Proccing and 1Dmg Weapons-------
@@ -5991,7 +5710,6 @@ do
         end
         if handler and handler(cmd, command) then return end
 
-        --use below for custom Job commands
         if self_command_custom then self_command_custom(command) end
     end
 
@@ -6002,8 +5720,15 @@ do
 
     -- Set the macro book, lockstyle and keybinds for the job.
     function jobsetup(LockStylePallet, MacroBook, MacroSet)
+        -- An empty list would take math.random(0), whose error aborts the whole
+        -- job file: jobsetup is called at file scope, above get_sets.
         if Random_Lockstyle then
-            LockStylePallet = Lockstyle_List[math.random(#Lockstyle_List)]
+            if #Lockstyle_List > 0 then
+                LockStylePallet = Lockstyle_List[math.random(#Lockstyle_List)]
+            else
+                warn('Random_Lockstyle is on but Lockstyle_List is empty; using pallet ' ..
+                    tostring(LockStylePallet) .. '.')
+            end
         end
 
         windower.send_command('wait 1;input /macro book ' ..
@@ -6022,19 +5747,18 @@ do
         send_command('bind ^f10 gs c Hoxne')
         send_command('bind ^f9 gs c SpellReceived')
 
-        windower.add_to_chat(8, 'Stance - ' .. string.format('[%s]', 'F12'))
-        windower.add_to_chat(8, 'TH Mode - ' .. string.format('[%s]', 'F11'))
-        windower.add_to_chat(8, 'Auto Buff - ' .. string.format('[%s]', 'F10'))
-        windower.add_to_chat(8, 'Weapon Mode - ' .. string.format('[%s]', 'F9'))
+        notice('Stance - ' .. string.format('[%s]', 'F12'))
+        notice('TH Mode - ' .. string.format('[%s]', 'F11'))
+        notice('Auto Buff - ' .. string.format('[%s]', 'F10'))
+        notice('Weapon Mode - ' .. string.format('[%s]', 'F9'))
         if UI_Name ~= '' then
-            windower.add_to_chat(8, UI_Name .. ' - ' .. string.format('[%s]', 'Ctrl + F12'))
+            notice(UI_Name .. ' - ' .. string.format('[%s]', 'Ctrl + F12'))
         end
         if UI_Name2 ~= '' then
-            windower.add_to_chat(8, UI_Name2 .. ' - ' .. string.format('[%s]', 'Ctrl + F11'))
+            notice(UI_Name2 .. ' - ' .. string.format('[%s]', 'Ctrl + F11'))
         end
-        windower.add_to_chat(8, 'Hoxne Ampulla Mode - ' .. string.format('[%s]', 'Ctrl + F10'))
-        windower.add_to_chat(8,
-            'Spell Received Gear Mode (Multibox Only) - ' .. string.format('[%s]', 'Ctrl + F9'))
+        notice('Hoxne Ampulla Mode - ' .. string.format('[%s]', 'Ctrl + F10'))
+        notice('Spell Received Gear Mode (Multibox Only) - ' .. string.format('[%s]', 'Ctrl + F9'))
     end
 
     -- Release locks, destroy the display boxes and unbind keys when the file unloads.
@@ -6056,8 +5780,8 @@ do
         send_command('unbind f12')
 
         ench_active      = nil
+        ench_held_slot   = nil
         hoxne.window     = false
-        hoxne.slot       = nil
         hoxne.recheck_at = 0
         enable('range', 'ammo')
 
@@ -6084,7 +5808,7 @@ do
         coroutine.schedule(two_hand_check, 2.1)
         coroutine.schedule(equip_set_command, 2.2)
         if sub_job_change_custom then
-            sub_job_change_custom()
+            sub_job_change_custom(new, old)
         end
     end
 
@@ -6096,7 +5820,7 @@ do
 
     -- Release any slots left locked by a previous load.
     enable('main', 'sub', 'range', 'ammo', 'head', 'neck', 'lear', 'rear', 'body', 'hands', 'lring', 'rring', 'waist',
-        'legs', 'feet')
+        'legs', 'feet', 'back')
 
     -- Action, packet and zone events.
     windower.register_event('target change', on_target_change_for_th)
@@ -6108,9 +5832,14 @@ do
     windower.register_event('ipc message', function(msg)
         if state.SpellReceived.value == 'OFF' then return end
 
-        if msg:startswith('MIRDAIN|SPELL|') then
-            local caster_name, target_name, spell_id, time_str =
-                msg:match('^MIRDAIN|SPELL|([^|]*)|([^|]*)|([^|]*)|(.*)$')
+        -- SPELL and ABILITY differ only in the tag and the kind handed to the
+        -- equip, so one match serves both. A COMPLETE message carries two fields
+        -- fewer and cannot match this shape at all.
+        local tag, caster_name, target_name, spell_id, time_str =
+            msg:match('^MIRDAIN|([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$')
+        local kind = tag and IPC_CAST_KIND[tag]
+
+        if kind then
             if target_name and target_list_contains(target_name, player.name) then
                 local time_sent = tonumber(time_str) or 9999999999999
                 local time_received = get_time()
@@ -6121,36 +5850,7 @@ do
 
                 if next(active_incoming_casters) == nil then
                     cast_start_time = time_sent
-                    equip_spell_received_gear(tonumber(spell_id), "spell")
-                end
-
-                -- Add caster to active pool and refresh failsafe timer
-                active_incoming_casters[caster_name] = true
-                if settings.debug then
-                    debug(caster_name ..
-                        " added to Active Incoming Casters (" .. count_keys(active_incoming_casters) .. ")")
-                end
-                failsafe_active = true
-                failsafe_trigger_time = os.clock() + settings.delay
-                if settings.debug then
-                    debug(player.name ..
-                        " is targeted by " .. caster_name .. ". Gear equipped and timer refreshed.")
-                end
-            end
-        elseif msg:startswith('MIRDAIN|ABILITY|') then
-            local caster_name, target_name, spell_id, time_str =
-                msg:match('^MIRDAIN|ABILITY|([^|]*)|([^|]*)|([^|]*)|(.*)$')
-            if target_name and target_list_contains(target_name, player.name) then
-                local time_sent = tonumber(time_str) or 9999999999999
-                local time_received = get_time()
-                if settings.debug then
-                    debug("Targeted IPC Message Received: " ..
-                        msg .. " after " .. (time_received - time_sent) .. " ms")
-                end
-
-                if next(active_incoming_casters) == nil then
-                    cast_start_time = time_sent
-                    equip_spell_received_gear(tonumber(spell_id), "ability")
+                    equip_spell_received_gear(tonumber(spell_id), kind)
                 end
 
                 -- Add caster to active pool and refresh failsafe timer
@@ -6184,11 +5884,12 @@ do
                     if next(active_incoming_casters) == nil then
                         if settings.debug then debug("No active incoming casts remain. Resetting gear.") end
                         if state.SpellReceived.value == 'ON' then
-                            for slot, _ in pairs(active_external_locks) do
-                                enable(slot)
+                            local held = active_external_locks
+                            active_external_locks = {}
+                            for slot, _ in pairs(held) do
+                                release_slot(slot)
                                 if settings.debug then debug("Unlocking " .. tostring(slot)) end
                             end
-                            active_external_locks = {}
                         end
                         equip_set_command()
                         failsafe_active = false
@@ -6198,9 +5899,9 @@ do
         end
     end)
 
-    -- Enchantment and Hoxne drivers. prerender fires every frame regardless of network
-    -- traffic, which is why these live here rather than in main_engine: they keep
-    -- working while the character stands still. Both are gated on a clock read.
+    -- Enchantment, Hoxne and gated-JA drivers. prerender fires every frame regardless
+    -- of network traffic, which is why these live here rather than in main_engine:
+    -- they keep working while the character stands still. Each is gated on a clock read.
     windower.raw_register_event('prerender', function()
         local now = os.clock()
         if now >= ench_next_check then
@@ -6236,15 +5937,8 @@ do
         -- appearing; from here the buff itself is read instead.
         if id == BUFF_ACCESSION then accession_predicted = false end
         if id == BUFF_DIVINE_SEAL then divine_seal_predicted = false end
-        if id == 6 and (Mage_Job:contains(player.main_job) or Mage_Job:contains(player.sub_job)) then
-            if player.inventory['Remedy'] ~= nil then
-                if AutoItem == true then
-                    windower.chat.input('/item "Remedy" <me>')
-                end
-            else
-                info('No Remedies in inventory.')
-            end
-        elseif id == 4 then
+        if id == 4 or (id == 6
+                and (Mage_Job:contains(player.main_job) or Mage_Job:contains(player.sub_job))) then
             if player.inventory['Remedy'] ~= nil then
                 if AutoItem == true then
                     windower.chat.input('/item "Remedy" <me>')
@@ -6262,6 +5956,9 @@ do
             if sets.Weapons then
                 if sets.Weapons.Sleep then
                     info('Locking Sleep Gear')
+                    -- set_combine, not merge_into: built_set above is an ALIAS of
+                    -- sets.Idle, so an in-place merge would write the Sleep weapons
+                    -- into the job file's own set.
                     built_set = set_combine(built_set, sets.Weapons.Sleep)
                 else
                     warn('sets.Weapons.Sleep not found!')
@@ -6272,34 +5969,36 @@ do
             equip(built_set)
             disable('main', 'range')
             -- Used to wake up during sleep
-            -- Cancel stoneskin
             if buffactive['Stoneskin'] then
                 info('Cancel Stoneskin')
                 cancel('Stoneskin')
             end
-        elseif id == 7 then
-            log("Petrification - Checking Gear")
-            if choose_set_custom then
-                equip(set_combine(choose_set(), choose_set_custom()))
-            else
-                equip(set_combine(choose_set()))
-            end
-        elseif id == 10 then
-            log("Stunned - Checking Gear")
-            if choose_set_custom then
-                equip(set_combine(choose_set(), choose_set_custom()))
-            else
-                equip(set_combine(choose_set()))
-            end
+        elseif id == 7 or id == 10 then
+            log(id == 7 and 'Petrification' or 'Stunned', ' - Checking Gear')
+            equip(build_current_set())
         elseif id == 15 then
             info('DOOOOOOM!!!')
             --Lock eligible slots for cursna received gear if not tracking party spellcasting through IPC
             if state.SpellReceived.value == "OFF" then
                 if sets.Cursna_Received then
                     warn_if_empty(sets.Cursna_Received, 'sets.Cursna_Received')
+                    -- Same precedence pre-pass as the IPC path: free the slots this
+                    -- may take, leave the ones held above, and claim only what it got.
+                    local taken = {}
+                    for slot in pairs(sets.Cursna_Received) do
+                        local claim = slot_claim(slot)
+                        if claim ~= 'ench' and claim ~= 'hoxne' then
+                            taken[slot] = true
+                            enable(slot)
+                        end
+                    end
                     equip(sets.Cursna_Received)
-                    for slot, item in pairs(sets.Cursna_Received) do
+                    -- One registry for both delivery paths: they are the same feature
+                    -- and the modes are exclusive, so a claim here is released by the
+                    -- Doom handler below or by a mode switch, whichever comes first.
+                    for slot in pairs(taken) do
                         disable(slot)
+                        active_external_locks[slot] = true
                     end
                     info('Locking Cursna Received Gear')
                 else
@@ -6307,7 +6006,7 @@ do
                 end
             end
             if AutoItem then
-                if player.inventory['Holy Water'] ~= nil then -- Only here to notify player about Doom status and potential lack of Holy Waters
+                if player.inventory['Holy Water'] ~= nil then -- The nil test exists so the missing-item case can be reported
                     windower.chat.input('/item "Holy Water" <me>')
                 else
                     info('No Holy Waters in inventory. Unable to cure DOOM status!')
@@ -6326,30 +6025,19 @@ do
         local name = buff and buff.en or tostring(id)
         local gain = false
         --Unlock cursna received gear if not tracking party spellcasting through IPC
-        if id == 15 and state.SpellReceived.value == "OFF" then -- Doom
+        local doom = id == 15 and state.SpellReceived.value == "OFF"
+        if doom or id == 2 then
+            -- Deregister first: UnlockByMode skips anything still claimed, so the
+            -- slots the Doom path took would otherwise never come back.
+            if doom then release_spell_received_gear() end
             UnlockByMode()
-            if choose_set_custom then
-                if buff_change_custom then
-                    equip(set_combine(choose_set(), choose_set_custom(), buff_change_custom(name, gain)))
-                else
-                    equip(set_combine(choose_set(), choose_set_custom()))
-                end
-            else
-                equip(set_combine(choose_set()))
+            local built_set = build_current_set()
+            -- No report when buff_change_custom is absent; buff_change warns for it.
+            if buff_change_custom then
+                merge_into(built_set, buff_change_custom(name, gain))
             end
-            info('Unlocking Cursna Received Gear')
-        elseif id == 2 then -- sleep
-            UnlockByMode()
-            if choose_set_custom then
-                if buff_change_custom then
-                    equip(set_combine(choose_set(), choose_set_custom(), buff_change_custom(name, gain)))
-                else
-                    equip(set_combine(choose_set(), choose_set_custom()))
-                end
-            else
-                equip(set_combine(choose_set()))
-            end
-            info('Unlocking Sleep Gear')
+            equip(built_set)
+            info(doom and 'Unlocking Cursna Received Gear' or 'Unlocking Sleep Gear')
         end
     end)
 
@@ -6372,7 +6060,8 @@ do
     end)
     ]] --
 
-    -- Player actions. Gated on actor id, because this fires for every entity in range.
+    -- Player actions. The first block is gated on actor id; the burst dispatch at
+    -- the end runs for every actor.
     windower.raw_register_event('action', function(data)
         if data ~= nil then
             --info('cat=' .. data.category .. ',param=' .. data.param)
@@ -6431,8 +6120,6 @@ do
                         if state.TreasureMode.value ~= 'Full Time' then
                             equip_set_command()
                         end
-                    elseif th_info.tagged_mobs[data.actor_id] then
-                        th_info.tagged_mobs[data.actor_id] = os.clock()
                     elseif target and th_info.tagged_mobs[target.id] then
                         th_info.tagged_mobs[target.id] = os.clock()
                     end
@@ -6478,4 +6165,3 @@ do
     hoxne.release_tries = 10
     hoxne.release_next  = os.clock() + 3
 end
-

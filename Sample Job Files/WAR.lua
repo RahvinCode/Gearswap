@@ -1,4 +1,3 @@
---Turin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -197,6 +196,7 @@ function get_sets()
 		legs=gear.sakpataLegs,
 		feet=gear.sakpataFeet,
 	})
+	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, {})
 
 	--These base set are used when an aftermath is active and player is enaged and correct weapon type set (Augments the current OffenseMode)
 	--If you don't specify a weapon mode it will use it regardless of Mythic,Empy,Relic,Aeonic
@@ -240,9 +240,6 @@ function get_sets()
 		left_ring=gear.prolix, -- 2
 		right_ring = gear.gelatinousPlusOne,
 	} --44%
-
-	-- For instant casts (Like Raises/Reraise)
-	sets.Precast.QuickMagic = {}
 
 	sets.Precast.Enmity = {
 		ammo=gear.sapience, -- 2
@@ -350,7 +347,6 @@ function get_sets()
 	sets.WS.RA = {}
 
 	sets.WS.WSD = {}
-	sets.WS.WSD.RA = {}
 
 	sets.WS.MEVA = set_combine(sets.WS, {
 		head = gear.sakpataHead,
@@ -375,17 +371,17 @@ function get_sets()
 		right_ring=gear.lehkoHabhokaRing,
 		back = gear.warWSDSTR,
 	}
-	sets.WS.CRIT.RA = {}
+	sets.WS.RA.CRIT = {}
 
 	sets.WS.ACC = {}
-	sets.WS.ACC.RA = {}
+	sets.WS.RA.ACC = {}
 
 	sets.WS.SB = sets.Subtle_Blow
 
-	sets.WS.SB.RA = {}
+	sets.WS.RA.SB = {}
 
 	sets.WS.PDL = {}
-	sets.WS.PDL.RA = {}
+	sets.WS.RA.PDL = {}
 
 	--These set are used when a weaponskill is used with that level of aftermath with the correct weapon
 	--They Augment any built weaponskill set - Same formatting as the OffenseModes
@@ -398,14 +394,14 @@ function get_sets()
 	sets.WS.AM2['Ukonvasara'] = {}
 	sets.WS.AM3['Ukonvasara'] = {}
 
-	sets.WS.AM.RA = {}
-	sets.WS.AM1.RA = {}
-	sets.WS.AM2.RA = {}
-	sets.WS.AM3.RA = {}
+	sets.WS.RA.AM = {}
+	sets.WS.RA.AM1 = {}
+	sets.WS.RA.AM2 = {}
+	sets.WS.RA.AM3 = {}
 
-	sets.WS.AM1.RA['Some Relic Gun'] = {}
-	sets.WS.AM2.RA['Some Relic Gun'] = {}
-	sets.WS.AM3.RA['Some Relic Gun'] = {}
+	sets.WS.RA.AM1['Some Relic Gun'] = {}
+	sets.WS.RA.AM2['Some Relic Gun'] = {}
+	sets.WS.RA.AM3['Some Relic Gun'] = {}
 
 	-- Great Axe WS
 	sets.WS["Ukko's Fury"] = {
@@ -477,7 +473,7 @@ function get_sets()
 	sets.WS["Circle Blade"] = {}
 	sets.WS["Spirits Within"] = {}
 	sets.WS["Vorpal Blade"] = {}
-	sets.WS["Savage Blade"] = sets.WS.WSD
+	sets.WS["Savage Blade"] = set_combine(sets.WS.WSD, {})
 	sets.WS["Savage Blade"]['PDL'] = set_combine(sets.WS.WSD, {
 		head = gear.sakpataHead,
 	})
@@ -571,13 +567,7 @@ end
 function check_buff_JA()
 	local buff = 'None'
 	local ja_recasts = windower.ffxi.get_ability_recasts()
-	if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-		buff = "Berserk"
-	elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-		buff = "Aggressor"
-	elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-		buff = "Warcry"
-	end
+	buff = check_war_self_buff(player.main_job_level, ja_recasts) or buff
 	if player.sub_job == 'SAM' then
 		if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 then
 			buff = "Hasso"

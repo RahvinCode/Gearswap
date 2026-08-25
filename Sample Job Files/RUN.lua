@@ -1,5 +1,4 @@
 
---Turin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -40,7 +39,7 @@ LockStylePallet = "12"
 MacroBook = "12"
 MacroSet = Macro_Sub_Job()
 
---Modes for specific to Paladin.  These are defined below in "Weapons".
+--Modes for specific to Rune Fencer.  These are defined below in "Weapons".
 state.WeaponMode:options('Epeolatry','Naegling','Club','Great Axe','Axe')
 state.WeaponMode:set('Epeolatry')
 
@@ -343,6 +342,9 @@ function get_sets()
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {}
 
+	-- Divine magic skill, which Vivacious Pulse scales its cure from
+	sets.Midcast.Divine = {}
+
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
 		waist=gear.siegel,
@@ -404,7 +406,7 @@ function get_sets()
     })
     sets.JA["Pflug"] = set_combine(sets.Enmity, { feet=gear.runeistFeetPlusThree })
     sets.JA["Battuta"] = set_combine(sets.Enmity, { head=gear.futharkHeadPlusThree })
-    sets.JA["Vivacious Pulse"] = set_combine(sets.Precast.Divine, { head=gear.erilazHeadPlusThree })
+    sets.JA["Vivacious Pulse"] = set_combine(sets.Midcast.Divine, { head=gear.erilazHeadPlusThree })
     sets.JA["Embolden"] = set_combine(sets.Enmity, sets.Embolden)
     sets.JA["Swordplay"] = set_combine(sets.Enmity, { hands=gear.futharkHandsPlusThree })
 	sets.JA["Provoke"] = sets.Enmity
@@ -531,13 +533,7 @@ function check_buff_JA()
 		end
 
 		if player.sub_job == 'WAR' then
-			if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-				buff = "Berserk"
-			elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-				buff = "Aggressor"
-			elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-				buff = "Warcry"
-			end
+			buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 		end
 
 		if buffactive[Runes[state.JobMode.value].Name] == 3 and windower.ffxi.get_player().target_locked then

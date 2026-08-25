@@ -1,6 +1,4 @@
 
--- Morwen
-
 -- Load and initialize the include file.
 include('GearSets-Include')
 include('Mirdain-Include')
@@ -148,6 +146,8 @@ function get_sets()
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode,{})
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode,{})
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.SB = set_combine(sets.OffenseMode, {})
 
 	--Swap in when dual wielding
 	sets.DualWield = {
@@ -171,7 +171,7 @@ function get_sets()
 		right_ear=gear.malignanceEar, -- 4
 		left_ring=gear.lebecheRing, -- 2 Quick Magic
 		right_ring=gear.kishar, -- 4
-		-- Have to use Fast Cast due to Head Locked out with Pet above 67%
+		-- Have to use Fast Cast due to Head Locked out with Pet above 68%
 		back = gear.geoFCB,
 		--back="Perimede Cape", -- 4 Quick Magic
 	} -- 80% Fast Cast with 9% Quick Magic
@@ -211,7 +211,6 @@ function get_sets()
 		back = gear.geoCure, -- 10
     }
 
-	-- CuragaSet
 	sets.Midcast.Curaga = set_combine( sets.Midcast.Cure, {})
 
 	-- Enhancing Skill
@@ -353,7 +352,7 @@ function get_sets()
 
 	sets.Pet_Midcast = {}
 
-	-- Will be used to keep max HP of Luopan when casting spells but switches when below 70% to the Idle.Pet set.
+	-- Keeps the Luopan's max HP up. Merged after every Geomancy cast, and otherwise only while the pet is above 68% HP.
 	sets.Luopan = {
 		head = gear.baguaArmorHeadPlusFour,
 	}
@@ -376,7 +375,7 @@ function get_sets()
 		back = gear.geoPetRegen,
 	}
 	sets.JA["Blaze of Glory"] = {}
-	sets.JA["Dematerialzie"] = {}
+	sets.JA["Dematerialize"] = {}
 	sets.JA["Theurgic Focus"] = {}
 	sets.JA["Concentric Pulse"] = {}
 	sets.JA["Mending Halation"] = {

@@ -1,5 +1,4 @@
 
---Yavanna
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -93,7 +92,7 @@ function get_sets()
 		back = gear.whmFC,
     }
 
-	-- 'TP','PDL','ACC','DT','PDT','MEVA'
+	-- 'TP','ACC','DT','PDT','MEVA'
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {
@@ -110,13 +109,6 @@ function get_sets()
 	-- Set is only applied when sublimation is charging
 	sets.Idle.Sublimation = set_combine(sets.Idle, {
 	    waist=gear.embla, -- +3 Submlimation when active
-	})
-	-- Set to swap out when MP is low
-	sets.Idle.Refresh = set_combine(sets.Idle, {
-		body=gear.ebersBodyPlusThree,
-	    feet = gear.chironicSlippersRefresh,
-		left_ring = gear.stikiniRingPlusOne1, -- +1 Refresh
-		right_ring = gear.stikiniRingPlusOne2, -- +1 Refresh
 	})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 
@@ -293,8 +285,8 @@ function get_sets()
 		waist=gear.obstinateSash,
 		left_ear=gear.alabaster,
 		right_ear = gear.ebersEarringPlusOneMacc,
-		left_ring=gear.stikiniPlusOne,
-		right_ring=gear.stikiniPlusOne,
+		left_ring=gear.stikiniRingPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back=gear.nullShawl,
 	}
 
@@ -427,8 +419,8 @@ function get_sets()
 		waist=gear.siegel,
 		left_ear=gear.alabaster,
 		right_ear=gear.earthcryEarring,
-		left_ring=gear.stikiniPlusOne,
-		right_ring=gear.stikiniPlusOne,
+		left_ring=gear.stikiniRingPlusOne,
+		right_ring=gear.stikiniRingPlusOne,
 		back = gear.whmFC,
 	}
 
@@ -450,7 +442,7 @@ function get_sets()
 	sets.JA["Asylum"] = {}
 
 	-- ===================================================================================================================
-	--		sets.aftercast
+	--		sets.WS
 	-- ===================================================================================================================
 
 	sets.WS = {
@@ -472,7 +464,7 @@ function get_sets()
 	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
 	sets.WS.ACC = {}
 
-	-- Note that the Mote library will unlock these gear spots when used.
+	-- Worn to tag Treasure Hunter on a mob; the engine merges it on the tagging action.
 	sets.TreasureHunter = {}
 
 end

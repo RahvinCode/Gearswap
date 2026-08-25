@@ -1,5 +1,4 @@
 
--- Turin
 
 -- Load and initialize the include file.
 include('GearSets-Include')
@@ -69,6 +68,7 @@ function get_sets()
 
 	--Default arrow to use
 	Ammo.RA = "Yoichi's Arrow"
+	Ammo.ACC = "Yoichi's Arrow"
 
 	-- Standard Idle set with -DT, Refresh and Regen gear
 	sets.Idle = {
@@ -87,7 +87,7 @@ function get_sets()
 		back=gear.nullShawl,
     }
 
-	-- 'TP','PDL','ACC','DT','PDT','MEVA'
+	-- 'TP','ACC','DT','SB','PDL'
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {})
@@ -168,11 +168,12 @@ function get_sets()
 
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
 	-- 75 total cap - Max 50 in each category
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode, sets.Subtle_Blow, {
 
 	})
+	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
 
 	sets.Precast = {}
 
@@ -462,14 +463,8 @@ function check_buff_JA()
 	if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 then
 		buff = "Hasso"
 	end
-	if player.sub_job == 'WAR' and player.sub_job_level == 49 then
-		if not buffactive['Berserk'] and ja_recasts[1] == 0 then
-			buff = "Berserk"
-		elseif not buffactive['Aggressor'] and ja_recasts[4] == 0 then
-			buff = "Aggressor"
-		elseif not buffactive['Warcry'] and ja_recasts[2] == 0 then
-			buff = "Warcry"
-		end
+	if player.sub_job == 'WAR' then
+		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
 	end
 	return buff
 end
