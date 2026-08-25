@@ -79,7 +79,7 @@ All 22 sample files were refreshed. These carry gear or behaviour corrections th
 Twelve of the samples — BST, COR, DNC, DRG, DRK, MNK, NIN, PUP, RNG, RUN, SAM and WAR — also hand their Warrior self-buff chain to the engine's `check_war_self_buff`, and COR and RNG drop their own `Job_Mode_Check` for the engine's. See [Customization Hooks](#13-customization-hooks) for both. Keeping your own copies is fine: a definition in your job file loads after the include and replaces the engine's. Copying is worth it in two places — seven of those twelve ask for a Warrior self-buff on any Warrior subjob at all, where the engine's version gates each ability on the level that learns it; and the engine's `Job_Mode_Check` merges `sets.Weapons[<JobMode value>]` for every mode your file offers rather than three named ones.
 
 ## Performance Simulation Results
-
+### [https://rahvincode.github.io/Gearswap/]
 Measured, not guessed: a simulated Dynamis Divergence fight — six clients played the way a six-box party plays, inside an 18-player alliance against a full mob wave — runs this engine, the original Mirdain-Include 1.5.12 and a third author's suite over identical timelines from a fixed seed. The figures below are from that run, **measured on version 1.7.2** at each engine's own shipped defaults.
 
 - **Cheaper than 1.5.12 on both counts.** Across all six clients, 1.7.2 costs about 88% of 1.5.12's CPU and about 61% of its allocation rate — measured at the shipped defaults, with `info` and `warn` on, the gear trace and `debug` off, Hoxne Ampulla automation running on the Bard and Treasure Hunter on Tag on the Corsair. Run quiet, with every channel off, it is the cheapest of the three suites measured.
