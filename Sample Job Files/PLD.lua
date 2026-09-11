@@ -1,21 +1,19 @@
 
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Miso Ramen"
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDT','MEVA','AoE') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('TP','ACC','DT','PDT','MEVA','AoE') -- ACC affects WS and TP modes
 
---Enable JobMode for UI - Once locked-on and auto buff enabled it will do enmity actions
-UI_Name = 'Auto Tank'
-UI_Name2 = 'Runes'
+--Job-specific mode slots. Name one with UI_Name / UI_Name2 to show it in the status box.
+UI_Name = ''
+UI_Name2 = ''
 
-Buff_Delay = 2 -- Used this to slow down auto buffing
-Tank_Delay = 1 -- delays between tanking actions (only used when auto-buffing enabled and target locked on)
 
 --Modes for specific to Paladin.  These are defined below in "Weapons".
 state.WeaponMode:options('Burtgang','Naegling','Club','Shining One')
@@ -61,30 +59,12 @@ BlueHealing = S{'Magic Fruit', 'Healing Breeze','Pollen', 'Wild Carrot'}
 BlueSkill = S{'Occultation','Erratic Flutter','Nature\'s Meditation','Cocoon','Barrier Tusk','Matellic Body','Mighty Guard'}
 BlueTank = S{'Jettatura','Blank Gaze','Sheep Song','Geist Wall'}
 
--- Used when /RUN
-
---Modes for specific to /RUN
-state.JobMode2:options('None','Fire','Ice','Wind','Earth','Lightning','Water','Light','Dark') -- Modes used to use Rune Enhancement
-state.JobMode2:set('None')
-
-Runes = {
-	Fire = {Name = "Ignis", Description = "[ICE RESISTANCE] and deals [FIRE DAMAGE]"},
-	Ice = {Name = "Gelus", Description = "[WIND RESISTANCE] and deals [ICE DAMAGE]"},
-	Wind = {Name = "Flabra", Description = "[EARTH RESISTANCE] and deals [WIND DAMAGE]"},
-	Earth = {Name = "Tellus", Description = "[LIGHTNING RESISTANCE] and deals [EARTH DAMAGE]"},
-	Lightning = {Name = "Sulpor", Description = "[WATER RESISTANCE] and deals [LIGHTNING DAMAGE]"},
-	Water = {Name = "Unda", Description = "[FIRE RESISTANCE] and deals [WATER DAMAGE]"},
-	Light = {Name = "Lux", Description = "[DARK RESISTANCE] and deals [LIGHT DAMAGE]"},
-	Dark = {Name = "Tenebrae", Description = "[LIGHT RESISTANCE] and deals [DARKNESS DAMAGE]"},
-	None = {Name = 'None', Description = "None"}
-}
-
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "13"
 MacroBook = "5"
 MacroSet = Macro_Sub_Job()
 
---Command to Lock Style and Set the correct macros
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 --
@@ -113,7 +93,7 @@ function get_sets()
 		sub=gear.alberStrap,
 	}
 
-	--Default Shield
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {}
 
 	-- Standard Idle set
@@ -136,6 +116,8 @@ function get_sets()
 	sets.Idle.TP = set_combine( sets.Idle, {
 		sub=gear.duban,
 	})
+
+	sets.Idle.ACC = set_combine( sets.Idle, {})
 
 	sets.Idle.DT = set_combine( sets.Idle, {
 		sub=gear.aegis,
@@ -174,7 +156,7 @@ function get_sets()
 		right_ear=gear.chevalierEarringPlusOne,
     }
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -212,25 +194,25 @@ function get_sets()
 
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is ACC and Engaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine( sets.OffenseMode, {
 
 	})
 
-	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = set_combine( sets.OffenseMode, {
 		body = gear.sakpataBody,
 		neck = gear.unmovingPlusOne,
 		right_ear = gear.odnowaPlusOne,
 	})
 
-	--This set is used when OffenseMode is PDT and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is PDT and Engaged (Augments the TP base set)
 	sets.OffenseMode.PDT = set_combine( sets.Idle.PDT, {
 		waist=gear.flumeBeltPlusOne,
 		left_ear=gear.etherealEarring,
 	})
 
-	--This set is used when OffenseMode is MEVA and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is MEVA and Engaged (Augments the TP base set)
 	sets.OffenseMode.MEVA = set_combine( sets.Idle.MEVA, {
 		left_ear=gear.telos,
 		right_ear=gear.chevalierEarringPlusOne,
@@ -238,7 +220,7 @@ function get_sets()
 		back=gear.nullShawl,
 	})
 
-	--This set is used when OffenseMode is AoE and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is AoE and Engaged (Augments the TP base set)
 	sets.OffenseMode.AoE = set_combine( sets.Idle.AoE, {
 
 	})
@@ -283,12 +265,12 @@ function get_sets()
 		left_ring=gear.rahabRing,
 	}
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine( sets.Idle, {
 	
 	})
 
-	--This set is used in conjuction with set_combine
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = {
 		ammo=gear.staunchPlusOne, -- 11
 		head = gear.souveranHeadPlusOnePathC, -- 20
@@ -390,7 +372,6 @@ function get_sets()
 	sets.JA["Sepulcher"] = set_combine( sets.Enmity, { })
 	sets.JA["Palisade"] = set_combine( sets.Enmity, { })
 	sets.JA["Intervene"] = set_combine( sets.Enmity, { })
-	sets.JA["Iron Will"] = set_combine( sets.Enmity, { head = gear.caballariusHeadPlusThree })
 	sets.JA["Fealty"] = set_combine( sets.Enmity, { body = gear.caballariusBodyPlusThree })
 	sets.JA["Chivalry"] = set_combine( sets.Enmity, { hands = gear.caballariusHandsPlusThree })
 	sets.JA["Majesty"] = set_combine( sets.Enmity, { })
@@ -414,7 +395,7 @@ function get_sets()
 		right_ring=gear.corneliaRing,
 		back = gear.pldWSD,
 	}
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 	sets.WS.WSD = {}
 	sets.WS.CRIT = {}
@@ -435,9 +416,10 @@ function get_sets()
 	sets.WS["Chant du Cygne"] = {}
 	sets.WS["Requiescat"] = {}
 
-	--Custom sets for each jobsetup
+	--Custom sets for each jobsetup. The engine never reads this set; the hooks below are where a job file uses one.
 	sets.Custom = {}
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		body=gear.volteJupon,
@@ -450,9 +432,6 @@ end
 -- DO NOT EDIT BELOW THIS LINE UNLESS YOU NEED TO MAKE JOB SPECIFIC RULES
 -------------------------------------------------------------------------------------------------------------------
 
-buff_time = os.clock()
-tank_time = os.clock()
-JA_Delay = os.clock()
 
 -- Called when the player's subjob changes.
 function sub_job_change_custom(new, old)
@@ -518,128 +497,12 @@ function status_change_custom(new,old)
 
 	return equipSet
 end
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
 
---Function used to automate Job Ability use
-function check_buff_JA()
-	local buff = 'None'
-	if os.clock() - buff_time > Buff_Delay then
-		local ja_recasts = windower.ffxi.get_ability_recasts()
-
-		if player.sub_job == 'SAM' and player.sub_job_level > 24 then
-			if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 and player.sub_job_level > 24 then
-				buff = "Hasso"
-			end
-		end
-
-		if player.sub_job == 'WAR' then
-			if not buffactive['Berserk'] and ja_recasts[1] == 0 and player.sub_job_level > 14 then
-				buff = "Berserk"
-			end
-			if not buffactive['Aggressor'] and ja_recasts[4] == 0 and player.sub_job_level > 44 then
-				buff = "Aggressor"
-			end
-			if not buffactive['Warcry'] and ja_recasts[2] == 0 and player.sub_job_level > 34 then
-				buff = "Warcry"
-			end
-		end
-
-		if player.sub_job == 'RUN' then
-			--Rune sets
-			if Runes[state.JobMode2.value].Name ~= "None" and player.sub_job_level > 4 then
-				if ja_recasts[92] == 0 and buffactive[Runes[state.JobMode2.value].Name] ~= 2 then
-					buff = Runes[state.JobMode2.value].Name
-					info(Runes[state.JobMode2.value].Description)
-				end
-			end
-		end
-
-		if not buffactive['Majesty'] and ja_recasts[150] == 0 and player.main_job_level > 69 then
-			buff = "Majesty"
-		end
-
-		if buff ~= 'None' then
-			buff_time = os.clock()
-		else
-			buff = check_tank_JA()
-		end
-	end
-	return buff
-end
-
---Function used to automate Spell use
-function check_buff_SP()
-	local buff = 'None'
-	if os.clock() - buff_time > Buff_Delay then
-		local sp_recasts = windower.ffxi.get_spell_recasts()
-		if not buffactive['Enmity Boost'] and sp_recasts[476] == 0 and player.mp > 18 and player.main_job_level > 87 then
-			buff = "Crusade"
-		elseif not buffactive['Phalanx'] and sp_recasts[106] == 0 and player.mp > 21 and player.main_job_level > 76 then
-			buff = "Phalanx"
-		elseif not buffactive['Reprisal'] and sp_recasts[97] == 0 and player.mp > 25 and player.main_job_level > 60 then
-			buff = "Reprisal"
-		elseif not buffactive['Enlight'] and sp_recasts[855] == 0 and player.mp > 25 and player.main_job_level > 84 then
-			buff = "Enlight II"
-		end
-		if player.sub_job == "BLU" then
-			if not buffactive['Defense Boost'] and sp_recasts[547] == 0 and player.mp > 10 and player.sub_job_level > 8 then
-				buff = "Cocoon"
-			end
-		end
-		if buff ~= 'None' then
-			buff_time = os.clock()
-		else
-			buff = check_tank()
-		end
-	end
-	return buff
-end
-
-function check_tank()
-	local buff = 'None'
-	if os.clock() - tank_time > Tank_Delay then
-		if (player.status == "Engaged" or windower.ffxi.get_player().target_locked) and state.JobMode.value == "ON" then
-			local sp_recasts = windower.ffxi.get_spell_recasts()
-			if sp_recasts[112] == 0 and player.mp > 25 and player.main_job_level > 36 then
-				buff = "Flash"
-			elseif sp_recasts[840] == 0 and player.mp > 48 and player.sub_job == "RUN" and player.sub_job_level > 57 then
-				buff = "Foil"
-			end
-		end
-	end
-
-	if buff ~= 'None' then
-		tank_time = os.clock()
-	end
-	return buff
-end
-
--- Tank job abilities, chosen on the JA hook so they cast as /ja. Shares
--- tank_time with check_tank, so spells and abilities spend one tanking
--- window between them.
-function check_tank_JA()
-	local buff = 'None'
-	if os.clock() - tank_time > Tank_Delay then
-		if (player.status == "Engaged" or windower.ffxi.get_player().target_locked) and state.JobMode.value == "ON" then
-			local ja_recasts = windower.ffxi.get_ability_recasts()
-			if ja_recasts[73] == 0 and player.main_job_level > 14 then
-				buff = "Shield Bash"
-			elseif ja_recasts[79] == 0 and player.mp < 150 and player.tp > 2000 and player.main_job_level > 14 then
-				buff = "Chivalry"
-			end
-		end
-	end
-
-	if buff ~= 'None' then
-		tank_time = os.clock()
-	end
-	return buff
-end
-
--- Function is called when the job lua is unloaded
+-- This function is called when the job file is unloaded
 function user_file_unload()
 
 end

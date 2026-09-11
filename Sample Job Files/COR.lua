@@ -1,6 +1,6 @@
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "7"
@@ -34,7 +34,7 @@ UI_Name = 'TP Mode'
 state.JobMode:options('Standard', 'Melee', 'Ranged', 'Subtle Blow')
 state.JobMode:set('Standard')
 
--- Initialize Player
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup(LockStylePallet, MacroBook, MacroSet)
 
 -- Threshold for Ammunition Warning
@@ -60,7 +60,7 @@ function get_sets()
 	sets.Weapons['Savage Blade'] = {
 		main = gear.naegling,
 		sub = gear.gleti,
-		range = gear.anarchyPlusTwoB,
+		range = gear.anarchyPlusTwo,
 	}
 
 	sets.Weapons['Evisceration'] = {
@@ -85,7 +85,7 @@ function get_sets()
 		ammo = Ammo.Bullet.MAG_WS,
 		main = gear.rostam4,
 		sub = gear.tauret,
-		range = gear.anarchyPlusTwoB,
+		range = gear.anarchyPlusTwo,
 	}
 
 	sets.Weapons.Melee = {
@@ -100,15 +100,17 @@ function get_sets()
 		sub = gear.kustawiPlusOne,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {
 		sub = gear.nusku,
 	}
 
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {
 		range = gear.earp,
 	}
 
-	-- Standard Idle set with -DT,Refresh,Regen with NO movement gear
+	-- Standard Idle set with -DT, Refresh, Regen with NO movement gear
 	sets.Idle = {
 		ammo = Ammo.Bullet.RA,
 		head = gear.nyameHead,
@@ -138,7 +140,7 @@ function get_sets()
 		right_ring = gear.defending,
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 		neck = gear.nicander,
@@ -185,24 +187,24 @@ function get_sets()
 	--Base TP set to build off when melee'n
 	sets.OffenseMode.TP = set_combine(sets.OffenseMode, {})
 
-	--This set is used when OffenseMode is DT and Enaged
+	--This set is used when OffenseMode is DT and Engaged
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {
 		legs = gear.chasseurLegsPlusThree,
 		right_ear = gear.odnowaPlusOne,
 	})
 
-	--This set is used when OffenseMode is PDL and Enaged
+	--This set is used when OffenseMode is PDL and Engaged
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {
 		legs = gear.malignanceLegs,
 	})
 
-	--This set is used when OffenseMode is CRIT and Enaged
+	--This set is used when OffenseMode is CRIT and Engaged
 	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode, {
 		head = gear.nullMasque,
 		body = gear.ikengaBody,
 		hands = gear.chasseurHandsPlusThree,
 		legs = gear.malignanceLegs,
-		feet = gear.oshosiLeggingsPlusOne,
+		feet = gear.oshosiFeetPlusOne,
 		neck = gear.nullLoop,
 		waist = gear.reiki,
 		left_ear = gear.telos,
@@ -212,7 +214,7 @@ function get_sets()
 		back = gear.corCrit,
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is ACC and Engaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
 
 	-- Subtle Blow Set
@@ -225,7 +227,7 @@ function get_sets()
 		right_ring = gear.chirichPlusOne2,
 	})
 
-	--This set is used when OffenseMode is MEVA and Enaged
+	--This set is used when OffenseMode is MEVA and Engaged
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode.DT, {
 		head = gear.malignanceHead,
 		body = gear.malignanceBody,
@@ -253,7 +255,7 @@ function get_sets()
 	sets.Precast.RA = {
 		ammo = Ammo.Bullet.RA,
 		head = gear.chasseurHeadPlusThree, -- 0/14
-		body = gear.oshosiVestPlusOne,   -- 14/0
+		body = gear.oshosiBodyPlusOne,   -- 14/0
 		hands = gear.carmineHandsPlusOnePathD, -- 8/11
 		legs = gear.adhemarLegsPlusOnePathD, -- 10/13
 		feet = gear.meghanadaFeetPlusTwo, -- 10/0
@@ -261,7 +263,7 @@ function get_sets()
 		right_ear = gear.etiolation,
 		left_ring = gear.dingir,
 		right_ring = gear.crepuscularRing, -- 3/0
-		neck = gear.commodoreCharm, -- 4/0
+		neck = gear.commodoreCharmPlusTwo, -- 4/0
 		waist = gear.yemaya,       -- 0/5
 		back = gear.corSnapshot,   -- 10/0
 	}                              -- Totals 59/43
@@ -292,7 +294,7 @@ function get_sets()
 		back = gear.corFC,                -- 10
 	}                                     -- 65 FC
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
 	-- Ranged Attack Gear (Normal Midshot)
@@ -331,7 +333,7 @@ function get_sets()
 	-- Ranged CRIT
 	sets.Midcast.RA.CRIT = set_combine(sets.Midcast.RA, {
 		head = gear.ikengaHead,
-		feet = gear.oshosiLeggingsPlusOne,
+		feet = gear.oshosiFeetPlusOne,
 		legs = gear.ikengaLegs,
 		waist = gear.kwahuKachinaBeltPlusOne,
 		left_ring = gear.chirichRingPlusOne,
@@ -342,11 +344,11 @@ function get_sets()
 
 	-- Ranged Attack Gear (Triple Shot Midshot)
 	sets.Midcast.RA.TripleShot = set_combine(sets.Midcast.RA, {
-		head = gear.oshosiMaskPlusOne,   -- Missing
+		head = gear.oshosiHeadPlusOne,   -- Missing
 		body = gear.chasseurBodyPlusThree, --14
 		hands = gear.lanunHandsPlusFour, -- Tripple shot becomes Quad shot
-		legs = gear.oshosiTrousersPlusOne, -- Missing
-		feet = gear.oshosiLeggingsPlusOne, --3
+		legs = gear.oshosiLegsPlusOne, -- Missing
+		feet = gear.oshosiFeetPlusOne, --3
 	})                                   --28
 
 	sets.Midcast.Utsusemi = set_combine(sets.Idle, {})
@@ -361,7 +363,7 @@ function get_sets()
 		hands = gear.malignanceHands,
 		legs = gear.malignanceLegs,
 		feet = gear.malignanceFeet,
-		neck = gear.commodoreCharm,
+		neck = gear.commodoreCharmPlusTwo,
 		waist = gear.eschan,
 		left_ear = gear.hermetic,
 		right_ear = gear.crepuscularEar,
@@ -377,7 +379,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.chasseurFeetPlusThree,
-		neck = gear.commodoreCharm,
+		neck = gear.commodoreCharmPlusTwo,
 		waist = gear.orpheusWaist,
 		left_ear = gear.friomisi,
 		right_ear = gear.moonshadeEarringAcc,
@@ -427,7 +429,7 @@ function get_sets()
 		legs = gear.lanunLegsPlusThree,
 	}
 	sets.JA["Fold"] = {}     -- Use gloves for bust
-	sets.JA["Triple Shot"] = {} -- Gear to be worn during Midshot
+	sets.JA["Triple Shot"] = {} -- Worn on the Triple Shot ability itself; the shots are dressed by sets.Midcast.RA.TripleShot.
 	sets.JA["Cutting Cards"] = {}
 	sets.JA["Crooked Cards"] = {}
 	sets.JA["Double-Up"] = {
@@ -493,7 +495,7 @@ function get_sets()
 		hands = gear.chasseurHandsPlusThree,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.commodoreCharm,
+		neck = gear.commodoreCharmPlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear = gear.ishvara,
@@ -505,7 +507,7 @@ function get_sets()
 	-- Critical Hit set used in OffenseMode.CRIT
 	sets.WS.CRIT = set_combine(sets.WS, {})
 
-	-- Accuracy sets used in OffenseMode.ACC
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = set_combine(sets.WS, {})
 
 	-- Equipment to augment WS for Physical Damage Limit (Capped Attack)
@@ -624,6 +626,7 @@ function get_sets()
 		waist = gear.svelt, -- Changes based off elemental function
 	})
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		waist = gear.chaac,
 	}
@@ -686,26 +689,13 @@ function status_change_custom(new, old)
 	return equipSet
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 end
 
+-- This function is called when the job file is unloaded
 function user_file_unload()
 	--send_command('lua u autocor')
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	local ja_recasts = windower.ffxi.get_ability_recasts()
-	if player.sub_job == 'WAR' then
-		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
-	end
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	return buff
 end
 
 function pet_change_custom(pet, gain)

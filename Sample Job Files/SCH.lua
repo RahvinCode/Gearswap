@@ -1,7 +1,6 @@
-
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "13"
@@ -15,69 +14,62 @@ AutoItem = false
 Random_Lockstyle = false
 
 --Lockstyle sets to randomly equip
-Lockstyle_List = {1,2,6,12}
+Lockstyle_List = { 1, 2, 6, 12 }
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Tropical Crepe"
 
 --Set default mode (TP,ACC,DT)
-state.OffenseMode:options('TP','ACC','DT','PDT','MEVA')
+state.OffenseMode:options('TP', 'ACC', 'DT', 'PDT', 'MEVA')
 state.OffenseMode:set('DT')
 
---Command to Lock Style and Set the correct macros
-jobsetup (LockStylePallet,MacroBook,MacroSet)
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
+jobsetup(LockStylePallet, MacroBook, MacroSet)
 
 --Weapon Modes
-state.WeaponMode:options('Musa','Mpaca','Unlocked','Locked')
-state.WeaponMode:set('Unlocked')
+state.WeaponMode:options('Musa', 'Mpaca')
+state.WeaponMode:set('Mpaca')
 
 function get_sets()
-
 	--Set the weapon options.  This is set below in job customization section
 	sets.Weapons = {}
 
-	sets.Weapons['Musa'] ={
+	sets.Weapons['Musa'] = {
 		main = gear.musa,
-		sub=gear.enki,
+		sub = gear.enki,
 	}
 
-	sets.Weapons['Mpaca'] ={
+	sets.Weapons['Mpaca'] = {
 		main = gear.mpacaStaff,
-		sub=gear.enki,
+		sub = gear.enki,
 	}
 
-	sets.Weapons['Unlocked'] ={
-		main = gear.musa,
-		sub=gear.enki,
-	}
-	
-	sets.Weapons.Shield ={
-		main=gear.daybreak,
-		sub=gear.genmeiShield,
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
+	sets.Weapons.Shield = {
+		sub = gear.genmeiShield,
 	}
 
-	sets.Weapons.Sleep ={
-		main=gear.opashoro,
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
+	sets.Weapons.Sleep = {
+		main = gear.opashoro,
 	}
 
-	-- Standard idle set
+	-- Standard Idle set
 	sets.Idle = { -- HP:2151 MP:1493
-		main = gear.mpacaStaff,
-		sub=gear.enki,
-		ammo=gear.staunchPlusOne, -- 3/3
-		head=gear.arbatelHeadPlusThree, -- 10/10
-		body=gear.arbatelBodyPlusThree, -- 12/12 -- +3 Refresh
-		hands = gear.nyameHands, -- 7/7
-		legs=gear.arbatelLegsPlusThree, -- 12/12
+		ammo = gear.staunchPlusOne,    -- 3/3
+		head = gear.arbatelHeadPlusThree, -- 10/10
+		body = gear.arbatelBodyPlusThree, -- 12/12 -- +3 Refresh
+		hands = gear.nyameHands,       -- 7/7
+		legs = gear.arbatelLegsPlusThree, -- 12/12
 		feet = gear.chironicSlippersRefresh, -- +2 Refresh
-		neck=gear.loricatePlusOne, -- 6/6
-		waist=gear.carriers,
-		left_ear=gear.lugalbanda,
-		right_ear = gear.etiolation, -- 0/3
+		neck = gear.loricatePlusOne,   -- 6/6
+		waist = gear.carriers,
+		left_ear = gear.lugalbanda,
+		right_ear = gear.etiolation,     -- 0/3
 		left_ring = gear.stikiniRingPlusOne1, -- +1 Refresh
 		right_ring = gear.stikiniRingPlusOne2, -- +1 Refresh
-		back = gear.schFCDt, -- 5/5
-    } -- 57 PDT / 58 MDT
+		back = gear.schFCDt,             -- 5/5
+	}                                    -- 57 PDT / 58 MDT
 
 	-- 'TP','ACC','DT','PDT','MEVA'
 	sets.Idle.TP = set_combine(sets.Idle, {})
@@ -86,29 +78,29 @@ function get_sets()
 	sets.Idle.PDT = set_combine(sets.Idle, {})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 	sets.Idle.MEVA = set_combine(sets.Idle, {
-		neck=gear.warderCharmPlusOne,
-		waist=gear.carriers,
+		neck = gear.warderCharmPlusOne,
+		waist = gear.carriers,
 	})
 
 	-- Set is only applied when sublimation is charging
 	sets.Idle.Sublimation = set_combine(sets.Idle, {
-		head=gear.academicHeadPlusThree, -- +4 Submlimation when active
-		right_ring=gear.defending,
-	    waist=gear.embla, -- +3 Submlimation when active
+		head = gear.academicHeadPlusThree, -- +4 Submlimation when active
+		right_ring = gear.defending,
+		waist = gear.embla,        -- +3 Submlimation when active
 	})
 
 	-- Set to swap into when player is moving
 	sets.Movement = {
-		feet=gear.heraldGaiters
+		feet = gear.heraldGaiters
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck=gear.nicander,
-	    left_ring = gear.eshmun1,
+		neck = gear.nicander,
+		left_ring = gear.eshmun1,
 		right_ring = gear.eshmun2,
-		waist=gear.gishdubar,
+		waist = gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -116,31 +108,31 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck=gear.nicander,
+		neck = gear.nicander,
 	}
 
 	-- Sets are used for when player is engaged
 	sets.OffenseMode = {
-		ammo=gear.staunchPlusOne,
-		head=gear.arbatelHeadPlusThree,
-		body=gear.arbatelBodyPlusThree,
+		ammo = gear.staunchPlusOne,
+		head = gear.arbatelHeadPlusThree,
+		body = gear.arbatelBodyPlusThree,
 		hands = gear.nyameHands,
-		legs=gear.arbatelLegsPlusThree,
+		legs = gear.arbatelLegsPlusThree,
 		feet = gear.nyameFeet,
 		neck = gear.loricatePlusOne,
-		waist=gear.grunfeldRope,
-		left_ear=gear.crepuscularEar,
-		right_ear=gear.telos,
-		left_ring=gear.chirichRingPlusOne,
-		right_ring=gear.chirichRingPlusOne,
+		waist = gear.grunfeldRope,
+		left_ear = gear.crepuscularEar,
+		right_ear = gear.telos,
+		left_ring = gear.chirichRingPlusOne,
+		right_ring = gear.chirichRingPlusOne,
 		back = gear.schFCDt,
 	}
 
-	sets.OffenseMode.TP = set_combine(sets.OffenseMode, { })
-	sets.OffenseMode.DT = set_combine(sets.OffenseMode, { })
-	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, { })
-	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, { })
-	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode, { })
+	sets.OffenseMode.TP = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode, {})
 
 	-- Set to use when Dual Wielding
 	sets.DualWield = {}
@@ -149,23 +141,23 @@ function get_sets()
 	sets.Precast = {}
 
 	sets.Precast.FastCast = {
-		-- 10 FC from Musa staff 
+		-- 10 FC from Musa staff
 		main = gear.musa,
-		sub=gear.clerisyStrapPlusOne,
-		ammo=gear.impatiens, -- Quick Magic
+		sub = gear.clerisyStrapPlusOne,
+		ammo = gear.impatiens,              -- Quick Magic
 		head = gear.pedagogyMortarboardPlusThree, -- 13% Grimoire, 6% Haste
-		body=gear.pingaTunicPlusOne, -- 15% FC, Haste
-		hands=gear.academicHandsPlusThree, -- 9% FC, 3% Haste
-		legs=gear.pingaPantsPlusOne, -- 13% FC, 5% Haste
-		feet=gear.academicFeetPlusThree, -- 12% Grimoire, 3% Haste
-		neck=gear.voltsurge, -- 4% FC
-		waist=gear.witful, -- 3% FC and 3 Quick Magic 
-		left_ear=gear.malignanceEar, -- 4% FC
-		right_ear=gear.etiolation, -- 1% FC
-		left_ring=gear.weatherspoon, -- 5% FC 3 Quick Magic
-		right_ring=gear.lebecheRing, -- 2 Quick Magic
-		back = gear.schFCDt, -- 10% FC
-	} -- 80 Fastcast, and 25% Grimoire all in one
+		body = gear.pingaBodyPlusOne,       -- 15% FC, Haste
+		hands = gear.academicHandsPlusThree, -- 9% FC, 3% Haste
+		legs = gear.pingaLegsPlusOne,       -- 13% FC, 5% Haste
+		feet = gear.academicFeetPlusThree,  -- 12% Grimoire, 3% Haste
+		neck = gear.voltsurge,              -- 4% FC
+		waist = gear.witful,                -- 3% FC and 3 Quick Magic
+		left_ear = gear.malignanceEar,      -- 4% FC
+		right_ear = gear.etiolation,        -- 1% FC
+		left_ring = gear.weatherspoon,      -- 5% FC 3 Quick Magic
+		right_ring = gear.lebecheRing,      -- 2 Quick Magic
+		back = gear.schFCDt,                -- 10% FC
+	}                                       -- 80 Fastcast, and 25% Grimoire all in one
 
 	sets.Precast.Enhancing = set_combine(sets.Precast.FastCast, {})
 
@@ -193,10 +185,10 @@ function get_sets()
 	sets.JA["Manifestation"] = {}
 	sets.JA["Focalization"] = {}
 	sets.JA["Immanence"] = {}
-	sets.JA["Addendum: White"] = {}
+	sets.JA["Addendum: Black"] = {}
 
 	sets.JA["Sublimation"] = {}
-	sets.JA["Tabula Rasa"] = {legs = gear.pedagogyLegsPlusThree}
+	sets.JA["Tabula Rasa"] = { legs = gear.pedagogyLegsPlusThree }
 	sets.JA["Modus Veritas"] = {}
 	sets.JA["Libra"] = {}
 	sets.JA["Caper Emissarius"] = {}
@@ -207,51 +199,51 @@ function get_sets()
 	--		sets.Midcast
 	-- ===================================================================================================================
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
 	-- Cure Set
 	sets.Midcast.Cure = {
 		main = gear.musa,
-		sub=gear.enki,
-		ammo=gear.hastyPinionPlusOne,
-		head=gear.arbatelHeadPlusThree,
+		sub = gear.enki,
+		ammo = gear.hastyPinionPlusOne,
+		head = gear.arbatelHeadPlusThree,
 		body = gear.kaykausBodyPlusOnePathD,
 		hands = gear.kaykausHandsPlusOnePathB,
 		legs = gear.kaykausLegsPlusOnePathB,
 		feet = gear.kaykausFeetPlusOnePathB,
-		neck=gear.nodens,
-		waist=gear.platinumMoogleBelt,
+		neck = gear.nodens,
+		waist = gear.platinumMoogleBelt,
 		left_ear = gear.odnowaPlusOne,
-		right_ear=gear.mendicantEarring,
-		left_ring=gear.najiLoop,
-		right_ring=gear.defending,
+		right_ear = gear.mendicantEarring,
+		left_ring = gear.najiLoop,
+		right_ring = gear.defending,
 		back = gear.schFCDt,
-    }	
+	}
 
 	-- Cursna Gear
 	sets.Midcast.Cursna = set_combine(sets.Midcast.Cure, {
 		body = gear.pedagogyBodyPlusThree,
-		legs=gear.academicLegsPlusThree,
-		feet=gear.gendewithaGaloshesPlusOne,
-		neck=gear.debilis,
-	    left_ring=gear.menelausRing,
-		right_ring=gear.haomaRing,
+		legs = gear.academicLegsPlusThree,
+		feet = gear.gendewithaGaloshesPlusOne,
+		neck = gear.debilis,
+		left_ring = gear.menelausRing,
+		right_ring = gear.haomaRing,
 	})
 
 	-- Enhancing Skill
 	sets.Midcast.Enhancing = {
 		main = gear.musa,
-		sub=gear.enki,
-		ammo=gear.psilomene,
+		sub = gear.enki,
+		ammo = gear.psilomene,
 		head = gear.telchineCapRegen,
 		body = gear.pedagogyBodyPlusThree,
 		hands = gear.telchineGlovesRegen,
 		legs = gear.telchineBraconiRegen,
 		feet = gear.telchinePigachesRegen,
-		neck=gear.incanterTorque,
-		waist=gear.embla,
-		left_ear=gear.mimir,
+		neck = gear.incanterTorque,
+		waist = gear.embla,
+		left_ear = gear.mimir,
 		right_ear = gear.etiolation,
 		left_ring = gear.stikiniRingPlusOne1,
 		right_ring = gear.stikiniRingPlusOne3,
@@ -271,25 +263,25 @@ function get_sets()
 	sets.Midcast.Regen = set_combine(sets.Midcast.Enhancing, {
 		body = gear.telchineChasubleRegen,
 		back = gear.bookwormCape,
-		head=gear.arbatelHeadPlusThree,
+		head = gear.arbatelHeadPlusThree,
 	})
 
-	sets.Midcast.Refresh = set_combine(sets.Midcast.Enhancing, { })
+	sets.Midcast.Refresh = set_combine(sets.Midcast.Enhancing, {})
 
 	-- High MACC for landing spells
 	sets.Midcast.Enfeebling = {
 		ammo = gear.ghastlyTathlumPlusOne,
-		head=gear.academicHeadPlusThree,
-		body=gear.academicBodyPlusThree,
-		hands=gear.academicHandsPlusThree,
-		legs=gear.arbatelLegsPlusThree,
-		feet=gear.academicFeetPlusThree,
-		neck = gear.arguteStole,
+		head = gear.academicHeadPlusThree,
+		body = gear.academicBodyPlusThree,
+		hands = gear.academicHandsPlusThree,
+		legs = gear.arbatelLegsPlusThree,
+		feet = gear.academicFeetPlusThree,
+		neck = gear.arguteStolePlusTwo,
 		waist = gear.obstinateSash,
-		left_ear=gear.regalEarring,
-		right_ear=gear.crepuscularEar,
-		left_ring=gear.stikiniRingPlusOne,
-		right_ring=gear.stikiniRingPlusOne,
+		left_ear = gear.regalEarring,
+		right_ear = gear.crepuscularEar,
+		left_ring = gear.stikiniRingPlusOne,
+		right_ring = gear.stikiniRingPlusOne,
 		back = gear.schNuke,
 	}
 
@@ -300,47 +292,47 @@ function get_sets()
 	sets.Midcast.Dark.Absorb = set_combine(sets.Midcast.Enfeebling, {})
 
 	sets.Midcast["Dispelga"] = set_combine(sets.Midcast.Enfeebling, {
-		main=gear.daybreak,
-		sub=gear.ammurapi,
+		main = gear.daybreak,
+		sub = gear.ammurapi,
 	})
 
-	 -- Used for Vagary (6k+ nuke no kill)
+	-- Used for Vagary (6k+ nuke no kill)
 	sets.Midcast.Vagary = {
-	    main=gear.chatoyantStaff,
-		ammo=gear.hastyPinionPlusOne,
+		main = gear.chatoyantStaff,
+		ammo = gear.hastyPinionPlusOne,
 		head = gear.vanyaHeadPathD,
-		body=gear.zendikRobe,
-		hands=gear.gendewithaGagesPlusOne,
-		legs=gear.pingaPantsPlusOne,
+		body = gear.zendikRobe,
+		hands = gear.gendewithaGagesPlusOne,
+		legs = gear.pingaLegsPlusOne,
 		feet = gear.merlinicCrackowsFCB,
 		neck = gear.unmovingPlusOne,
-		waist=gear.embla,
+		waist = gear.embla,
 		left_ear = gear.odnowaPlusOne,
-		right_ear=gear.etiolation,
-		left_ring=gear.weatherspoon,
-		right_ring=gear.kishar,
+		right_ear = gear.etiolation,
+		left_ring = gear.weatherspoon,
+		right_ring = gear.kishar,
 		back = gear.schFCDt,
 	}
 
 	sets.Midcast.Nuke = {
 		main = gear.bunzi,
-		sub=gear.ammurapi,
+		sub = gear.ammurapi,
 		ammo = gear.ghastlyTathlumPlusOne,
 		head = gear.pedagogyMortarboardPlusThree,
-		body=gear.arbatelBodyPlusThree,
+		body = gear.arbatelBodyPlusThree,
 		hands = gear.agwuHands,
 		legs = gear.agwuLegs,
-		feet=gear.arbatelFeetPlusThree,
-		neck = gear.arguteStole,
+		feet = gear.arbatelFeetPlusThree,
+		neck = gear.arguteStolePlusTwo,
 		waist = gear.acuityBeltPlusOne,
-		left_ear=gear.regalEarring,
-		right_ear=gear.malignanceEar,
+		left_ear = gear.regalEarring,
+		right_ear = gear.malignanceEar,
 		left_ring = gear.metamorphPlusOne,
-		right_ring=gear.freke,
+		right_ring = gear.freke,
 		back = gear.schNuke,
 	}
 
-	sets.Midcast.Nuke.Earth = set_combine(sets.Midcast.Nuke, { neck=gear.quanpur, })
+	sets.Midcast.Nuke.Earth = set_combine(sets.Midcast.Nuke, { neck = gear.quanpur, })
 
 	sets.Midcast.Burst = set_combine(sets.Midcast.Nuke, {})
 
@@ -350,88 +342,87 @@ function get_sets()
 		body = gear.agwuBody,
 		hands = gear.agwuHands,
 		legs = gear.agwuLegs,
-		feet=gear.arbatelFeetPlusThree,
-		neck = gear.arguteStole,
+		feet = gear.arbatelFeetPlusThree,
+		neck = gear.arguteStolePlusTwo,
 		waist = gear.acuityBeltPlusOne,
-		left_ear=gear.regalEarring,
-		right_ear=gear.malignanceEar,
+		left_ear = gear.regalEarring,
+		right_ear = gear.malignanceEar,
 		left_ring = gear.metamorphPlusOne,
-		right_ring=gear.freke,
+		right_ring = gear.freke,
 		back = gear.schNuke,
 	})
 
 	sets.Helix.Dark = set_combine(sets.Helix, {
-        head=gear.pixieHead,
-        left_ring=gear.archonRing,
-    })
+		head = gear.pixieHead,
+		left_ring = gear.archonRing,
+	})
 
-    sets.Helix.Light = set_combine(sets.Helix, {
-        main=gear.daybreak,
-        left_ring=gear.weatherspoon
-    })
+	sets.Helix.Light = set_combine(sets.Helix, {
+		main = gear.daybreak,
+		left_ring = gear.weatherspoon
+	})
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		ammo=gear.hastyPinionPlusOne,
-		head=gear.arbatelHeadPlusThree,
-		body=gear.arbatelBodyPlusThree,
+		ammo = gear.hastyPinionPlusOne,
+		head = gear.arbatelHeadPlusThree,
+		body = gear.arbatelBodyPlusThree,
 		hands = gear.nyameHands,
-		legs=gear.arbatelLegsPlusThree,
+		legs = gear.arbatelLegsPlusThree,
 		feet = gear.nyameFeet,
-		waist=gear.siegel,
-		left_ring=gear.defending,
+		waist = gear.siegel,
+		left_ring = gear.defending,
 		right_ring = gear.gelatinousPlusOne,
-		neck=gear.nodens,
-		left_ear=gear.earthcryEarring,
+		neck = gear.nodens,
+		left_ear = gear.earthcryEarring,
 	})
 
 	sets.Midcast["Aquaveil"] = set_combine(sets.Midcast.Enhancing, {
-		head=gear.amalricCoifPlusOne
+		head = gear.amalricCoifPlusOne
 	})
 
 	sets.Midcast["Klimaform"] = set_combine(sets.Midcast.Enhancing, {})
 
 	sets.Midcast["Impact"] = set_combine(sets.Midcast.Enfeebling, {
-		body=gear.crepuscularCloak,	
+		body = gear.crepuscularCloak,
 	})
 
 	sets.Midcast["Embrava"] = set_combine(sets.Midcast.Enhancing, {})
 
 	sets.Midcast["Stun"] = set_combine(sets.Midcast.Enfeebling.MACC, {})
 
-	sets.Perpetuance = { hands=gear.arbatelHandsPlusThree, }
-	sets.Immanence = { hands=gear.arbatelHandsPlusThree, }
-	sets.Ebullience = { head=gear.arbatelHeadPlusThree, }
-	sets.Rapture = { head=gear.arbatelHeadPlusThree, }
-	sets.Penury = { legs=gear.arbatelLegsPlusThree, } -- not swapped due to duration
-	sets.Parsimony = { legs=gear.arbatelLegsPlusThree, }
-	sets.Klimaform = { feet=gear.arbatelFeetPlusThree, }
-	sets.Storms = { feet=gear.pedagogyFeetPlusThree, }
+	sets.Perpetuance = { hands = gear.arbatelHandsPlusThree, }
+	sets.Immanence = { hands = gear.arbatelHandsPlusThree, }
+	sets.Ebullience = { head = gear.arbatelHeadPlusThree, }
+	sets.Rapture = { head = gear.arbatelHeadPlusThree, }
+	sets.Penury = { legs = gear.arbatelLegsPlusThree, } -- not swapped due to duration
+	sets.Parsimony = { legs = gear.arbatelLegsPlusThree, }
+	sets.Klimaform = { feet = gear.arbatelFeetPlusThree, }
+	sets.Storms = { feet = gear.pedagogyFeetPlusThree, }
 
 	sets.WS = {
-		ammo=gear.oshashaTreatise,
+		ammo = gear.oshashaTreatise,
 		head = gear.nyameHead,
 		body = gear.nyameBody,
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck=gear.sanctity,
-		waist=gear.eschan,
-		left_ear=gear.crepuscularEar,
-		right_ear=gear.telos,
-		left_ring=gear.corneliaRing,
-		right_ring=gear.epimanondas,
+		neck = gear.sanctity,
+		waist = gear.eschan,
+		left_ear = gear.crepuscularEar,
+		right_ear = gear.telos,
+		left_ring = gear.corneliaRing,
+		right_ring = gear.epimanondas,
 		back = gear.schFCDt,
 	}
 
-	-- Set used to tag treasure hunger
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
-		ammo=gear.perfectEgg,
-		head=gear.volteHead,
-		legs=gear.volteHose,
-		waist=gear.chaac,
+		ammo = gear.perfectEgg,
+		head = gear.volteHead,
+		legs = gear.volteHose,
+		waist = gear.chaac,
 	}
-
 end
 
 -------------------------------------------------------------------------------------------------------------------
@@ -444,14 +435,14 @@ function sub_job_change_custom(new, old)
 end
 
 --Adjust custom precast actions
-function pretarget_custom(spell,action)
+function pretarget_custom(spell, action)
 
 end
 
 -- Augment basic equipment sets
 function precast_custom(spell)
 	local equipSet = {}
-	if spell.type == "WhiteMagic" and (buffactive["Light Arts"] or buffactive["Addendum: White"]) then 
+	if spell.type == "WhiteMagic" and (buffactive["Light Arts"] or buffactive["Addendum: White"]) then
 		log("Grimoire Set (White)")
 		equipSet = set_combine(equipSet, sets.Precast.Grimoire)
 	elseif spell.type == "BlackMagic" and (buffactive["Dark Arts"] or buffactive["Addendum: Black"]) then
@@ -486,16 +477,21 @@ function midcast_custom(spell)
 		log("Penury Set")
 		equipSet = sets.Penury
 	end
-	]]--
+	]] --
 
 	if buffactive["Parsimony"] then
-		log("Parsimony Set") 
+		log("Parsimony Set")
 		equipSet = set_combine(equipSet, sets.Parsimony)
 	end
 
 	if buffactive["Perpetuance"] then
 		log("Perpetuance Set")
 		equipSet = set_combine(equipSet, sets.Perpetuance)
+	end
+
+	if buffactive["Klimaform"] and spell.skill == 'Elemental Magic' then
+		log("Klimaform Set")
+		equipSet = set_combine(equipSet, sets.Klimaform)
 	end
 
 	return equipSet
@@ -509,7 +505,7 @@ function aftercast_custom(spell)
 end
 
 --Function is called when the player gains or loses a buff
-function buff_change_custom(name,gain)
+function buff_change_custom(name, gain)
 	local equipSet = {}
 
 	return equipSet
@@ -523,13 +519,13 @@ function choose_set_custom()
 end
 
 --Function is called when the player changes states
-function status_change_custom(new,old)
+function status_change_custom(new, old)
 	local equipSet = {}
 
 	return equipSet
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
@@ -539,21 +535,9 @@ function user_file_unload()
 
 end
 
---Function used to automate Job Ability use - Checked first
-function check_buff_JA()
-	local buff = 'None'
-	return buff
-end
-
---Function used to automate Spell use
-function check_buff_SP()
-	local buff = 'None'
-	return buff
-end
-
-function pet_change_custom(pet,gain)
+function pet_change_custom(pet, gain)
 	local equipSet = {}
-	
+
 	return equipSet
 end
 

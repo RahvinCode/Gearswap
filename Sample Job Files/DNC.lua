@@ -1,7 +1,7 @@
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "16"
@@ -17,17 +17,17 @@ Random_Lockstyle = true
 --Lockstyle sets to randomly equip
 Lockstyle_List = {16,17,18}
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them
-state.OffenseMode:options('DT','TP','SB','Farm') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('DT','TP','SB','Farm') -- ACC affects WS and TP modes
 state.OffenseMode:set('DT')
 
 state.WeaponMode:options('Aeneas','Karambit')
 state.WeaponMode:set('Aeneas')
 
--- Initialize Player
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -90,7 +90,7 @@ function get_sets()
 
 	sets.Movement = {right_ring=gear.shneddickRing,}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -109,7 +109,7 @@ function get_sets()
 
 	sets.OffenseMode = {}
 
-	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = {
 		ammo=gear.yamarang,
 		head=gear.malignanceHead,
@@ -175,10 +175,10 @@ function get_sets()
     	back=gear.moonlightCape,
 	}
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--Merged over the engaged set while OffenseMode is ACC, once ACC is added to the options list above.
 	sets.OffenseMode.ACC = {}
-	--Dual Wield
-	sets.OffenseMode.DW = {}
+	--Merged over the engaged set while a dual-wield trait is active.
+	sets.DualWield = {}
 
 	sets.Precast = {}
 	sets.Precast.FastCast = {
@@ -317,13 +317,13 @@ function get_sets()
     	back=gear.sacroMantle,
 	}
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 	--WS Sets
 	-- Dagger WS
 	sets.WS["Wasp Sting"] = {}
 	sets.WS["Viper Bite"] = {}
-	sets.WS["Shadowstich"] = {}
+	sets.WS["Shadowstitch"] = {}
 	sets.WS["Gust Slash"] = {}
 	sets.WS["Cyclone"] = {}
 	sets.WS["Energy Steal"] = {}
@@ -369,6 +369,7 @@ function get_sets()
 	sets.WS["Raging Fists"] = {} 	-- Must Sub MNK
 	sets.WS["Tornado Kick"] = {} 	-- Must Sub MNK
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		head = gear.herculeanHelmNuke, 
 		legs = gear.herculeanTrousersAccEnmityDown,
@@ -423,39 +424,13 @@ function status_change_custom(new,old)
 
 	return Weapon_Check(equipSet)
 end
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
---Function is called when a lua is unloaded
+-- This function is called when the job file is unloaded
 function user_file_unload()
 
-end
-
---Function used to automate Job Ability use
-function check_buff_JA()
-	local buff = 'None'
-	local ja_recasts = windower.ffxi.get_ability_recasts()
-
-	if player.sub_job == 'SAM' and player.sub_job_level > 8 then
-		if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 then
-			buff = "Hasso"
-		elseif not buffactive['Meditate'] and ja_recasts[134] == 0 then
-			buff = "Meditate"
-		end
-	end
-
-	if player.sub_job == 'WAR' then
-		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
-	end
-
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 function pet_change_custom(pet,gain)

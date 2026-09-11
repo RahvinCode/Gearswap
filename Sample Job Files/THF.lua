@@ -1,15 +1,15 @@
 
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "5"
 MacroBook = "6"
 MacroSet = "1"
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
 --Uses Items Automatically
@@ -21,14 +21,14 @@ Random_Lockstyle = false
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
 
---Set default mode (TP,ACC,DT,PDL)
+--Set default mode (TP,ACC,DT)
 state.OffenseMode:set('DT')
 
 --Weapons options
 state.WeaponMode:options('Aeneas','Naegling','Evisceration')
 state.WeaponMode:set('Aeneas')
 
--- Initialize Player
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -51,7 +51,9 @@ function get_sets()
 		sub = gear.aeneas,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {}
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {
 		sub=gear.mpuGandring,
 	}
@@ -87,7 +89,7 @@ function get_sets()
 		feet=gear.fajinBoots,
     }
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -123,7 +125,7 @@ function get_sets()
 		back=gear.nullShawl,
 	}
 
-	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode.TP, {
 		head=gear.malignanceHead,
 		body=gear.adamantiteArmor,
@@ -135,7 +137,7 @@ function get_sets()
 		waist = gear.platinumMoogleBelt,
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is ACC and Engaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode.TP, {})
 
 	--Dual Wield need only 6 if not getting haste samba
@@ -169,11 +171,11 @@ function get_sets()
 		left_ring=gear.petrov, -- 4
 	}
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {
 	
 	})
-	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = {}
 	-- Cure Set
 	sets.Midcast.Cure = {}
@@ -246,7 +248,7 @@ function get_sets()
 		right_ring=gear.regalRing,
 		back = gear.thfWSD,
 	}
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 
 	sets.WS.MAB = set_combine( sets.WS, {
@@ -262,7 +264,7 @@ function get_sets()
 	--WS Sets
 	sets.WS["Wasp Sting"] = {}
 	sets.WS["Viper Bite"] = {}
-	sets.WS["Shadowstich"] = {}
+	sets.WS["Shadowstitch"] = {}
 	sets.WS["Gust Slash"] = {}
 	sets.WS["Cyclone"] = {}
 	sets.WS["Energy Steal"] = {}
@@ -274,9 +276,10 @@ function get_sets()
 		feet=gear.skulkerFeetPlusThree,
 	})
 
-	--Custome sets for each jobsetup
+	--Custom sets for each jobsetup. The engine never reads this set; the hooks below are where a job file uses one.
 	sets.Custom = {}
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		feet=gear.skulkerFeetPlusThree,
 	}
@@ -331,21 +334,9 @@ function status_change_custom(new,old)
 
 	return equipSet
 end
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	--local ja_recasts = windower.ffxi.get_ability_recasts()
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 -- This function is called when the job file is unloaded

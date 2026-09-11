@@ -1,8 +1,8 @@
 
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "4"
@@ -15,22 +15,23 @@ Random_Lockstyle = false
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
 --Uses Items Automatically
 AutoItem = false
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','SB','PDL') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('TP','ACC','DT','SB','PDL') -- ACC affects WS and TP modes
 
---Set default mode (TP,ACC,DT,PDL) etc
+--Set default mode (TP,ACC,DT,SB,PDL)
 state.OffenseMode:set('DT')
 
 --Weapons specific to Samurai
 state.WeaponMode:options('Masamune', 'Dojikiri', 'Shining One', 'Yoichinoyumi', 'Soboro')
 state.WeaponMode:set('Masamune')
 
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -64,6 +65,7 @@ function get_sets()
 		sub=gear.utu,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {}
 
 	--Default arrow to use
@@ -105,7 +107,7 @@ function get_sets()
 		feet=gear.danzoSuneAte
     }
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -127,8 +129,8 @@ function get_sets()
 		body=gear.dagonBreastplate, -- SB II 10
 		legs = gear.mpacaLegs, -- SB II 5
 		left_ring=gear.niqmaddu, -- SB II 5
-		head=gear.kendatsubaJinpachiPlusOne,  -- 8
-		hands=gear.kendatsubaTekkoPlusOne, -- 8
+		head=gear.kendatsubaHeadPlusOne,  -- 8
+		hands=gear.kendatsubaHandsPlusOne, -- 8
 		feet=gear.kendatsubaFeetPlusOne, -- 8
 		right_ear = gear.schere, -- 3
 		left_ring=gear.chirichRingPlusOne, -- 10
@@ -157,18 +159,18 @@ function get_sets()
 
 	})
 
-	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {
 		head=gear.kasugaHeadPlusTwo,
 		hands=gear.mpacaHands,
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is ACC and Engaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {
 
 	})
 
-	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is SB and Engaged (Augments the TP base set)
 	-- 75 total cap - Max 50 in each category
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode, sets.Subtle_Blow, {
 
@@ -208,10 +210,8 @@ function get_sets()
 		back = gear.samSnapshot,
     })	
 
-	-- Only the bullet needs to be set for ACC sets (so that it will match the sets.Midcast.RA.ACC)
-    sets.Precast.RA.ACC = set_combine(sets.Precast.RA, {
-		ammo=Ammo.ACC,
-    })
+	-- The precast merges the ammunition from the Ammo table by offense mode, so the ACC round
+	-- reaches the shot without a set of its own; sets.Precast.RA takes only the Flurry children.
 
 	-- Flurry - 55 Snapshot Needed
 	sets.Precast.RA.Flurry = set_combine(sets.Precast.RA, {
@@ -244,7 +244,7 @@ function get_sets()
 		right_ring=gear.eihwazRing, -- 5
 	})
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine (sets.Idle.DT, { })
 
 	-- Ranged Attack Gear (Normal Midshot)
@@ -322,7 +322,7 @@ function get_sets()
 		back = gear.samWSD,
 	}
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = set_combine (sets.WS, {
 
 	})
@@ -371,7 +371,7 @@ function get_sets()
 		--legs={ name="Sakonji Haidate +3", augments={'Enhances "Shikikoyo" effect',}},
 	}
 
-	-- Used to Tag TH on a mob (TH4 is max in gear non-THF)
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		body=gear.volteJupon,
@@ -435,7 +435,7 @@ function status_change_custom(new,old)
 	return equipSet
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
@@ -454,26 +454,6 @@ function choose_Seigan()
 			end
 		end
 	return equipSet
-end
-
---Function used to automate Job Ability use
-function check_buff_JA()
-	local buff = 'None'
-	local ja_recasts = windower.ffxi.get_ability_recasts()
-	if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 then
-		buff = "Hasso"
-	end
-	if player.sub_job == 'WAR' then
-		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
-	end
-	return buff
-end
-
---Function used to automate Spell use
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 -- This function is called when the job file is unloaded

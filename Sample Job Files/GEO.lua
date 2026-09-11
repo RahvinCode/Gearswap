@@ -1,14 +1,14 @@
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "20"
 MacroBook = "20"
 MacroSet = "1"
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Tropical Crepe"
 
 --Uses Items Automatically
@@ -20,17 +20,17 @@ Random_Lockstyle = false
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC affects WS and TP modes
 
 --Set default mode (TP,ACC,DT)
 state.OffenseMode:set('DT')
 
 --Weapons options
-state.WeaponMode:options('Idris','Black Halo','Unlocked')
-state.WeaponMode:set('Unlocked')
+state.WeaponMode:options('Idris','Black Halo','Mpaca')
+state.WeaponMode:set('Mpaca')
 
---Command to Lock Style and Set the correct macros
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 -- Goal 2200 HP/1400 MP
@@ -49,21 +49,22 @@ function get_sets()
 		sub=gear.genmeiShield,
 	}
 
-	sets.Weapons['Unlocked'] = {
-		main=gear.daybreak,
-		sub=gear.genmeiShield,
+	sets.Weapons['Mpaca'] = {
+		main=gear.mpacaStaff,
+		sub=gear.enki,
 	}
 
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {
 		main=gear.lorgMor,
 	}
 
-	--Shield used when not dual wield.
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {
 		sub=gear.genmeiShield,
 	}
 
-	-- Standard Idle set with -DT,Refresh,Regen and movement gear
+	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
 		range = gear.dunnaFC,
 		head=gear.azimuthHeadPlusThree, -- 11/11
@@ -91,7 +92,7 @@ function get_sets()
 	-- Sets for Idle when player has a pet
 	sets.Idle.Pet = set_combine( sets.Idle, { --2278/1482
 		head=gear.azimuthHeadPlusThree, -- 11/11
-		neck = gear.baguaCharm,
+		neck = gear.baguaCharmPlusTwo,
 		body=gear.adamantiteArmor,
 		feet = gear.baguaArmorFeetPlusFour,
 		left_ring=gear.defending,
@@ -104,7 +105,7 @@ function get_sets()
 		feet=gear.geomancyFeetPlusFour,
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -121,6 +122,7 @@ function get_sets()
 	    neck=gear.nicander,
 	}
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		waist=gear.chaac,
@@ -184,12 +186,12 @@ function get_sets()
 	sets.Precast.Songs = {}
 
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {
 	
 	})
 
-	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = {}
 
 	-- Cure Set
@@ -252,7 +254,7 @@ function get_sets()
 		hands=gear.azimuthHandsPlusThree,
 		legs=gear.geomancyLegsPlusFour,
 		feet=gear.geomancyFeetPlusFour,
-		neck = gear.baguaCharm,
+		neck = gear.baguaCharmPlusTwo,
 		waist=gear.luminarySash,
 		left_ear=gear.regalEarring,
 		right_ear=gear.malignanceEar,
@@ -266,8 +268,8 @@ function get_sets()
 		main = gear.idris,
 		sub=gear.ammurapi,
 		ammo = gear.ghastlyTathlumPlusOne,
-		head=gear.eaHatPlusOne,
-		body=gear.eaHouppelandePlusOne,
+		head=gear.eaHeadPlusOne,
+		body=gear.eaBodyPlusOne,
 		hands=gear.azimuthHandsPlusThree,
 		legs=gear.azimuthLegsPlusThree,
 		feet=gear.azimuthFeetPlusThree,
@@ -331,7 +333,7 @@ function get_sets()
 		hands=gear.geomancyHandsPlusFour,
 		legs = gear.baguaArmorLegsPlusFour, -- 21
 		feet=gear.azimuthFeetPlusThree, -- 30
-		neck = gear.baguaCharm,
+		neck = gear.baguaCharmPlusTwo,
 		waist=gear.luminarySash,
 		left_ear = gear.odnowaPlusOne,
 		right_ear=gear.etiolation,
@@ -352,7 +354,7 @@ function get_sets()
 
 	sets.Pet_Midcast = {}
 
-	-- Keeps the Luopan's max HP up. Merged after every Geomancy cast, and otherwise only while the pet is above 68% HP.
+	-- Keeps the Luopan's max HP up. Merged after every Geomancy cast; after that it holds only while a Bagua head is worn and the pet is above 68% HP.
 	sets.Luopan = {
 		head = gear.baguaArmorHeadPlusFour,
 	}
@@ -404,7 +406,7 @@ function get_sets()
 		back = gear.geoPetRegen,
 	}
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 
 end
@@ -486,25 +488,13 @@ function pet_midcast_custom(spell)
 	return equipSet
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
--- Function is called when the job lua is unloaded
+-- This function is called when the job file is unloaded
 function user_file_unload()
 
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	--local ja_recasts = windower.ffxi.get_ability_recasts()
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 -- Maintains the extra 600hp during midcast of spells when the Luopan is deployed.

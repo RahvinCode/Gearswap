@@ -1,14 +1,14 @@
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "8"
 MacroBook = "4"
 MacroSet = "1"
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
 --Uses Items Automatically
@@ -20,17 +20,17 @@ Random_Lockstyle = false
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
 state.OffenseMode:options('TP','PDL','ACC','DT','PDT','MEVA','CRIT','SB')
 
 --Set default mode (TP,ACC,DT,PDL)
 state.OffenseMode:set('DT')
 
 --Weapons options
-state.WeaponMode:options('Chango','Shining One','Savage Blade','Decimation','Axe','Aeolian Edge', 'Ukonvasara','Labraunda','Unlocked')
+state.WeaponMode:options('Chango','Shining One','Savage Blade','Decimation','Axe','Aeolian Edge', 'Ukonvasara','Labraunda')
 state.WeaponMode:set('Chango')
 
--- Initialize Player
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -70,13 +70,11 @@ function get_sets()
 		main=gear.chango,
 		sub=gear.utu,
 	}
-	-- This stops GS from chaning weapons (Abyssea Proc etc)
-	sets.Weapons['Unlocked'] ={}
-
-	-- This is used when you do not have dual wield and is not a two handed weapon
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {
 		sub=gear.blurredShield,
 	}
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {}
 
 	-- Base set for when the player is not engaged or casting.  Other sets build off this set
@@ -110,12 +108,12 @@ function get_sets()
 		waist=gear.carriers,
 	})
 
-	--Used to swap into movement gear when the player is detected movement when not engaged
+	--Used to swap into movement gear when the player is moving and not engaged
 	sets.Movement = {
 		feet=gear.hermesSandals,
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -152,7 +150,7 @@ function get_sets()
 		hands = gear.sakpataHands,
 		legs=gear.pummelerLegsPlusThree,
 		feet=gear.pummelerFeetPlusThree,
-		neck = gear.warriorsBead, -- 7 DA
+		neck = gear.warriorsBeadPlusTwo, -- 7 DA
 		waist = gear.sailfi, -- 5 DA
 		left_ear = gear.schere, -- 3 DA
 		right_ear=gear.boiiEarringPlusOne, -- 8 DA
@@ -162,7 +160,7 @@ function get_sets()
 	}
 
 	sets.OffenseMode.TP = set_combine( sets.OffenseMode, {})
-	--This set is used when OffenseMode is ACC and Enaged
+	--This set is used when OffenseMode is ACC and Engaged
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
 	--This set is used when OffenseMode is CRIT and Engaged
 	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode, {})
@@ -198,7 +196,7 @@ function get_sets()
 	})
 	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, {})
 
-	--These base set are used when an aftermath is active and player is enaged and correct weapon type set (Augments the current OffenseMode)
+	--These base sets are used when an aftermath is active and the player is Engaged with the matching weapon type set (Augments the current OffenseMode)
 	--If you don't specify a weapon mode it will use it regardless of Mythic,Empy,Relic,Aeonic
 
 	sets.OffenseMode.AM = {}  -- This is for Relic AM only
@@ -260,14 +258,13 @@ function get_sets()
 
 	-- Ranged Attack
 	sets.Precast.RA = {}
-    sets.Precast.RA.ACC = {}
 	sets.Precast.RA.Flurry = {}
 	sets.Precast.RA.Flurry_II = {}
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
-	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = {
 	    ammo=gear.staunchPlusOne, --11
 		--feet={ name="Odyssean Greaves", augments={'Attack+1','"Fast Cast"+6',}}, --20
@@ -336,7 +333,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.warriorsBead,
+		neck = gear.warriorsBeadPlusTwo,
 		waist = gear.sailfi,
 		left_ear=gear.thrud,
 		right_ear=gear.boiiEarringPlusOne,
@@ -363,7 +360,7 @@ function get_sets()
 		hands = gear.sakpataHands,
 		legs = gear.sakpataLegs,
 		feet = gear.sakpataFeet,
-		neck = gear.warriorsBead,
+		neck = gear.warriorsBeadPlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.schere,
 		right_ear=gear.boiiEarringPlusOne,
@@ -373,6 +370,7 @@ function get_sets()
 	}
 	sets.WS.RA.CRIT = {}
 
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 	sets.WS.RA.ACC = {}
 
@@ -399,6 +397,8 @@ function get_sets()
 	sets.WS.RA.AM2 = {}
 	sets.WS.RA.AM3 = {}
 
+	-- This is how you specify a ranged Weapon Mode AM set by Weapon Mode (examples). The key
+	-- must be a name in the state.WeaponMode options list above, or nothing reads it.
 	sets.WS.RA.AM1['Some Relic Gun'] = {}
 	sets.WS.RA.AM2['Some Relic Gun'] = {}
 	sets.WS.RA.AM3['Some Relic Gun'] = {}
@@ -411,7 +411,7 @@ function get_sets()
 		hands = gear.sakpataHands,
 		legs = gear.sakpataLegs,
 		feet = gear.sakpataFeet,
-		neck = gear.warriorsBead,
+		neck = gear.warriorsBeadPlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.schere,
 		right_ear = gear.boiiEarringPlusOneCrit,
@@ -426,7 +426,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.warriorsBead,
+		neck = gear.warriorsBeadPlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.thrud,
@@ -441,7 +441,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.warriorsBead,
+		neck = gear.warriorsBeadPlusTwo,
 		waist = gear.sailfi,
 		left_ear=gear.thrud,
 		right_ear = gear.boiiEarringPlusOneCrit,
@@ -451,7 +451,7 @@ function get_sets()
 	}
 
 	--Axe WS
-	sets.WS["Ragin Axe"] = {}
+	sets.WS["Raging Axe"] = {}
 	sets.WS["Smash Axe"] = {}
 	sets.WS["Gale Axe"] = {}
 	sets.WS["Avalanche Axe"] = {}
@@ -489,7 +489,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.warriorsBead,
+		neck = gear.warriorsBeadPlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear = gear.boiiEarringPlusOneCrit,
@@ -498,6 +498,7 @@ function get_sets()
 		back = gear.warWSDSTR,
 	}
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		waist=gear.chaac,
@@ -555,31 +556,14 @@ function status_change_custom(new,old)
 
 	return equipSet
 end
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
 
+-- This function is called when the job file is unloaded
 function user_file_unload()
 	
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	local ja_recasts = windower.ffxi.get_ability_recasts()
-	buff = check_war_self_buff(player.main_job_level, ja_recasts) or buff
-	if player.sub_job == 'SAM' then
-		if not buffactive['Hasso'] and not buffactive['Seigan'] and ja_recasts[138] == 0 then
-			buff = "Hasso"
-		end
-	end
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 function pet_change_custom(pet,gain)

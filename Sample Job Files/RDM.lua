@@ -1,8 +1,6 @@
-
-
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "6"
@@ -16,25 +14,25 @@ AutoItem = false
 Random_Lockstyle = false
 
 --Lockstyle sets to randomly equip
-Lockstyle_List = {1,2,6,12}
+Lockstyle_List = { 1, 2, 6, 12 }
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Tropical Crepe"
 
 --Set default mode (TP,ACC,DT)
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','CRIT','Enspell')
+state.OffenseMode:options('TP', 'ACC', 'DT', 'PDL', 'SB', 'CRIT', 'Enspell')
 state.OffenseMode:set('DT')
 
---Command to Lock Style and Set the correct macros
-jobsetup (LockStylePallet,MacroBook,MacroSet)
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
+jobsetup(LockStylePallet, MacroBook, MacroSet)
 
 --Modes for TP
-state.WeaponMode:options('Seraph Blade', 'Sanguine Blade', 'Chant du Cygne','Savage Blade', 'Evisceration', 'Aeolian Edge', 'Black Halo', 'Ullr', 'Unlocked')
+state.WeaponMode:options('Seraph Blade', 'Sanguine Blade', 'Chant du Cygne', 'Savage Blade', 'Evisceration',
+	'Aeolian Edge', 'Black Halo', 'Ullr', 'Crocea')
 state.WeaponMode:set('Sanguine Blade')
 
 -- Goal 2100 hp and 1300 MP
 function get_sets()
-
 	-- ===================================================================================================================
 	--		sets.Weapons
 	-- ===================================================================================================================
@@ -42,58 +40,61 @@ function get_sets()
 	--Set the weapon options.  This is set below in job customization section
 	sets.Weapons = {}
 
-	sets.Weapons['Seraph Blade'] ={
+	sets.Weapons['Seraph Blade'] = {
 		main = gear.croceaMors,
-		sub=gear.daybreak
+		sub = gear.daybreak
 	}
 
-	sets.Weapons['Sanguine Blade'] ={
-		main = gear.croceaMors,
-		sub = gear.demersalDegenPlusOne,
-	}
-
-	sets.Weapons['Chant du Cygne'] ={
+	sets.Weapons['Sanguine Blade'] = {
 		main = gear.croceaMors,
 		sub = gear.demersalDegenPlusOne,
 	}
 
-	sets.Weapons['Savage Blade'] ={
-		main=gear.naegling,
+	sets.Weapons['Chant du Cygne'] = {
+		main = gear.croceaMors,
 		sub = gear.demersalDegenPlusOne,
 	}
 
-	sets.Weapons['Evisceration'] ={
-		main=gear.tauret,
-		sub=gear.gleti,
-	}
-
-	sets.Weapons['Aeolian Edge'] ={
-		main=gear.tauret,
+	sets.Weapons['Savage Blade'] = {
+		main = gear.naegling,
 		sub = gear.demersalDegenPlusOne,
 	}
 
-	sets.Weapons['Black Halo'] ={
-		main=gear.maxentius,
+	sets.Weapons['Evisceration'] = {
+		main = gear.tauret,
+		sub = gear.gleti,
+	}
+
+	sets.Weapons['Aeolian Edge'] = {
+		main = gear.tauret,
+		sub = gear.demersalDegenPlusOne,
+	}
+
+	sets.Weapons['Black Halo'] = {
+		main = gear.maxentius,
 		sub = gear.machaeraPlusTwo,
 	}
 
 	sets.Weapons['Ullr'] = {
-		range=gear.ullr,
-		ammo=gear.berylliumArrow,
+		main = gear.crocea1,
+		sub = gear.crocea2,
+		range = gear.ullr,
+		ammo = gear.berylliumArrow,
 	}
 
-	sets.Weapons['Unlocked'] ={
+	sets.Weapons['Crocea'] = {
 		main = gear.croceaMors,
 		sub = gear.demersalDegenPlusOne,
 	}
 
-	--Shield used when melee and not dual wield.
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {
-		sub=gear.sacroBulwark,
+		sub = gear.sacroBulwark,
 	}
 
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {
-		sub=gear.caliburnus,
+		sub = gear.caliburnus,
 	}
 
 	--Default arrow to use
@@ -104,22 +105,22 @@ function get_sets()
 	--		sets.Idle
 	-- ===================================================================================================================
 
-	-- Standard Idle set with -DT,Refresh,Regen and movement gear
+	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
-		ammo=gear.staunchPlusOne, -- 3/3
+		ammo = gear.staunchPlusOne,      -- 3/3
 		head = gear.vitiationChapeauPlusFour, -- +3 Refresh
-		body=gear.lethargyBodyPlusThree, -- 14/14  +4 Refresh
-		hands=gear.lethargyHandsPlusThree, -- 11/11
-		legs=gear.bunziLegs, -- 9/9
-		feet = gear.bunziFeet, -- 6/6
-		neck=gear.loricatePlusOne, -- 6/6
-		waist=gear.carriers,
-		left_ear = gear.etiolation, -- Used to Keep HP/MP pool
-		right_ear = gear.odnowaPlusOne, --3/5
+		body = gear.lethargyBodyPlusThree, -- 14/14  +4 Refresh
+		hands = gear.lethargyHandsPlusThree, -- 11/11
+		legs = gear.bunziLegs,           -- 9/9
+		feet = gear.bunziFeet,           -- 6/6
+		neck = gear.loricatePlusOne,     -- 6/6
+		waist = gear.carriers,
+		left_ear = gear.etiolation,      -- Used to Keep HP/MP pool
+		right_ear = gear.odnowaPlusOne,  --3/5
 		left_ring = gear.stikiniRingPlusOne1, -- +1 Refresh
 		right_ring = gear.stikiniRingPlusOne2, -- +1 Refresh
-		back = gear.rdmFCPdt, -- 10/0
-    }
+		back = gear.rdmFCPdt,            -- 10/0
+	}
 	sets.Idle.TP = sets.Idle
 	sets.Idle.ACC = sets.Idle
 	sets.Idle.DT = sets.Idle
@@ -132,7 +133,7 @@ function get_sets()
 
 	-- Set is only applied when sublimation is charging
 	sets.Idle.Sublimation = set_combine(sets.Idle, {
-	    waist=gear.embla, -- +3 Submlimation when active
+		waist = gear.embla, -- +3 Submlimation when active
 	})
 
 	-- Gear to swap out for Movement
@@ -140,13 +141,13 @@ function get_sets()
 		legs = gear.carmineLegsPlusOnePathA,
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
-	    neck=gear.nicander,
-	    left_ring = gear.eshmun1,
+		neck = gear.nicander,
+		left_ring = gear.eshmun1,
 		right_ring = gear.eshmun2,
-		waist=gear.gishdubar,
+		waist = gear.gishdubar,
 	}
 	sets.Phalanx_Received = {}
 	sets.Protect_Shell_Received = {}
@@ -154,7 +155,7 @@ function get_sets()
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
 	sets.Holy_Water = {
-	    neck=gear.nicander,
+		neck = gear.nicander,
 	}
 
 	-- Read by sets.WS.SB below; add subtle blow pieces here to use that mode
@@ -167,81 +168,79 @@ function get_sets()
 	-- 'TP','ACC','DT','PDL','SB','CRIT','Enspell'
 	sets.OffenseMode = {
 		ammo = gear.coiste,
-		head=gear.malignanceHead,
-		body=gear.malignanceBody,
-		hands=gear.malignanceHands,
-		legs=gear.malignanceLegs,
-		feet=gear.malignanceFeet,
-		neck=gear.anu,
+		head = gear.malignanceHead,
+		body = gear.malignanceBody,
+		hands = gear.malignanceHands,
+		legs = gear.malignanceLegs,
+		feet = gear.malignanceFeet,
+		neck = gear.anu,
 		waist = gear.sailfi,
-		left_ear=gear.sherida,
+		left_ear = gear.sherida,
 		right_ear = gear.lethargyEarringPlusOne,
 		left_ring = gear.chirichPlusOne1,
 		right_ring = gear.chirichPlusOne2,
-		back=gear.nullShawl,
+		back = gear.nullShawl,
 	}
 
-	sets.OffenseMode.TP = set_combine(sets.OffenseMode,{ })
-	sets.OffenseMode.DT = set_combine(sets.OffenseMode,{ })
-	sets.OffenseMode.ACC = set_combine(sets.OffenseMode,{ })
-	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, { })
-	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode, { })
+	sets.OffenseMode.TP = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, {})
+	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode, {})
 
-	sets.OffenseMode.SB = set_combine(sets.OffenseMode, { 
-		hands=gear.volteMittens,
-		legs=gear.volteTights,
-		neck=gear.bathyPlusOne,
-		waist=gear.sarissaphoroi,
+	sets.OffenseMode.SB = set_combine(sets.OffenseMode, {
+		hands = gear.volteMittens,
+		legs = gear.volteTights,
+		neck = gear.bathyPlusOne,
+		waist = gear.sarissaphoroi,
 	})
 
-	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode, { 
-	    ammo=gear.yetshilaPlusOne,
+	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode, {
+		ammo = gear.yetshilaPlusOne,
 		head = gear.blisteringSalletPlusOne,
-		body=gear.adamantiteArmor,
-		hands=gear.lethargyHandsPlusThree,
-		legs=gear.bunziLegs,
-		feet=gear.thereoidGreaves,
-		neck=gear.nullLoop,
-		waist=gear.reiki,
-		left_ear=gear.sherida,
+		body = gear.adamantiteArmor,
+		hands = gear.lethargyHandsPlusThree,
+		legs = gear.bunziLegs,
+		feet = gear.thereoidGreaves,
+		neck = gear.nullLoop,
+		waist = gear.reiki,
+		left_ear = gear.sherida,
 		right_ear = gear.lethargyEarringPlusOneDA,
-		left_ring=gear.lehkoHabhokaRing,
+		left_ring = gear.lehkoHabhokaRing,
 		right_ring = gear.gelatinousPlusOne,
 		back = gear.rdmCrit,
 	})
 
-	sets.OffenseMode.Enspell = set_combine(sets.OffenseMode, { 
-	    sub=gear.ammurapi,
-		range=gear.ullr,
-		head=gear.umuthiHat,
-		body=gear.lethargyBodyPlusThree,
-		hands=gear.ayanmoHandsPlusTwo,
+	sets.OffenseMode.Enspell = set_combine(sets.OffenseMode, {
+		range = gear.ullr,
+		head = gear.umuthiHat,
+		body = gear.lethargyBodyPlusThree,
+		hands = gear.ayanmoHandsPlusTwo,
 		legs = gear.vitiationTightsPlusThree,
-		feet=gear.lethargyFeetPlusThree,
-		neck=gear.quanpur,
-		waist=gear.orpheusWaist,
-		left_ear=gear.malignanceEar,
-		right_ear=gear.lethargyEarringPlusOne,
-		left_ring=gear.freke,
+		feet = gear.lethargyFeetPlusThree,
+		neck = gear.quanpur,
+		waist = gear.orpheusWaist,
+		left_ear = gear.malignanceEar,
+		right_ear = gear.lethargyEarringPlusOne,
+		left_ring = gear.freke,
 		right_ring = gear.metamorphPlusOne,
-		back=gear.nullShawl,
+		back = gear.nullShawl,
 	})
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
 
 	sets.DualWield = {
-		waist=gear.reiki,
-		left_ear=gear.eabani,
+		waist = gear.reiki,
+		left_ear = gear.eabani,
 	}
 
-	sets.Enspell = {}
+	sets.Saboteur = { hands = gear.lethargyHandsPlusThree, }
 
-	sets.Saboteur = {hands=gear.lethargyHandsPlusThree,}
-
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
-		ammo=gear.perfectEgg,
-		head=gear.volteHead,
-	    legs=gear.volteHose,
-		waist=gear.chaac,
+		ammo = gear.perfectEgg,
+		head = gear.volteHead,
+		legs = gear.volteHose,
+		waist = gear.chaac,
 	}
 
 	-- ===================================================================================================================
@@ -254,20 +253,20 @@ function get_sets()
 	-- 42% Fast Cast is needed on RDM (Fast Cast IX - 38%)
 	-- 10% is Quick Magic limit
 	sets.Precast.FastCast = {
-		ammo=gear.impatiens, -- 2 Quick Magic
-		head=gear.bunziHead, -- 10
+		ammo = gear.impatiens,         -- 2 Quick Magic
+		head = gear.bunziHead,         -- 10
 		body = gear.vitiationBodyPlusThree, -- 15
 		hands = gear.leylineGlovesFCB, -- 8
 		legs = gear.kaykausLegsPlusOnePathB, -- 7
 		feet = gear.bunziFeet,
 		neck = gear.unmovingPlusOne,
-		waist=gear.witful, -- 3 Quick Magic
-		left_ear = gear.etiolation, -- Used to Keep HP/MP pool
+		waist = gear.witful,               -- 3 Quick Magic
+		left_ear = gear.etiolation,        -- Used to Keep HP/MP pool
 		right_ear = gear.lethargyEarringPlusOne, -- 8
-		left_ring=gear.lebecheRing, -- 2 Quick Magic
+		left_ring = gear.lebecheRing,      -- 2 Quick Magic
 		right_ring = gear.etanaRing,
-		back=gear.perimedeCape, -- 4 Quick Magic
-	} -- 50%+ total Fast Cast and 11% Quick Magic
+		back = gear.perimedeCape,          -- 4 Quick Magic
+	}                                      -- 50%+ total Fast Cast and 11% Quick Magic
 
 	-- Used for Enhancing Magic
 	sets.Precast.Enhancing = set_combine(sets.Precast.FastCast, {})
@@ -276,61 +275,61 @@ function get_sets()
 	sets.Precast.Cure = set_combine(sets.Precast.FastCast, {})
 
 	sets.Precast.RA = set_combine(sets.Precast, {
-		ammo=Ammo.RA,
-		waist=gear.yemaya, -- 0 / 5
-		right_ring=gear.crepuscularRing, -- 3
-    })	
+		ammo = Ammo.RA,
+		waist = gear.yemaya,         -- 0 / 5
+		right_ring = gear.crepuscularRing, -- 3
+	})
 
 	-- Flurry
-	sets.Precast.RA.Flurry = set_combine(sets.Precast.RA, {}) 
+	sets.Precast.RA.Flurry = set_combine(sets.Precast.RA, {})
 
 	-- Flurry II
-	sets.Precast.RA.Flurry_II = set_combine( sets.Precast.RA.Flurry, {})
+	sets.Precast.RA.Flurry_II = set_combine(sets.Precast.RA.Flurry, {})
 
-	sets.Precast.BlueMagic = set_combine (sets.Precast.FastCast, {})
+	sets.Precast.BlueMagic = set_combine(sets.Precast.FastCast, {})
 
 	-- ===================================================================================================================
 	--		sets.Midcast
 	-- ===================================================================================================================
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
 	sets.Midcast.Utsusemi = set_combine(sets.Midcast, {})
 
 	-- Ranged Attack Gear (Normal Midshot)
-    sets.Midcast.RA = set_combine(sets.Midcast, {})
+	sets.Midcast.RA = set_combine(sets.Midcast, {})
 
 	-- Ranged Attack Gear (High Accuracy Midshot)
-    sets.Midcast.RA.ACC = set_combine(sets.Midcast.RA, {
-		ammo=Ammo.ACC,
-    })
+	sets.Midcast.RA.ACC = set_combine(sets.Midcast.RA, {
+		ammo = Ammo.ACC,
+	})
 
 	-- Ranged Attack Gear (Physical Damage Limit)
-    sets.Midcast.RA.PDL = set_combine(sets.Midcast.RA, {})
+	sets.Midcast.RA.PDL = set_combine(sets.Midcast.RA, {})
 
 	-- Ranged Attack Gear (Critical Build)
-    sets.Midcast.RA.CRIT = set_combine(sets.Midcast.RA, {})
+	sets.Midcast.RA.CRIT = set_combine(sets.Midcast.RA, {})
 
-	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = {}
 
 	-- Cure Set
 	sets.Midcast.Cure = {
-		ammo=gear.staunchPlusOne,
+		ammo = gear.staunchPlusOne,
 		head = gear.kaykausHeadPlusOnePathB, -- 11
 		body = gear.kaykausBodyPlusOnePathD, -- 6
 		hands = gear.kaykausHandsPlusOnePathB, -- 11
 		legs = gear.kaykausLegsPlusOnePathB, -- 11
 		feet = gear.kaykausFeetPlusOnePathB, -- 11
 		neck = gear.loricatePlusOne,
-		waist=gear.sacroCord,
+		waist = gear.sacroCord,
 		left_ear = gear.etiolation, -- Used to Keep HP/MP pool
 		right_ear = gear.odnowaPlusOne,
 		right_ring = gear.gelatinousPlusOne,
-		left_ring=gear.defending,
+		left_ring = gear.defending,
 		back = gear.rdmFCPdt,
-    } -- 50% Cure I, 16% Cure II
+	} -- 50% Cure I, 16% Cure II
 
 	sets.Midcast.Curaga = set_combine(sets.Midcast.Cure, {})
 
@@ -341,41 +340,41 @@ function get_sets()
 
 	-- Enhancing Duration on SELF
 	sets.Midcast.Enhancing = {
-		sub=gear.ammurapi,
-		ammo=gear.staunchPlusOne,
+		sub = gear.ammurapi,
+		ammo = gear.staunchPlusOne,
 		head = gear.telchineCapRegen,
 		body = gear.vitiationBodyPlusThree, --15
-		hands=gear.atrophyHandsPlusThree, -- 20
+		hands = gear.atrophyHandsPlusThree, -- 20
 		legs = gear.telchineBraconiRegen,
-		feet=gear.lethargyFeetPlusThree, -- 35
-		neck = gear.duelistTorque, --25
-		waist=gear.embla, --10
-		left_ear = gear.etiolation, -- Used to Keep HP/MP pool
-		right_ear=gear.lethargyEarringPlusOne, -- 8
+		feet = gear.lethargyFeetPlusThree, -- 35
+		neck = gear.duelistTorquePlusTwo,         --25
+		waist = gear.embla,                --10
+		left_ear = gear.etiolation,        -- Used to Keep HP/MP pool
+		right_ear = gear.lethargyEarringPlusOne, -- 8
 		left_ring = gear.stikiniRingPlusOne1,
 		right_ring = gear.stikiniRingPlusOne2,
 		back = gear.rdmFCPdt, -- 20
-	} -- 150% Duration
+	}                   -- 150% Duration
 
 	-- Enhancing Duration on OTHERS
 	sets.Midcast.Enhancing.Others = set_combine(sets.Midcast.Enhancing, {
-		head=gear.lethargyHeadPlusThree,
-		body=gear.lethargyBodyPlusThree,
-		legs=gear.lethargyLegsPlusThree,
+		head = gear.lethargyHeadPlusThree,
+		body = gear.lethargyBodyPlusThree,
+		legs = gear.lethargyLegsPlusThree,
 	})
 
 	-- Spells that require SKILL - RDM only needs 500 or more except Temper II
 	sets.Midcast.Enhancing.Skill = set_combine(sets.Midcast.Enhancing, {
-		sub=gear.ammurapi,
-		head=gear.befouledCrown,
+		sub = gear.ammurapi,
+		head = gear.befouledCrown,
 		body = gear.vitiationBodyPlusThree,
 		hands = gear.vitiationGlovesPlusThree,
-		legs=gear.atrophyLegsPlusThree,
-		feet=gear.lethargyFeetPlusThree,
-		neck=gear.incanterTorque,
-		waist=gear.olympus,
-		left_ear=gear.andoaaEarring,
-		right_ear=gear.mimir,
+		legs = gear.atrophyLegsPlusThree,
+		feet = gear.lethargyFeetPlusThree,
+		neck = gear.incanterTorque,
+		waist = gear.olympus,
+		left_ear = gear.andoaaEarring,
+		right_ear = gear.mimir,
 	})
 
 	-- used to boost Gain Spells
@@ -399,16 +398,16 @@ function get_sets()
 
 	-- Enfeebling
 	sets.Midcast.Enfeebling = {
-		ammo=gear.regalGem,
+		ammo = gear.regalGem,
 		head = gear.vitiationChapeauPlusFour,
-		body=gear.atrophyBodyPlusFour,
-		hands=gear.lethargyHandsPlusThree,
+		body = gear.atrophyBodyPlusFour,
+		hands = gear.lethargyHandsPlusThree,
 		legs = gear.chironicHoseNuke,
 		feet = gear.vitiationBootsPlusThree,
-		neck = gear.duelistTorque,
+		neck = gear.duelistTorquePlusTwo,
 		waist = gear.obstinateSash,
-		left_ear=gear.regalEarring,
-		right_ear=gear.snotra,
+		left_ear = gear.regalEarring,
+		right_ear = gear.snotra,
 		left_ring = gear.stikiniRingPlusOne2,
 		right_ring = gear.stikiniRingPlusOne1,
 		back = gear.rdmFCPdt,
@@ -417,60 +416,60 @@ function get_sets()
 	-- Skill Based ('Dispel','Aspir','Aspir II','Aspir III','Drain','Drain II','Drain III','Frazzle','Frazzle II','Stun','Poison','Poison II','Poisonga')
 	sets.Midcast.Enfeebling.MACC = set_combine(sets.Midcast.Enfeebling, {})
 
-	 -- Potency Basted ('Paralyze','Paralyze II','Slow','Slow II','Addle','Addle II','Distract','Distract II','Distract III','Frazzle III','Blind','Blind II')
+	-- Potency Basted ('Paralyze','Paralyze II','Slow','Slow II','Addle','Addle II','Distract','Distract II','Distract III','Frazzle III','Blind','Blind II')
 	sets.Midcast.Enfeebling.Potency = set_combine(sets.Midcast.Enfeebling, {
-		ammo=gear.regalGem, -- 10%
-		body=gear.lethargyBodyPlusThree, -- 14%
-		back = gear.rdmFCPdt, -- 10%
+		ammo = gear.regalGem,          -- 10%
+		body = gear.lethargyBodyPlusThree, -- 14%
+		back = gear.rdmFCPdt,          -- 10%
 		feet = gear.vitiationBootsPlusThree, -- 10%
-		neck = gear.duelistTorque, -- 10%
+		neck = gear.duelistTorquePlusTwo,     -- 10%
 	})
 
 	-- Duration Based ('Sleep','Sleep II','Sleepga','Sleepga II','Diaga','Dia','Dia II','Dia III','Bio','Bio II','Bio III','Silence','Gravity','Gravity II','Inundation','Break','Breakaga', 'Bind', 'Bind II')
 	sets.Midcast.Enfeebling.Duration = set_combine(sets.Midcast.Enfeebling, {
 		head = gear.vitiationChapeauPlusFour, -- 15s (3 seconds x 5 merits)
-		hands=gear.regalCuffs, --20% swaps out with Saboteur active
-		right_ear=gear.snotra, -- 10%
-		left_ring=gear.kishar, -- 10%
-		waist = gear.obstinateSash, -- 5%
-		neck = gear.duelistTorque, -- 25%
+		hands = gear.regalCuffs,        --20% swaps out with Saboteur active
+		right_ear = gear.snotra,        -- 10%
+		left_ring = gear.kishar,        -- 10%
+		waist = gear.obstinateSash,     -- 5%
+		neck = gear.duelistTorquePlusTwo,      -- 25%
 	})
 
 	-- Specific gear for spells
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
-		neck=gear.nodens,
-		waist=gear.siegel,
-		left_ear=gear.earthcryEarring,
+		neck = gear.nodens,
+		waist = gear.siegel,
+		left_ear = gear.earthcryEarring,
 	})
 
 	sets.Midcast["Aquaveil"] = set_combine(sets.Midcast.Enhancing, {
-		hands=gear.regalCuffs,
-		head=gear.amalricCoifPlusOne
+		hands = gear.regalCuffs,
+		head = gear.amalricCoifPlusOne
 	})
 
 	-- Spells that require SKILL - RDM only needs +500 skill except Temper II
 	sets.Midcast["Temper II"] = set_combine(sets.Midcast.Enhancing, {
-		ammo=gear.psilomene,
-		head=gear.befouledCrown,
+		ammo = gear.psilomene,
+		head = gear.befouledCrown,
 		hands = gear.vitiationGlovesPlusThree,
-		legs=gear.atrophyLegsPlusThree,
-		neck=gear.incanterTorque,
-		left_ear=gear.mimir,
-		right_ear=gear.andoaaEarring,
-		waist=gear.olympus,
-		back=gear.perimedeCape,
+		legs = gear.atrophyLegsPlusThree,
+		neck = gear.incanterTorque,
+		left_ear = gear.mimir,
+		right_ear = gear.andoaaEarring,
+		waist = gear.olympus,
+		back = gear.perimedeCape,
 	}) -- Max Enhancing 672
 
-	sets.Midcast["Diaga"] = set_combine (sets.Midcast.Enfeebling, sets.TreasureHunter)
-	sets.Midcast["Dispelga"] = set_combine (sets.Midcast.Enfeebling, sets.TreasureHunter)
+	sets.Midcast["Diaga"] = set_combine(sets.Midcast.Enfeebling, sets.TreasureHunter)
+	sets.Midcast["Dispelga"] = set_combine(sets.Midcast.Enfeebling, sets.TreasureHunter)
 
 	sets.Midcast.Refresh = set_combine(sets.Midcast.Enhancing, {
-		head=gear.amalricCoifPlusOne,
-		body=gear.atrophyBodyPlusFour,
-		legs=gear.lethargyLegsPlusThree,
+		head = gear.amalricCoifPlusOne,
+		body = gear.atrophyBodyPlusFour,
+		legs = gear.lethargyLegsPlusThree,
 	})
 
-	sets.Midcast.Phalanx = set_combine(sets.Midcast.Enhancing.Skill, { })
+	sets.Midcast.Phalanx = set_combine(sets.Midcast.Enhancing.Skill, {})
 
 	sets.Midcast.Dark = set_combine(sets.Midcast.Enfeebling, {})
 
@@ -479,25 +478,25 @@ function get_sets()
 	sets.Midcast.Dark.Absorb = set_combine(sets.Midcast.Enfeebling, {})
 
 	sets.Midcast.Nuke = {
-		sub=gear.ammurapi,
+		sub = gear.ammurapi,
 		ammo = gear.ghastlyTathlumPlusOne,
-		head=gear.lethargyHeadPlusThree,
-		body=gear.lethargyBodyPlusThree,
-		hands=gear.lethargyHandsPlusThree,
-		legs=gear.lethargyLegsPlusThree,
-		feet=gear.lethargyFeetPlusThree,
-		neck=gear.mizukageNoKubikazari,
+		head = gear.lethargyHeadPlusThree,
+		body = gear.lethargyBodyPlusThree,
+		hands = gear.lethargyHandsPlusThree,
+		legs = gear.lethargyLegsPlusThree,
+		feet = gear.lethargyFeetPlusThree,
+		neck = gear.mizukageNoKubikazari,
 		waist = gear.acuityBeltPlusOne,
-		left_ear=gear.regalEarring,
-		right_ear=gear.malignanceEar,
+		left_ear = gear.regalEarring,
+		right_ear = gear.malignanceEar,
 		left_ring = gear.metamorphPlusOne,
-		right_ring=gear.freke,
+		right_ring = gear.freke,
 		back = gear.rdmFCPdt,
 	}
 
 	sets.Midcast.Burst = set_combine(sets.Midcast.Nuke, {
-		left_ring=gear.mujinBand,
-		neck=gear.mizukageNoKubikazari,
+		left_ring = gear.mujinBand,
+		neck = gear.mizukageNoKubikazari,
 	})
 
 	-- ===================================================================================================================
@@ -506,7 +505,7 @@ function get_sets()
 
 	-- Job Abilities
 	sets.JA = {}
-	sets.JA["Chainspell"] = {body = gear.vitiationBodyPlusThree}
+	sets.JA["Chainspell"] = { body = gear.vitiationBodyPlusThree }
 	sets.JA["Saboteur"] = {}
 	sets.JA["Spontaneity"] = {}
 	sets.JA["Stymie"] = {}
@@ -516,17 +515,17 @@ function get_sets()
 	-- Dancer JA Section
 	sets.Flourish = set_combine(sets.Idle.DT, {})
 
-	sets.Jig = set_combine(sets.Idle.DT, { })
+	sets.Jig = set_combine(sets.Idle.DT, {})
 
 	sets.Step = set_combine(sets.OffenseMode.DT, {})
 
 	sets.Samba = set_combine(sets.Idle.DT, {})
 
 	-------------------------------------------------------------------------------
-	-- Waltz Potency gear caps at 50%, while Waltz received potency caps at 30%. -- 
+	-- Waltz Potency gear caps at 50%, while Waltz received potency caps at 30%. --
 	-------------------------------------------------------------------------------
 	sets.Waltz = set_combine(sets.OffenseMode.DT, {
-		legs=gear.dashingSubligar, -- 10
+		legs = gear.dashingSubligar, -- 10
 		--ammo="Yamarang", -- 5
 		--body={ name="Gleti's Cuirass", augments={'Path: A',}}, -- 10
 		--hands="Slither Gloves +1", -- 5
@@ -542,60 +541,61 @@ function get_sets()
 		body = gear.nyameBody,
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
-		feet=gear.lethargyFeetPlusThree,
-		neck = gear.duelistTorque,
+		feet = gear.lethargyFeetPlusThree,
+		neck = gear.duelistTorquePlusTwo,
 		waist = gear.sailfi,
-		left_ear=gear.sherida,
+		left_ear = gear.sherida,
 		right_ear = gear.lethargyEarringPlusOne,
-		left_ring=gear.sroda,
-		right_ring=gear.epimanondas,
+		left_ring = gear.sroda,
+		right_ring = gear.epimanondas,
 		back = gear.rdmWSDDt,
 	}
 
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = set_combine(sets.WS, {})
 
-	sets.WS.PDL = set_combine(sets.WS, 
-	{
-		ammo=gear.crepuscularPebble,
-		right_ring=gear.sroda,
-	})
+	sets.WS.PDL = set_combine(sets.WS,
+		{
+			ammo = gear.crepuscularPebble,
+			right_ring = gear.sroda,
+		})
 
-	sets.WS.WSD = set_combine(sets.WS, 
-	{
-		ammo=gear.oshashaTreatise,
-		left_ear=gear.ishvara,
-	})
+	sets.WS.WSD = set_combine(sets.WS,
+		{
+			ammo = gear.oshashaTreatise,
+			left_ear = gear.ishvara,
+		})
 
-	sets.WS.MAB = set_combine(sets.WS, 
-	{
-		ammo=gear.oshashaTreatise,
-		neck=gear.sanctity,
-		waist=gear.orpheusWaist,
-		left_ear=gear.malignanceEar,
-	    right_ear=gear.regalEarring,
-	})
+	sets.WS.MAB = set_combine(sets.WS,
+		{
+			ammo = gear.oshashaTreatise,
+			neck = gear.sanctity,
+			waist = gear.orpheusWaist,
+			left_ear = gear.malignanceEar,
+			right_ear = gear.regalEarring,
+		})
 
-	sets.WS.CRIT = set_combine(sets.WS,{
-		ammo=gear.yetshilaPlusOne,
+	sets.WS.CRIT = set_combine(sets.WS, {
+		ammo = gear.yetshilaPlusOne,
 		head = gear.blisteringSalletPlusOne,
-		neck=gear.fotiaNeck,
-		waist=gear.fotiaWaist,
-		right_ring=gear.hetairoi,
+		neck = gear.fotiaNeck,
+		waist = gear.fotiaWaist,
+		right_ring = gear.hetairoi,
 		back = gear.rdmCrit,
 	})
 
-	sets.WS.RA = set_combine(sets.WS,{})
+	sets.WS.RA = set_combine(sets.WS, {})
 
 	sets.WS.SB = sets.Subtle_Blow
 
-	sets.WS["Seraph Blade"] =  set_combine(sets.WS.MAB, {
-		right_ring=gear.weatherspoon,
+	sets.WS["Seraph Blade"] = set_combine(sets.WS.MAB, {
+		right_ring = gear.weatherspoon,
 		right_ear = gear.moonshadeEarringAcc,
 	})
 
 	sets.WS["Sanguine Blade"] = set_combine(sets.WS.MAB, {
-		head=gear.pixieHead,
-		right_ring=gear.archonRing,
+		head = gear.pixieHead,
+		right_ring = gear.archonRing,
 	})
 
 	sets.WS["Aeolian Edge"] = set_combine(sets.WS.MAB, {
@@ -609,7 +609,6 @@ function get_sets()
 	sets.WS["Savage Blade"] = sets.WS.WSD
 
 	sets.WS["Black Halo"] = sets.WS.WSD
-
 end
 
 -------------------------------------------------------------------------------------------------------------------
@@ -622,9 +621,10 @@ function sub_job_change_custom(new, old)
 end
 
 --Adjust custom precast actions
-function pretarget_custom(spell,action)
+function pretarget_custom(spell, action)
 
 end
+
 -- Augment basic equipment sets
 function precast_custom(spell)
 	local equipSet = {}
@@ -649,7 +649,7 @@ function aftercast_custom(spell)
 end
 
 --Function is called when the player gains or loses a buff
-function buff_change_custom(name,gain)
+function buff_change_custom(name, gain)
 	local equipSet = {}
 	return equipSet
 end
@@ -662,13 +662,13 @@ function choose_set_custom()
 end
 
 --Function is called when the player changes states
-function status_change_custom(new,old)
+function status_change_custom(new, old)
 	local equipSet = {}
 
 	return equipSet
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
@@ -678,23 +678,9 @@ function user_file_unload()
 
 end
 
---Function used to automate Job Ability use
-function check_buff_JA()
-	local buff = 'None'
-
-	return buff
-end
-
---Function used to automate Spell use
-function check_buff_SP()
-	local buff = 'None'
-
-	return buff
-end
-
-function pet_change_custom(pet,gain)
+function pet_change_custom(pet, gain)
 	local equipSet = {}
-	
+
 	return equipSet
 end
 

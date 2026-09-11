@@ -1,7 +1,7 @@
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "14"
@@ -17,7 +17,7 @@ Random_Lockstyle = false
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Tropical Crepe"
 
 --Set default mode (TP,ACC,DT)
@@ -25,10 +25,10 @@ state.OffenseMode:options('TP','ACC','DT','PDT','MEVA')
 state.OffenseMode:set('DT')
 
 --Weapon Modes
-state.WeaponMode:options('Nuke','Unlocked')
+state.WeaponMode:options('Nuke','Mpaca')
 state.WeaponMode:set('Nuke')
 
---Command to Lock Style and Set the correct macros
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -40,14 +40,15 @@ function get_sets()
 		sub=gear.enki,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield ={}
 
-	sets.Weapons['Unlocked'] ={
+	sets.Weapons['Mpaca'] ={
 		main = gear.mpacaStaff,
 		sub=gear.enki,
 	}
 
-	--Standard Idle set with -DT,Refresh,Regen and movement gear
+	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
 		ammo=gear.staunchPlusOne,
 		head=gear.wicceHeadPlusThree, --11
@@ -79,12 +80,12 @@ function get_sets()
 	})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 
-	--Used to swap into movement gear when the player is detected movement when not engaged
+	--Used to swap into movement gear when the player is moving and not engaged
 	sets.Movement = {
 		feet=gear.heraldGaiters,
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -154,12 +155,12 @@ function get_sets()
 	sets.JA["Widened Compass"] = {}
 	sets.JA["Entrust"] = {}
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {
 	
 	})
 
-	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = {
 
 	}
@@ -213,8 +214,8 @@ function get_sets()
 	sets.Midcast.Enfeebling.MACC = set_combine(sets.Midcast.Enfeebling, {})
 	sets.Midcast.Enfeebling.Potency = set_combine(sets.Midcast.Enfeebling, {})
 	sets.Midcast.Enfeebling.Duration = set_combine(sets.Midcast.Enfeebling, {})
-	sets.Midcast.Enfeebling.Drain = set_combine(sets.Midcast.Enfeebling, {})
-	sets.Midcast.Enfeebling.Aspir = set_combine(sets.Midcast.Enfeebling, {})
+	--Drain and Aspir are named at the top of the midcast tree, not under Enfeebling.
+	sets.Midcast.Drain = set_combine(sets.Midcast.Enfeebling, {})
 
 	sets.Midcast.Dark = set_combine(sets.Midcast.Enfeebling, {})
 	sets.Midcast.Dark.MACC = set_combine(sets.Midcast.Enfeebling.MACC, {})
@@ -223,7 +224,7 @@ function get_sets()
 
 	sets.Midcast.Nuke = {
 		ammo = gear.ghastlyTathlumPlusOne,
-		head=gear.eaHatPlusOne,
+		head=gear.eaHeadPlusOne,
 		body=gear.wicceBodyPlusThree,
 		hands = gear.agwuHands,
 		legs=gear.wicceLegsPlusThree,
@@ -283,7 +284,7 @@ function get_sets()
 
 	sets.WS = {}
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 
 	sets.WS["Myrkr"] = {
@@ -302,6 +303,7 @@ function get_sets()
 		back = gear.blmNuke,
 	}
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = { }
 
 end
@@ -377,26 +379,12 @@ function pet_midcast_custom(spell)
 	return equipSet
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
 
--- Function is called when the job lua is unloaded
+-- This function is called when the job file is unloaded
 function user_file_unload()
 
-end
-
---Function used to automate Job Ability use - Checked first
-function check_buff_JA()
-	local buff = 'None'
-	--local ja_recasts = windower.ffxi.get_ability_recasts()
-	return buff
-end
-
---Function used to automate Spell use
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end

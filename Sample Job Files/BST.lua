@@ -1,8 +1,8 @@
 
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "19"
@@ -12,16 +12,16 @@ MacroSet = "1"
 --Uses Items Automatically
 AutoItem = false
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC affects WS and TP modes
 
 --Upon Job change will use a random lockstyleset
 Random_Lockstyle = false
 
--- Set to true to run organizer on job changes
+-- Not read by this engine.
 Organizer = false
 
 --Lockstyle sets to randomly equip
@@ -31,7 +31,7 @@ Lockstyle_List = {1,2,6,12}
 state.OffenseMode:set('DT')
 
 --Modes for specific to Beastmaster
-state.WeaponMode:options('Decimation','Pangu','Unlocked', 'Locked')
+state.WeaponMode:options('Decimation','Pangu')
 state.WeaponMode:set('Decimation')
 
 --Enable JobMode for UI.
@@ -41,7 +41,7 @@ UI_Name = 'Pet'
 state.JobMode:options('None','FatsoFargann','ScissorlegXerin','GenerousArthur','BlackbeardRandy','AcuexFamiliar')
 state.JobMode:set('FatsoFargann')
 
--- Initialize Player
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -67,9 +67,10 @@ function get_sets()
 		sub=gear.ikengaAxe,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons['Shield'] = {}
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons['Sleep'] = {}
-	sets.Weapons['Unlocked'] = {}
 
 	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
@@ -104,12 +105,12 @@ function get_sets()
 	sets.Idle.MEVA = set_combine(sets.Idle, {})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 
-	--Used to swap into movement gear when the player is detected movement when not engaged
+	--Used to swap into movement gear when the player is moving and not engaged
 	sets.Movement = {
 		--feet="Hermes' Sandals",
 	}
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -145,7 +146,7 @@ function get_sets()
 	--Base TP set to build off
 	sets.OffenseMode.TP = set_combine (sets.OffenseMode, {})
 
-	--This set is used when OffenseMode is DT and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {
 		body=gear.malignanceBody,
 		legs=gear.malignanceLegs,
@@ -154,7 +155,7 @@ function get_sets()
 		back = gear.bstSTP,
 	})
 
-	--This set is used when OffenseMode is ACC and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is ACC and Engaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
 
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode,{})
@@ -163,7 +164,7 @@ function get_sets()
 		neck=gear.warderCharmPlusOne,
 	})
 
-	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is SB and Engaged (Augments the TP base set)
 	-- Cap is 75% - 50% limit in I or II
 	sets.OffenseMode.SB = {}
 
@@ -179,7 +180,7 @@ function get_sets()
 
 	sets.Precast.Enmity = {}
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
 	-- Pet Moves
@@ -219,7 +220,8 @@ function get_sets()
 	-- Example for a specific move overwrite
 	sets.Pet_Midcast['TP Drainkiss'] = set_combine(sets.Pet_Midcast.MACC, { })
 
-	-- Ready JA command
+	-- Worn on a Ready move, which arrives as type Monster. The engine merges this set whole and
+	-- reads no child under it, so sets.Ready.Magic, .TP, .Debuff and .Standard are placeholders.
 	sets.Ready = {
 		hands=gear.nukumiHandsPlusOne,
 		legs = gear.gletiLegs,
@@ -267,18 +269,10 @@ function get_sets()
 		head = gear.ankusaHeadPlusThree,
 	})
 
-	-- Pet Commands
-	sets.JA['Fight'] = set_combine(sets.Idle, {})
-	sets.JA['Heel'] = set_combine(sets.Idle, {})
-	sets.JA['Leave'] = set_combine(sets.Idle, {})
-	sets.JA['Stay'] = set_combine(sets.Idle, {})
-	sets.JA['Snarl'] = set_combine(sets.Idle, {})
-	sets.JA['Ready'] = set_combine(sets.Idle, {}) -- This is not called for a Ready Move
-	sets.JA['Spur'] = set_combine(sets.Idle, 
-	{
-		feet=gear.nukumiFeetPlusOne
-	})
-	sets.JA['Run Wild'] = set_combine(sets.Idle, {})	
+	-- Fight, Heel, Leave, Stay, Snarl, Spur, Ready and Run Wild are type PetCommand. The engine
+	-- merges no sets.JA child for one, and the midcast build that follows replaces whatever the
+	-- precast wore, so a pet command has no set of its own. A ready move arrives as type Monster
+	-- and wears sets.Ready; the pet's own action wears sets.Pet_Midcast.
 
 	--Default WS set base
 	sets.WS = {
@@ -301,13 +295,13 @@ function get_sets()
 
 	})
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = set_combine(sets.WS,{})
 
 	sets.WS.PDL = set_combine(sets.WS,{})
 
 	--WS Sets
-	sets.WS["Ragin Axe"] = set_combine(sets.WS,{})
+	sets.WS["Raging Axe"] = set_combine(sets.WS,{})
 	sets.WS["Smash Axe"] = set_combine(sets.WS,{})
 	sets.WS["Gale Axe"] = set_combine(sets.WS,{})
 	sets.WS["Avalanche Axe"] = set_combine(sets.WS,{})
@@ -318,6 +312,7 @@ function get_sets()
 	sets.WS["Decimation"] = set_combine(sets.WS,{})
 	sets.WS["Bora Axe"] = set_combine(sets.WS,{})
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 
 	}
@@ -421,7 +416,7 @@ function status_change_custom(new,old)
 
 	return choose_gear()
 end
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
@@ -430,24 +425,6 @@ function choose_gear()
 	local equipSet = {}
 
 	return equipSet
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	local ja_recasts = windower.ffxi.get_ability_recasts()
-
-	-- Sub job has least priority
-	if player.sub_job == 'WAR' then
-		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
-	end
-
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 -- This function is called when the job file is unloaded

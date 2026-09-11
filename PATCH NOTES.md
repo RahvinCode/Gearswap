@@ -1,6 +1,6 @@
 # Patch Notes
 
-Release-by-release detail for Mirdain-Include Enhanced by Rahvin.
+Release-by-release detail for Rahvin GearSwap, and for the Mirdain-era releases it grew from.
 
 The [README](README.md) describes what the engine does **now**. This file records
 **what changed and when**, newest first, and keeps every release. Check your running
@@ -10,14 +10,22 @@ Each release is broken into the same four headings, so you can scan for what mat
 
 - **Notices** — changes that need something from you before they take effect.
 - **New and Changed Features** — what the release adds or does differently.
-- **Optimizations** — the same behaviour, cheaper.
+- **Optimizations** — the same behavior, cheaper.
 - **Bug Fixes** — things that now work as intended.
 
 A heading is omitted when a release has nothing under it.
 
 **Credits.** Mirdain-Include was created by **Mirdain**; version 1.5.12 is the original
 and the base this suite was forked from. Everything from **1.6.0** forward — engine
-revisions and sample job files alike — was conceived and programmed by **Rahvin**.
+revisions and sample job files alike — was conceived and programmed by **Rahvin**. From
+**2.0** the suite is released as **Rahvin GearSwap**, continuing the same sequence.
+
+| Version | Summary |
+|---|---|
+| [2.0](#20) | Rahvin GearSwap: new name, new folder; four display styles and the slot rig; the weapon lock on F10; the disable and strip holds; the capacity cape and Dynamis neck locks; a much larger gear library |
+
+The releases below shipped under the suite's former name, **Mirdain Gearswap Enhanced by
+Rahvin**; 2.0 above follows 1.7.3 directly.
 
 | Version | Summary |
 |---|---|
@@ -30,6 +38,278 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 | [1.6.4](#164) | 196 blue magic spells classified; item-search bag list corrected |
 | [1.6.0 – 1.6.3](#160--163) | The initial enhancement work over Mirdain 1.5.x |
 | [1.5.12](#1512) | Mirdain's original |
+
+---
+
+## 2.0
+
+The suite becomes **Rahvin GearSwap 2.0**, continuing the numbering after 1.7.3, and the
+engine moves into a `RahvinGS` folder split into its parts. Your gear sets, your modes and
+your macros carry over — the shape on disk is what changes, and a handful of job-file edits
+go with it. The Notices below are what to do first; the refreshed sample files carry every
+one of them already.
+
+### Notices
+
+- **New files, and two include lines to update.** `Mirdain-Include.lua` and
+  `GearSets-Include.lua` are replaced by the `RahvinGS` folder. Delete the two old files
+  from `Windower4/addons/GearSwap/data/`, copy the whole folder in beside your job
+  files, and change the two include lines at the top of each job file to:
+
+  ```lua
+  include('RahvinGS/GearSets-Include')
+  include('RahvinGS/Rahvin-Engine')
+  ```
+
+  The refreshed samples carry the new lines already.
+- **Your `settings.xml` loads, and nothing has to be deleted.** The first time each character
+  loads 2.0, the display settings return to their defaults — the style and the view, whether
+  the status box is shown, and each box's font, size, colors and background — along with the
+  HALO style's colors; the box positions you dragged are kept. One line per group says so:
+
+  ```
+  Display settings reset to defaults (version 2); box positions kept
+  Halo settings reset to defaults (version 1)
+  ```
+
+  Your channel toggles — `debug`, `info`, `warn` and `gear_reporting` — and the multibox
+  announce delay carry through untouched. If you would rather start from a blank file,
+  delete `settings.xml`, but **unload GearSwap first** (`//lua unload gearswap`): the engine
+  rewrites the whole file whenever it saves, so a file deleted while GearSwap is running
+  comes back within seconds.
+- **Auto Buff, Auto Tank and the Runes mode are retired.** Self-buffing belongs to the
+  automation tools most players already run alongside GearSwap, and the engine hands it
+  back. The engine names each leftover in chat as your job file loads, so there is
+  nothing to hunt for:
+
+  ```
+  Auto Buff was removed: this job file still defines check_buff_JA or check_buff_SP and nothing calls them. They can be deleted.
+  Auto Tank and Runes were removed: this job file still names one, so the mode is still shown but now drives nothing.
+  ```
+
+  Delete `check_buff_JA` and `check_buff_SP` along with any `Buff_Delay` or `Tank_Delay`
+  they used, and either clear a `UI_Name` reading `Auto Tank` or `Runes` or point that
+  slot at something your own file acts on.
+- **<kbd>F10</kbd> cycles the weapon lock.** `gs c weaponlock` decides whether anything but
+  your weapon set may write main and sub, and the key steps through its values. The capacity
+  point cape lock is reached by command — `gs c capacity`, `gs c aptitude` or
+  `gs c mecisto` — so bind one of those yourself if you want it on a key. The engine lists
+  every keybind in chat as your job file loads.
+- **`Unlocked` and `Locked` leave your weapon-mode list.** Take both values out of
+  `state.WeaponMode:options(...)` and delete an empty `sets.Weapons.Unlocked` with them; the
+  nine shipped templates that offered either value carry neither now. A file that keeps a
+  value still works — it bridges onto the weapon lock, and the engine says so — but
+  `gs c weaponlock` is where to set it. **Do not declare `state.WeaponLock:options(...)`**:
+  the engine fixes that list per job — `Unlocked` and `Locked` everywhere, `Songs` on Bard,
+  `Locked+R` on Corsair — and a job file's own `:options()` call wipes it. A file that wants
+  to boot locked calls `state.WeaponLock:set('Locked')` and nothing else.
+- **A `//gs c jobmode` macro carrying a value works only where your own file declares
+  that value.** Both job-mode slots offer `OFF` and `ON` until a job file widens them
+  with `state.JobMode:options(...)`, and the shipped PLD and RUN templates leave both
+  slots unnamed. Declare the options you want in your file, or the value is answered
+  with the valid list instead of being acted on.
+- **Every ranged action's built set has to name an `ammo`.** A ranged attack, shot or ranged
+  weaponskill whose set leaves the slot undeclared, blank or cleared is canceled rather than
+  fired on whatever round happens to be loaded:
+
+  ```
+  No round named for Last Stand: ammo is undeclared in the built set. Canceling.
+  ```
+
+  Check the `Ammo` key for every OffenseMode a ranged job offers, and that no set in the
+  chain clears the slot.
+- **`//gs disable` and `//gs enable` are not tracked by this engine; `//gs c disable` and
+  `//gs c enable` are.** A native word carrying a slot name answers with one line pointing at
+  the tracked form, so update a macro that carries it:
+
+  ```
+  Disable: //gs disable leaves the slot untracked -- use //gs c disable <slot>... instead.
+  ```
+
+  A bare `//gs disable`, which switches your whole job file off, is left alone.
+- **Set paths worth a search in your own file.** Gear declared at a name the engine does not
+  read equips nothing, silently.
+
+  | Put it here | Not here |
+  |---|---|
+  | `sets.WS.RA.ACC`, `.PDL`, `.SB`, `.CRIT`, `.MEVA` | `sets.WS.ACC.RA` and friends |
+  | `sets.WS.RA.AM`, `.AM1`, `.AM2`, `.AM3` | `sets.WS.AM3.RA` and friends |
+  | `sets.Midcast.RA.AM`, `.AM1`, `.AM2`, `.AM3` | `sets.Midcast.AM3` and friends |
+  | `sets.Precast.BlueMagic` | `sets.Precast.Blue_Magic` |
+  | `sets.Midcast.Drain`, `sets.Midcast.Aspir` | `sets.Midcast.Enfeebling.Drain` and `.Aspir` |
+  | `sets.DualWield` | `sets.OffenseMode.DW` |
+  | `sets.Precast.RA.Flurry`, `.Flurry_II` | `sets.Precast.RA.ACC` and other mode children |
+  | `sets.Pet_Midcast['<Action Name>']` | `sets.JA['Spur']` and other pet-command names |
+
+  Under `sets.Midcast.Enfeebling` the engine reads `.MACC`, `.Potency` and `.Duration` and
+  nothing else. Under `sets.Precast.RA` it reads the two Flurry children and nothing else.
+  And a pet command — Fight, Heel, Spur, Deploy and the rest — has no set of its own: your
+  pet's own actions are dressed by the `sets.Pet_Midcast` family.
+- **Eleven Dynamis Divergence necks are keyed by tier.** Each of these job necks reads
+  base, `PlusOne` and `PlusTwo` in the gear library, like every other tiered piece. The
+  `+2` is `gear.<name>PlusTwo`, and the tier-less key names the base neck — so a job file
+  naming one of the keys on the right dresses the base piece until you point it at the tier
+  you mean.
+
+  | Job | The `+2` | The tier-less key, and what it wears |
+  |---|---|---|
+  | WAR | `gear.warriorsBeadPlusTwo` | `gear.warriorsBead` — Warrior's Beads |
+  | MNK | `gear.monkNodowaPlusTwo` | `gear.monkNodowa` — Monk's Nodowa |
+  | RDM | `gear.duelistTorquePlusTwo` | `gear.duelistTorque` — Duelist's Torque |
+  | PLD | `gear.knightsBeadPlusTwo` | `gear.knightsBead` — Knight's Beads |
+  | BRD | `gear.bardCharmPlusTwo` | `gear.bardCharm` — Bard's Charm |
+  | RNG | `gear.scoutGorgetPlusTwo` | `gear.scoutGorget` — Scout's Gorget |
+  | DRG | `gear.dragoonCollarPlusTwo` | `gear.dragoonCollar` — Dragoon's Collar |
+  | BLU | `gear.mirageStolePlusTwo` | `gear.mirageStole` — Mirage Stole |
+  | COR | `gear.commodoreCharmPlusTwo` | `gear.commodoreCharm` — Commodore Charm |
+  | SCH | `gear.arguteStolePlusTwo` | `gear.arguteStole` — Argute Stole |
+  | GEO | `gear.baguaCharmPlusTwo` | `gear.baguaCharm` — Bagua Charm |
+
+- **What changed inside the sample files.** All 22 ship refreshed. Copying the one for your
+  job brings these with it; keeping your own copy is equally fine, because a definition in
+  your job file loads after the include and replaces the engine's.
+
+  - BLM and DRK declare Drain and Aspir at `sets.Midcast.Drain` and `sets.Midcast.Aspir`,
+    the names the engine reads.
+  - Sets the engine never reads are gone: RDM's `sets.Enspell`, the `sets.Precast.RA.ACC`
+    in SAM and WAR, and DNC's dual-wield set, which moves to `sets.DualWield`.
+  - The pet-command blocks in BST and PUP are gone, because a pet command has no set of
+    its own.
+  - Three set names read the way the game spells the action: `sets.WS['Raging Axe']` in BST
+    and WAR, `sets.WS['Shadowstitch']` in DNC and THF, and `sets.JA['Clarion Call']` in BRD.
+    Four ship empty and warn on first use — put gear in them or delete the line; BST's
+    Raging Axe set copies that file's base weaponskill set.
+  - BLM, GEO, SCH, SMN and WHM carry an `Mpaca` weapon set.
+- **Upgrade every character you multibox in the same sitting.** The messages your
+  characters send each other for spell-received gear carry a new internal tag under the
+  new name, and 2.0 and 1.7.3 ignore each other's messages — no error on either side, just
+  silence — so spell-received gear stops arriving between mixed versions.
+- **Check what you are running with `//gs c version`.** The numbering continues under the
+  new name rather than restarting, so a higher version is always a later one.
+
+### New and Changed Features
+
+**The on-screen display** — `gs c displaystyle`
+
+- **Four renderers draw the status box**: `classic`, `harness`, `lattice` and `halo`. The
+  bare command cycles them, a name selects one, and the choice is saved under the character
+  playing, so each of your characters can use a different one. A name that is not on offer
+  is refused with the list.
+- **LATTICE in the stacked view is what the box opens in**, so the panel, the border and the
+  rig are there from the first job change with nothing to switch on. If you would rather have
+  the plain text box, `//gs c displaystyle classic`; for the compact view, `//gs c displaymode`.
+  Both save immediately, under the character playing.
+- **LATTICE draws the box on a panel** with a header strip and a fitted border, and adds
+  **the rig**: a four-by-four grid of your sixteen gear slots beside the mode rows, laid out
+  in the game's own equipment-window order. Each cell is colored by whichever layer is
+  holding that slot — a strip hold in orange, the disable hold in cyan, a lock mode or the
+  weapon lock in violet, the Hoxne hold in green, an item use in pale yellow — and a slot
+  nothing holds draws as a dim socket. `settings.Lattice.rig.enabled = false` turns it off.
+- **HALO draws no background at all**: four text planes at one position — crown, labels,
+  values and holds — each with its own weight, stroke and hue, and a cap on how wide one
+  value may run.
+- **HARNESS gives every mode a cell of its own**, sized from that mode's own option list and
+  packed two cells to a row, with no chevrons.
+- **A hold row names every hold standing**, behind an `HLD` anchor: `DIS` for the disable
+  hold, `NKD`, `WPO` and `PRC` for the three strip holds, and `CAP`, `DYN` and `JUB` for the
+  carried-item locks. The row appears only while something is holding a slot.
+- **The weapon lock has a row of its own, `LCK`**, and its value turns violet while the lock
+  is actually holding main and sub.
+- **The debug box carries a legend rail and a sixteen-slot hold map**, so you can read which
+  layer is holding each slot.
+
+**Holds and locks**
+
+- **The weapon lock: `gs c weaponlock`, on <kbd>F10</kbd>.** `Locked` makes
+  `sets.Weapons[<your weapon mode>]` the only writer of main and sub in every phase —
+  precast, midcast and aftercast alike — and the pair starts as whatever you are wearing, so
+  a slot the mode names nothing for is held as found. Bard's `Songs` stands aside for a song
+  aimed at yourself, another player or a Trust; Corsair's `Locked+R` holds range as well, and
+  stands down to `Locked` if a Hoxne mode takes range.
+- **Hold slots exactly as they are: `gs c disable <slot>... | all`.** Nothing is equipped and
+  nothing is unequipped — the gear staying where it is is the whole point — and
+  `gs c enable <slot>...` hands the slots back. A bare `gs c disable` prints the usage and
+  what stands, and one unrecognized slot word refuses the whole command before any slot is
+  touched.
+- **`gs c naked`, `gs c weaponsonly` and `gs c abysseaproc` bare their slots and hold them
+  bare**, each with the same grammar: bare flips the hold, `on` takes it or re-takes it as
+  the manual repair when something grabbed a slot behind the engine's back, and `off`
+  releases it. One hold stands at a time, and typing a second word while the first stands
+  switches shape.
+- **`gs c nakedunlocked` is the momentary form** — it bares every slot it can and holds
+  nothing, so the next action or poll dresses you again.
+- **`gs c capacity` wears the best capacity point cape you carry** and holds the back slot:
+  Aptitude Mantle +1, Aptitude Mantle, or a Mecisto whose own augment reads higher than
+  either. It names what it settled on with its value — `Aptitude Mantle +1 (+30%): [ON] held
+  in back.` — and setting it on while it is already on chooses afresh. `gs c aptitude` and
+  `gs c mecisto` are the same mode under other names.
+- **`gs c capinfo` lists every capacity point cape you carry**, what each is worth, which one
+  the mode picks and what is actually worn.
+- **`gs c dynamisrp` wears the best Dynamis Divergence neck your main job carries** — +2 over
+  +1 over the base piece — and holds the neck slot. Entering a Divergence zone prints a
+  reminder.
+- **Every layer knows its place.** One arbiter hands out slots, so exactly one layer owns a
+  slot at a time and a refusal names the holder and the slots, ranked down the body:
+  `Received gear: head, body are held by a strip hold right now.` Sleep gear is a named holder
+  like the rest, and prints a line on every sleep and wake.
+
+**Gear and reporting**
+
+- **A typed `/ja "Tomahawk"` or `/ja "Angon"` works on its own** while Hoxne is `OFF` or
+  `ON-Allow Critical`, with `<t>` or a numeric target id: the engine equips the throwing
+  item and the ability fires. `gs c tomahawk` and `gs c angon` remain the macro-friendly
+  form — the ability's recast is checked before any gear moves, and a missing item is
+  answered rather than silent. Under `ON-Locked` the ability is refused with its reason,
+  whichever form you use.
+- **A set you gave two names is reported under the one the action reached for.** Writing
+  `sets.WS['Savage Blade'] = sets.WS.WSD` in your job file leaves both names live; a Savage
+  Blade reports as `sets.WS.Savage Blade` on every load, and `gs c checksets` lists it under
+  that same name.
+- **An Aftermath layer is named in a clause of its own** on a weaponskill or shot line, with
+  the set your branch chose at the head of the line: `[Savage Blade]
+  [sets.WS.Savage Blade][Used] + [sets.WS.AM3][Used]`.
+- **A White Mage main job carrying Yagrush casts Cursna with it**, and the line names the
+  holder when a higher hold owns that slot.
+- **The gear library grows by 322 entries.** Story mission rewards from every
+  storyline, Seekers of Adoulin, Rhapsodies of Vana'diel and The Voracious Resurgence
+  included; the three add-on scenarios' coffer pieces; Twilight and other Abyssea pieces;
+  the Sortie earrings at every tier; Sinister Reign; Vagary; the Prime and Aeonic weapons;
+  the Ambuscade weapon ladders; the Dynamis Divergence necks at every tier; Omen, Sroda and
+  Unity accessories; and the Dancer's Ambuscade cape.
+- **Debug output is prefixed `[Rahvin Debug]`.**
+
+### Optimizations
+
+- **Movement gear and Treasure Hunter tracking cost less to keep current.** Your position
+  is read straight off the game's own movement messages, and movement gear swaps in and out
+  exactly as it is documented.
+- **The status box costs less to keep on screen.**
+
+### Bug Fixes
+
+- **The offhand stays withheld after a reload until both weapon traits are read**, so no
+  shield appears in the sub slot for the first seconds.
+- **The Hoxne Ampulla waits out a mount.** The game refuses item use while you are
+  mounted, so the automatic use holds instead of retrying every few seconds for the
+  whole ride, and fires promptly once you dismount.
+- **A cast that is canceled or interrupted gives the Hoxne Ampulla back**, including the
+  last song of a wave.
+- **An interrupted song holds its instrument for five seconds**, so a re-sing inside them
+  shows no Ampulla flicker; Tomahawk and Angon give the slot back within a second.
+- **An ability your character cannot use is refused before any gear moves**, naming the
+  real cause: `Tomahawk is not available (wrong job or level).`
+- **A job ability still on cooldown reports the time remaining, as minutes and seconds.**
+- **A Scholar carrying job points is refused a stratagem it does not have**, and told
+  how long until the next charge.
+- **Zoning releases the Hoxne hold and the lock modes, then dresses you for where you have
+  arrived.**
+- **Unloading a job file hands back the slot an item use was holding**, and clears the lock
+  modes last, reporting any that were on.
+- **A Bard file that omits an `Instrument` key falls back to the family set in silence**; a
+  key declared and left `{}` is named in chat like any other empty set.
+- **The shipped BLU file's `Shield` weapon mode equips its shield.**
+- **The shipped BRD files open in the combat mode the file names.**
+- **The shipped RUN file's One for All equips the idle set.**
 
 ---
 
@@ -559,5 +839,5 @@ supports.
 ## 1.5.12
 
 Mirdain's original Mirdain-Include, and the base this suite was forked from. Credit to
-Mirdain for the original concept and scaffolding. It is kept in the repository as a
-reference copy for performance comparison.
+Mirdain for the original concept and scaffolding. It is the baseline the bundled
+performance report measures against.

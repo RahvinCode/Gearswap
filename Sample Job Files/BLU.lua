@@ -1,15 +1,15 @@
 
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "11"
 MacroBook = "8"
 MacroSet = "2"
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
 --Uses Items Automatically
@@ -18,8 +18,8 @@ AutoItem = false
 --Upon Job change will use a random lockstyleset
 Random_Lockstyle = false
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC affects WS and TP modes
 
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
@@ -27,11 +27,11 @@ Lockstyle_List = {1,2,6,12}
 --Set default mode (TP,ACC,DT)
 state.OffenseMode:set('DT')
 
---Command to Lock Style and Set the correct macros
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 -- Blue Magic classification.  Buckets follow the spell's mechanic, because the
--- mechanics do not share gear.  The same buckets are in Mirdain-Include.lua's SECTION 5.
+-- mechanics do not share gear.  The same buckets are in RahvinGS/interface.lua's SECTION 5.
 BluePhysical = S { 'Amorphic Spikes', 'Asuran Claws', 'Barbed Crescent', 'Battle Dance',
     'Benthic Typhoon', 'Bilgestorm', 'Bloodrake', 'Bludgeon', 'Body Slam', 'Cannonball',
     'Claw Cyclone', 'Death Scissors', 'Delta Thrust', 'Dimensional Death', 'Disseverment',
@@ -78,7 +78,7 @@ BlueACC = S { '1000 Needles', 'Absolute Terror', 'Auroral Drape', 'Awful Eye',
 state.WeaponMode:options('Almace','Naegling','Black Halo','Cleave')
 state.WeaponMode:set('Almace')
 
---Enable JobMode for UI
+--Enable JobMode for UI.
 UI_Name = 'Mode'
 
 --Modes for specific to Blue Mage
@@ -109,18 +109,19 @@ function get_sets()
 	}
 
 	sets.Weapons['Cleave'] = {
-		main = gear.nibiruCudgelNuke,
-		sub = gear.nibiruCudgelNuke,
+		main = gear.nibiruCudgelPathB,
+		sub = gear.nibiruCudgelPathB,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {
 		sub=gear.genmeiShield,
 	}
 
-	sets.Weapons.Shield = {}
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {}
 
-	-- Standard Idle set with -DT,Refresh,Regen and movement gear
+	-- Standard Idle set with -DT, Refresh, Regen and movement gear
 	sets.Idle = {
 		ammo=gear.staunchPlusOne,
 		head=gear.malignanceHead,
@@ -151,7 +152,7 @@ function get_sets()
 		legs = gear.carmineLegsPlusOnePathA,
     }
 
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -180,7 +181,7 @@ function get_sets()
 		hands=gear.malignanceHands,
 		legs=gear.malignanceLegs,
 		feet=gear.malignanceFeet,
-		neck = gear.mirageStole,
+		neck = gear.mirageStolePlusTwo,
 		waist=gear.reiki,
 		left_ear=gear.eabani,
 		right_ear = gear.hashishinEarringPlusOneDA,
@@ -296,10 +297,10 @@ function get_sets()
 	}) -- 30% Potency
 
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
-	--This set is used as base as is overwrote by specific gear changes (Spell Interruption Rate Down)
+	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
 	sets.Midcast.SIRD = { --Total = 15 merits + 84 gear = 99 - Cap is 105
 		ammo=gear.staunchPlusOne, -- 11
 		hands = gear.amalricHandsPlusOnePathD, --11
@@ -461,7 +462,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.mirageStole,
+		neck = gear.mirageStolePlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.ishvara,
@@ -470,7 +471,7 @@ function get_sets()
 		back = gear.bluWSDDt,
 	}
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = {}
 
 	-- This will augement the WS sets when in the Subtle Blow statnce
@@ -483,7 +484,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.mirageStole,
+		neck = gear.mirageStolePlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.ishvara,
@@ -499,7 +500,7 @@ function get_sets()
 		hands = gear.nyameHands,
 		legs = gear.nyameLegs,
 		feet = gear.nyameFeet,
-		neck = gear.mirageStole,
+		neck = gear.mirageStolePlusTwo,
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.ishvara,
@@ -515,7 +516,7 @@ function get_sets()
 		hands = gear.gletiHands,
 		legs = gear.gletiLegs,
 		feet = gear.gletiFeet,
-		neck = gear.mirageStole,
+		neck = gear.mirageStolePlusTwo,
 		waist=gear.fotiaWaist,
 		left_ear=gear.odr,
 		right_ear=gear.hashishinEarringPlusOne,
@@ -524,7 +525,7 @@ function get_sets()
 		back = gear.bluDA,
 	}
 
-	-- Worn to tag Treasure Hunter on a mob; the engine merges it on the tagging action.
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		waist=gear.chaac,
 		body=gear.volteJupon,
@@ -590,7 +591,7 @@ function status_change_custom(new,old)
 
 	return equipSet
 end
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 	if command == 'jobmode' then
 		if state.JobMode.value == 'AoE' then
@@ -601,28 +602,9 @@ function self_command_custom(command)
 	end
 end
 
--- Function is called when the job lua is unloaded
+-- This function is called when the job file is unloaded
 function user_file_unload()
 
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	--local ja_recasts = windower.ffxi.get_ability_recasts()
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	local sp_recasts = windower.ffxi.get_spell_recasts()
-	if not buffactive['Phalanx'] and sp_recasts[517] == 0 and player.mp >= 19 then
-		buff = "Metallic Body"
-	elseif not buffactive['Aquaveil'] and sp_recasts[55] == 0 and player.mp > 12 then
-		buff = "Aquaveil"
-	elseif not buffactive['Defense Boost'] and sp_recasts[547] == 0 and player.mp > 10 then
-		buff = "Cocoon"
-	end
-	return buff
 end
 
 function pet_change_custom(pet,gain)

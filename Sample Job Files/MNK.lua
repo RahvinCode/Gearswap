@@ -1,15 +1,15 @@
 
 
 -- Load and initialize the include file.
-include('GearSets-Include')
-include('Mirdain-Include')
+include('RahvinGS/GearSets-Include')
+include('RahvinGS/Rahvin-Engine')
 
 --Set to ingame lockstyle and Macro Book/Set
 LockStylePallet = "3"
 MacroBook = "7"
 MacroSet = "1"
 
--- Use "gs c food" to use the specified food item 
+-- Use "gs c food" to use the specified food item
 Food = "Sublime Sushi"
 
 --Uses Items Automatically
@@ -21,8 +21,8 @@ Random_Lockstyle = false
 --Lockstyle sets to randomly equip
 Lockstyle_List = {1,2,6,12}
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assigne equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA','CRIT') -- ACC effects WS and TP modes
+-- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA','CRIT') -- ACC affects WS and TP modes
 
 --Set Mode to Damage Taken as Default
 state.OffenseMode:set('DT')
@@ -31,7 +31,7 @@ state.OffenseMode:set('DT')
 state.WeaponMode:options('Verethragna','Karambit','Pole','Club')
 state.WeaponMode:set('Verethragna')
 
--- Initialize Player
+-- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
@@ -51,7 +51,9 @@ function get_sets()
 		main=gear.warpCudgel,
 	}
 
+	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
 	sets.Weapons.Shield = {}
+	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
 	sets.Weapons.Sleep = {}
 
 	-- Idle sets
@@ -87,11 +89,11 @@ function get_sets()
 	sets.OffenseMode.TP = {
 		ammo = gear.coiste,
 		head = gear.adhemarHeadPlusOnePathA,
-		body=gear.kendatsubaSamuePlusOne,
+		body=gear.kendatsubaBodyPlusOne,
 		hands = gear.adhemarHandsPlusOnePathA,
 		legs = gear.hesychastLegsPlusFour,
 		feet=gear.anchoriteFeetPlusFour,
-		neck = gear.monkNodowa,
+		neck = gear.monkNodowaPlusTwo,
 		waist=gear.moonbowBeltPlusOne,
 		left_ear=gear.sherida,
 		right_ear = gear.schere,
@@ -101,10 +103,10 @@ function get_sets()
 	}
 
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode.TP,{
-	    head=gear.kendatsubaJinpachiPlusOne,
-		body=gear.kendatsubaSamuePlusOne,
-		hands=gear.kendatsubaTekkoPlusOne,
-		legs=gear.kendatsubaHakamaPlusOne,
+	    head=gear.kendatsubaHeadPlusOne,
+		body=gear.kendatsubaBodyPlusOne,
+		hands=gear.kendatsubaHandsPlusOne,
+		legs=gear.kendatsubaLegsPlusOne,
 		feet=gear.kendatsubaFeetPlusOne,
 	})
 
@@ -121,7 +123,7 @@ function get_sets()
 		legs = gear.mpacaLegs,
 	})
 
-	--This set is used when OffenseMode is SB and Enaged (Augments the TP base set)
+	--This set is used when OffenseMode is SB and Engaged (Augments the TP base set)
 	-- MNK gets 35 Native Subtle Blow
 	-- Cap is 75% - 50% caps either I or II
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode[state.OffenseMode.value], {
@@ -151,7 +153,7 @@ function get_sets()
 	-- Augments the engaged set while the Footwork buff is up
 	sets.Foot_Work = { feet=gear.anchoriteFeetPlusFour, }
 
-	--Used to swap into movement gear when the player is detected movement when not engaged
+	--Used to swap into movement gear when the player is moving and not engaged
 	sets.Movement = {
 		feet=gear.hermesSandals,
 	}
@@ -165,7 +167,7 @@ function get_sets()
 		waist=gear.askSash,
 	}
 	
-	--Spell Received Sets
+	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -215,7 +217,7 @@ function get_sets()
 		back = gear.mnkFC, --10
 	} -- FC 66
 
-	--Base set for midcast - if not defined will notify and use your idle set for surviability
+	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {
 	
 	})
@@ -291,7 +293,7 @@ function get_sets()
 		left_ring=gear.defending,
 	})
 
-	--This set is used when OffenseMode is ACC and a WS is used (Augments the WS base set)
+	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
 	sets.WS.ACC = set_combine(sets.WS,{})
 
 	sets.WS.PDL = set_combine(sets.WS,{})
@@ -299,11 +301,11 @@ function get_sets()
 	sets.WS.Kicks = {
 		ammo=gear.crepuscularPebble,
 		head=gear.mpacaHead,
-		body=gear.kendatsubaSamuePlusOne,
+		body=gear.kendatsubaBodyPlusOne,
 		hands = gear.ryuoHandsPlusOnePathA,
 		legs = gear.hesychastLegsPlusFour,
 		feet=gear.anchoriteFeetPlusFour,
-		neck = gear.monkNodowa,
+		neck = gear.monkNodowaPlusTwo,
 		waist=gear.moonbowBeltPlusOne,
 		left_ear=gear.sherida,
 		right_ear=gear.odr,
@@ -318,12 +320,12 @@ function get_sets()
 	sets.WS["One Inch Punch"] = set_combine(sets.WS,{})
 	sets.WS["Backhand Blow"] = set_combine(sets.WS,{})
 	sets.WS["Raging Fists"] = set_combine(sets.WS,{
-		neck=gear.monkNodowa,
+		neck=gear.monkNodowaPlusTwo,
 		feet=gear.kendatsubaFeetPlusOne,
 	})
 	sets.WS["Spinning Attack"] = set_combine(sets.WS,{})
 	sets.WS["Howling Fist"] = set_combine(sets.WS,{
-		neck=gear.monkNodowa,
+		neck=gear.monkNodowaPlusTwo,
 		feet=gear.kendatsubaFeetPlusOne,
 	})
 	sets.WS["Dragon Kick"] = sets.WS.Kicks
@@ -334,6 +336,7 @@ function get_sets()
 		back = gear.mnkDADex,
 	})
 
+	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		body=gear.volteJupon,
@@ -420,7 +423,7 @@ function status_change_custom(new,old)
 	return choose_gear()
 end
 
---Function is called when a self command is issued
+--Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
 function self_command_custom(command)
 
 end
@@ -440,39 +443,6 @@ function choose_gear()
 		equipSet = set_combine(equipSet, sets.Boost)
 	end
 	return equipSet
-end
-
-function check_buff_JA()
-	local buff = 'None'
-	local ja_recasts = windower.ffxi.get_ability_recasts()
-
-	-- Sub job has least priority
-	if player.sub_job == 'WAR' then
-		buff = check_war_self_buff(player.sub_job_level, ja_recasts) or buff
-	end
-
-	-- Chakra takes priority when HP is low
-	if player.hpp < 51 and ja_recasts[15] == 0 then
-		buff = "Chakra"
-	elseif not buffactive.Impetus and ja_recasts[31] == 0 then
-		buff = "Impetus"
-	elseif not buffactive.Footwork and ja_recasts[21] == 0 then
-		buff = "Footwork"
-	elseif not buffactive.Mantra and ja_recasts[19] == 0 then
-		buff = "Mantra"
-	elseif not buffactive.Dodge and ja_recasts[14] == 0 then
-		buff = "Dodge"
-	elseif not buffactive.Focus and ja_recasts[13] == 0 then
-		buff = "Focus"
-	end
-
-	return buff
-end
-
-function check_buff_SP()
-	local buff = 'None'
-	--local sp_recasts = windower.ffxi.get_spell_recasts()
-	return buff
 end
 
 -- This function is called when the job file is unloaded
