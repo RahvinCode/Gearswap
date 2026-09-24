@@ -3,30 +3,32 @@
 include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 
---Set to ingame lockstyle and Macro Book/Set
+-- The lockstyle set, macro book and macro set that jobsetup applies at load.
 LockStylePallet = "20"
 MacroBook = "20"
 MacroSet = "1"
 
--- Use "gs c food" to use the specified food item
+-- The item that "gs c food" uses.
 Food = "Tropical Crepe"
 
---Uses Items Automatically
+-- When true, the engine uses a Remedy on paralysis or silence and a Holy Water on Doom.
 AutoItem = false
 
---Upon Job change will use a random lockstyleset
+-- When true, each load picks a lockstyle set from Lockstyle_List in place of LockStylePallet.
 Random_Lockstyle = false
 
---Lockstyle sets to randomly equip
+-- The lockstyle sets Random_Lockstyle picks from.
 Lockstyle_List = {1,2,6,12}
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC affects WS and TP modes
+-- The offense modes this job cycles through, in place of the engine's default TP, ACC and DT.
+-- Each mode needs a sets.OffenseMode.<Mode> and a sets.Idle.<Mode> below, and can also have
+-- a sets.WS.<Mode>.
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA')
 
---Set default mode (TP,ACC,DT)
+-- The offense mode selected at load.
 state.OffenseMode:set('DT')
 
---Weapons options
+-- Weapon modes. Each one needs a sets.Weapons['<Mode>'] of the same name below.
 state.WeaponMode:options('Idris','Black Halo','Mpaca')
 state.WeaponMode:set('Mpaca')
 
@@ -36,7 +38,7 @@ jobsetup (LockStylePallet,MacroBook,MacroSet)
 -- Goal 2200 HP/1400 MP
 function get_sets()
 
-	-- Weapon setup
+	-- Weapon sets, one per weapon mode above.
 	sets.Weapons = {}
 
 	sets.Weapons['Idris'] = {
@@ -54,17 +56,20 @@ function get_sets()
 		sub=gear.enki,
 	}
 
-	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
+	-- Worn with the idle set when this character is put to sleep. Its slots are held until the
+	-- sleep ends, and nothing else changes gear while asleep.
 	sets.Weapons.Sleep = {
 		main=gear.lorgMor,
 	}
 
-	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
+	-- Worn in the offhand whenever the main is one-handed and no dual-wield trait is active,
+	-- engaged or idle.
 	sets.Weapons.Shield = {
 		sub=gear.genmeiShield,
 	}
 
-	-- Standard Idle set with -DT, Refresh, Regen and movement gear
+	-- Worn while idle. Every action's precast and midcast also start from this set, so a slot
+	-- their sets leave out keeps its idle piece.
 	sets.Idle = {
 		range = gear.dunnaFC,
 		head=gear.azimuthHeadPlusThree, -- 11/11
@@ -81,6 +86,8 @@ function get_sets()
 		back = gear.geoPetRegen,
     } -- 50 PDT / 52 MDT (including shield)
 
+	-- Worn over sets.Idle while idle in the matching offense mode. sets.Idle.Resting goes over
+	-- them while resting.
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {})
@@ -89,7 +96,18 @@ function get_sets()
 	sets.Idle.MEVA = set_combine(sets.Idle, {})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 
-	-- Sets for Idle when player has a pet
+	-- Worn over the idle set while a Phantom Roll on you stands at 11. It is for the Roller's
+	-- Ring, which any job can wear and which gives Refresh +1 and Regain +10 at an 11, for example
+	-- right_ring="Roller's Ring". It applies in every offense mode. It is worn only while idle, so
+	-- any action swaps it out and it comes back when the action ends. While moving, a ring here
+	-- replaces the movement set's ring in the same slot. This file's sets.Movement wears a
+	-- Defending Ring in left_ring, so right_ring is the free slot.
+	sets.Idle.XIRoll = {}
+
+	-- The TP-mode form, merged after sets.Idle.XIRoll while idle in TP mode.
+	sets.Idle.TP.XIRoll = {}
+
+	-- Worn over the idle set while a pet is out.
 	sets.Idle.Pet = set_combine( sets.Idle, { --2278/1482
 		head=gear.azimuthHeadPlusThree, -- 11/11
 		neck = gear.baguaCharmPlusTwo,
@@ -99,13 +117,14 @@ function get_sets()
 		hands=gear.geomancyHandsPlusFour,
     }) -- 54 PDT / 45 MDT (with shield)
 
-	--Used to swap into movement gear when the player is moving and not engaged
+	-- Worn over the idle set while moving and not engaged.
 	sets.Movement = {
 		left_ring=gear.defending,
 		feet=gear.geomancyFeetPlusFour,
 	}
 
-	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
+	-- Worn when another character on this machine, running this engine, casts on you. Spell
+	-- Received mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -118,17 +137,26 @@ function get_sets()
 	sets.Regen_Received = {}
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
+
+	-- The ring slot Zodiac Ring goes in when a spell's element matches the day: "right_ring" or
+	-- "left_ring".
+	Elemental_Bonus_Ring_Slot = "right_ring"
+
+	-- Worn while using a Holy Water or Hallowed Water.
 	sets.Holy_Water = {
 	    neck=gear.nicander,
 	}
 
-	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
+	-- Treasure Hunter gear. While TH Mode is Tag or Full Time, it is worn for an action aimed at an
+	-- untagged monster and while engaged on one. Full Time also keeps it on whenever engaged. TH
+	-- Mode starts at None, which never wears it, on every job but Thief.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		waist=gear.chaac,
 		hands = gear.merlinicDastanasNukeB,
 	}
 
+	-- The engaged base, merged first in every offense mode. The mode's own set goes over it.
 	sets.OffenseMode = {
 		head=gear.azimuthHeadPlusThree,
 		body = gear.nyameBody,
@@ -151,15 +179,15 @@ function get_sets()
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
 	sets.OffenseMode.SB = set_combine(sets.OffenseMode, {})
 
-	--Swap in when dual wielding
+	-- Worn while engaged with the Dual Wield trait active, over the mode's set.
 	sets.DualWield = {
 		left_ear=gear.eabani,
 	}
 
-	-- Precast Sets
+	-- Precast sets, worn as an action starts.
 	sets.Precast = {}
 
-	-- Used for Magic Spells
+	-- Fast cast gear, worn at the start of every spell.
 	sets.Precast.FastCast = {
 		range = gear.dunnaFC, -- 3
 		head = gear.merlinicHoodFC, -- 15
@@ -169,8 +197,8 @@ function get_sets()
 		feet = gear.merlinicCrackowsFC, -- 12
 		neck=gear.voltsurge, -- 4
 		waist=gear.witful, -- 3 and 3 Quick Magic
-		left_ear=gear.etiolation, -- 1
-		right_ear=gear.malignanceEar, -- 4
+		left_ear=gear.malignanceEar, -- 4
+		right_ear=gear.etiolation, -- 1
 		left_ring=gear.lebecheRing, -- 2 Quick Magic
 		right_ring=gear.kishar, -- 4
 		-- Have to use Fast Cast due to Head Locked out with Pet above 68%
@@ -178,23 +206,25 @@ function get_sets()
 		--back="Perimede Cape", -- 4 Quick Magic
 	} -- 80% Fast Cast with 9% Quick Magic
 
+	-- Merged over the fast cast set for cures, enhancing magic, Utsusemi, blue magic and songs.
 	sets.Precast.Cure = {}
 	sets.Precast.Enhancing = {}
-	sets.Precast.Elemental = {}
 	sets.Precast.Utsusemi = {}
 	sets.Precast.BlueMagic = {}
 	sets.Precast.Songs = {}
 
 
-	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
+	-- The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this
+	-- set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {
-	
+
 	})
 
-	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
+	-- Spell interruption rate down. Merged under every midcast except a ranged attack, so any
+	-- specific set overwrites it.
 	sets.Midcast.SIRD = {}
 
-	-- Cure Set
+	-- Cure spells. Curaga takes its own set below.
 	sets.Midcast.Cure = {
 		main=gear.daybreak, -- 30
 		sub=gear.genmeiShield,
@@ -208,14 +238,14 @@ function get_sets()
 		waist=gear.luminarySash,
 		left_ear = gear.odnowaPlusOne,
 		right_ear=gear.etiolation,
-		left_ring = gear.stikiniRingPlusOne2,
-		right_ring = gear.stikiniRingPlusOne3,
+		left_ring = gear.stikiniRingPlusOne3,
+		right_ring = gear.stikiniRingPlusOne2,
 		back = gear.geoCure, -- 10
     }
 
 	sets.Midcast.Curaga = set_combine( sets.Midcast.Cure, {})
 
-	-- Enhancing Skill
+	-- Enhancing magic. The family sets below go over it for the spells each one covers.
 	sets.Midcast.Enhancing = {
 		sub=gear.ammurapi,
 		range = gear.dunnaFC,
@@ -233,18 +263,23 @@ function get_sets()
 		back = gear.geoPetRegen,
 	}
 
-	--'Barfire','Barblizzard','Baraero','Barstone','Barthunder','Barwater','Barfira','Barblizzara','Baraera','Barstonra','Barthundra','Barwatera'
+	-- Elemental bar-spells: Barfire, Barblizzard, Baraero, Barstone, Barthunder, Barwater and
+	-- their -ra forms.
 	sets.Midcast.Enhancing.Elemental = {}
 
-	--'Barsleepra','Barpoisonra','Barparalyzra','Barblindra','Barvira','Barpetra','Baramnesra','Barsilencera','Barsleep','Barpoison','Barparalyze','Barblind','Barvirus','Barpetrify','Baramnesia','Barsilence'
+	-- Status bar-spells: Barsleep, Barpoison, Barparalyze, Barblind, Barvirus, Barpetrify,
+	-- Baramnesia, Barsilence and their -ra forms.
 	sets.Midcast.Enhancing.Status = {}
 
-	--'Temper','Temper II','Enaero','Enstone','Enthunder','Enwater','Enfire','Enblizzard','Boost-STR','Boost-DEX','Boost-VIT','Boost-AGI','Boost-INT','Boost-MND','Boost-CHR'
+	-- Spells that scale with enhancing skill: Temper, Temper II, the first-tier en-spells and the
+	-- Boost-stat spells.
 	sets.Midcast.Enhancing.Skill = {}
 
+	-- Enhancing spells cast on someone else, and self-casts under Accession. Merged after
+	-- sets.Midcast.Enhancing and before the family set.
 	sets.Midcast.Enhancing.Others = {}
 
-	-- High MACC for landing spells
+	-- Enfeebling magic, built for magic accuracy so the spells land.
 	sets.Midcast.Enfeebling = {
 		main = gear.idris,
 		sub=gear.ammurapi,
@@ -256,14 +291,17 @@ function get_sets()
 		feet=gear.geomancyFeetPlusFour,
 		neck = gear.baguaCharmPlusTwo,
 		waist=gear.luminarySash,
-		left_ear=gear.regalEarring,
-		right_ear=gear.malignanceEar,
-		left_ring = gear.stikiniRingPlusOne2,
-		right_ring = gear.stikiniRingPlusOne3,
+		left_ear=gear.malignanceEar,
+		right_ear=gear.regalEarring,
+		left_ring = gear.stikiniRingPlusOne3,
+		right_ring = gear.stikiniRingPlusOne2,
 		back = gear.geoNukePdt,
 	}
 
-	-- Free Nuke
+	-- Merged over the enfeebling set for the accuracy-based spells the engine's list names.
+	sets.Midcast.Enfeebling.MACC = set_combine(sets.Midcast.Enfeebling, {})
+
+	-- Elemental nukes. A magic burst uses sets.Midcast.Burst instead.
 	sets.Midcast.Nuke = {
 		main = gear.idris,
 		sub=gear.ammurapi,
@@ -275,36 +313,36 @@ function get_sets()
 		feet=gear.azimuthFeetPlusThree,
 		neck=gear.mizukageNoKubikazari,
 		waist = gear.acuityBeltPlusOne,
-		left_ear=gear.regalEarring,
-		right_ear=gear.malignanceEar,
+		left_ear=gear.malignanceEar,
+		right_ear=gear.regalEarring,
 		left_ring=gear.freke,
 		right_ring = gear.metamorphPlusOne,
 		back = gear.geoNukePdt,
 	}
 
-	-- Used for Burst Mode
+	-- Magic bursts, in place of sets.Midcast.Nuke. A nuke bursts when it lands on the skillchain's
+	-- target within 8 seconds and its element matches the skillchain.
 	sets.Midcast.Burst = set_combine( sets.Midcast.Nuke, {})
 
-	-- Cursna Set
+	-- Cursna, merged over sets.Midcast.Enhancing.
 	sets.Midcast.Cursna = set_combine( sets.Midcast.Cure, {
 	    left_ring=gear.menelausRing,
 		right_ring=gear.haomaRing,
 	})
 
-	-- Specific gear for spells
+	-- Sets named for one spell. Such a set takes the place of the spell's family set, which is why
+	-- these start from the family set with set_combine.
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
 		left_ring = gear.stikiniRingPlusOne1,
 		right_ring = gear.stikiniRingPlusOne3,
 		waist=gear.siegel,
 	})
 
-	-- Aquaveil Set
 	sets.Midcast["Aquaveil"] = set_combine(sets.Midcast.Enhancing, {
 		head = gear.amalricHeadPlusOnePathA,
 		hands=gear.regalCuffs,
 	})
 
-	-- Stun Set
 	sets.Midcast["Stun"] = set_combine( sets.Midcast.Nuke,{})
 
 	sets.Midcast["Diaga"] = set_combine (sets.Midcast.Enfeebling, sets.TreasureHunter)
@@ -321,9 +359,13 @@ function get_sets()
 	sets.Midcast.Dark.MACC = set_combine(sets.Midcast.Enfeebling.MACC, {})
 	sets.Midcast.Dark.Absorb = set_combine(sets.Midcast.Enfeebling, {})
 
+	-- Geomancy spells. The engine never merges sets.Geomancy itself. An Indi-spell takes .Indi and
+	-- a Geo-spell takes .Geo, unless the spell has a set of its own.
 	sets.Geomancy = {}
 
-	-- Indi Duration
+	-- Indi-spells, built for duration.
+	-- Under the Geomancy weapon lock, the main and sub named in this family swap in for the cast,
+	-- and the weapon mode's pair returns after it. Under Locked, the mode's pair is worn instead.
 	sets.Geomancy.Indi = {
 		main = gear.idris,
 		sub=gear.genmeiShield,
@@ -342,11 +384,12 @@ function get_sets()
 		back = gear.lifestreamCape,
 	}
 
+	-- Merged over .Indi when the Indi-spell is cast on someone else, through Entrust.
 	sets.Geomancy.Indi.Entrust = set_combine(sets.Geomancy.Indi, {
 		main = gear.gadaNuke,
 	})
 
-	-- Geo Potency
+	-- Geo-spells, built for potency.
 	sets.Geomancy.Geo = set_combine( sets.Geomancy.Indi, {
 		legs = gear.nyameLegs, -- 8/8
 		feet=gear.azimuthFeetPlusThree, -- 11/11
@@ -354,12 +397,14 @@ function get_sets()
 
 	sets.Pet_Midcast = {}
 
-	-- Keeps the Luopan's max HP up. Merged after every Geomancy cast; after that it holds only while a Bagua head is worn and the pet is above 68% HP.
+	-- Keeps the Luopan's HP bonus. aftercast_custom wears it at the end of every Geo-spell. After
+	-- that, Luopan() keeps it on in every build while a Bagua head is worn and the Luopan is above
+	-- 68% HP.
 	sets.Luopan = {
 		head = gear.baguaArmorHeadPlusFour,
 	}
 
-	-- Job Abilities
+	-- Job abilities. sets.JA is worn for every ability, and a set named for the ability goes over it.
 	sets.JA = {}
 	sets.JA["Collimated Fervor"] = {}
 	sets.JA["Convert"] = {}
@@ -389,7 +434,8 @@ function get_sets()
 	sets.JA["Widened Compass"] = {}
 	sets.JA["Entrust"] = {}
 
-	-- Base WS set
+	-- Worn on every weaponskill. The set named for the weaponskill goes over it, then the offense
+	-- mode's set.
 	sets.WS = {
 	    range = gear.dunnaFC,
 		head = gear.nyameHead,
@@ -406,7 +452,10 @@ function get_sets()
 		back = gear.geoPetRegen,
 	}
 
-	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
+	-- Worn on weaponskills in ACC mode, over the set named for the weaponskill. List only the
+	-- pieces the mode changes, since every slot named here overrides the weaponskill's own set. A
+	-- weaponskill with an ACC set of its own, sets.WS['<name>'].ACC, takes that instead. The other
+	-- mode sets work the same way, except that sets.WS.TP is never merged.
 	sets.WS.ACC = {}
 
 end
@@ -415,31 +464,34 @@ end
 -- DO NOT EDIT BELOW THIS LINE UNLESS YOU NEED TO MAKE JOB SPECIFIC RULES
 -------------------------------------------------------------------------------------------------------------------
 
--- Called when the player's subjob changes.
+-- Called when the subjob changes.
 function sub_job_change_custom(new, old)
-	-- Typically used for Macro pallet changing
+	-- Typically used to change the macro book or set.
 end
 
---Adjust custom precast actions
+-- Called before each action, after the engine's own checks. Call cancel_spell() here to stop
+-- the action.
 function pretarget_custom(spell,action)
 
 end
--- Augment basic equipment sets
+-- Called as each action starts. The table it returns is merged over the engine's precast set.
 function precast_custom(spell)
 	local equipSet = {}
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
--- Augment basic equipment sets
+-- Called while each action is in flight. The table it returns is merged over the engine's
+-- midcast set, which is empty for abilities, weaponskills and items.
 function midcast_custom(spell)
 	local equipSet = {}
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
--- Augment basic equipment sets
+-- Called when each action ends. The table it returns is merged over the idle or engaged set the
+-- engine rebuilds.
 function aftercast_custom(spell)
 	local equipSet = {}
-	-- Maintain the High HP of the Luopan
+	-- After a Geo-spell, always wear sets.Luopan. After anything else, Luopan() decides.
 	if Geomancy_List:contains(spell.english) then
 		equipSet = set_combine(equipSet, sets.Luopan)
 	else
@@ -447,79 +499,93 @@ function aftercast_custom(spell)
 	end
 	return equipSet
 end
---Function is called when the player gains or loses a buff
+-- Called when a buff is gained or lost. The table it returns is merged over the rebuilt idle or
+-- engaged set. A change during one of your own actions is dressed when the action ends instead.
 function buff_change_custom(name,gain)
 	local equipSet = {}
-	-- Maintain the High HP of the Luopan when you use Blaze of Glory
+	-- Wear sets.Luopan when Blaze of Glory wears off, as after a Geo-spell.
 	if name == "Blaze of Glory" and not gain then
 		equipSet = set_combine(equipSet, sets.Luopan)
 	end
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
---This function is called when a update request the correct equipment set
+-- Called whenever the engine rebuilds the idle or engaged set, which it does after each action,
+-- on a buff or status change, and when movement starts or stops. The table it returns is merged
+-- over that set.
 function choose_set_custom()
 	local equipSet = {}
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
---Function is called when the player changes states
+-- Called when the player's status changes, such as engaging, disengaging or resting. The table
+-- it returns is merged over the rebuilt idle or engaged set.
 function status_change_custom(new,old)
 	local equipSet = {}
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
 
+-- Called when a pet is summoned or lost. The table it returns is merged over the rebuilt idle or
+-- engaged set.
 function pet_change_custom(pet,gain)
 	local equipSet = {}
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
 
+-- Called when a pet's action ends. The table it returns is merged over the idle or engaged set
+-- the engine rebuilds.
 function pet_aftercast_custom(spell)
 	local equipSet = {}
-	equipSet = set_combine(equipSet, Luopan())
+	-- The rebuilt set already carries Luopan() through choose_set_custom.
 	return equipSet
 end
 
+-- Called while a pet's action is in flight. The table it returns is merged over sets.Pet_Midcast
+-- and the set named for the action.
 function pet_midcast_custom(spell)
 	local equipSet = {}
 	equipSet = set_combine(equipSet, Luopan())
 	return equipSet
 end
 
---Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
+-- Called with each "gs c" command, in lowercase, that the engine's own commands leave unclaimed.
+-- Use it to add commands of your own. The Weapon Mode, Job Mode and Job Mode 2 commands also call
+-- it, before their gear rebuild.
 function self_command_custom(command)
 
 end
--- This function is called when the job file is unloaded
+-- Called when the job file unloads, after the engine releases its keybinds and slot holds.
 function user_file_unload()
 
 end
 
--- Maintains the extra 600hp during midcast of spells when the Luopan is deployed.
--- Called from every gear hook, so it returns as early as it can and builds no
--- table: returning nothing is the same as returning an empty set to set_combine.
--- The log arguments are passed separately so the text is only joined when debug
--- is on.
+-- Returns sets.Luopan while a Luopan is out above 68% HP and a Bagua head is already worn, so the
+-- head's Luopan HP bonus stays on through every build. Otherwise it returns nothing, which
+-- set_combine treats as an empty set. The gear hooks above call it, so it returns as early as it
+-- can and builds no table. The log arguments are passed separately, so the text is joined only
+-- when debug is on.
 function Luopan()
 	if not pet.isvalid then return end
 	local head_item = player.equipment.head
 	if not (head_item and head_item:contains("Bagua")) then return end
 	log('Regen [', pet.hpp, ']% HP')
-	-- Swap the right head
+	-- Keep the Bagua head on while the Luopan is above 68% HP.
 	if pet.hpp > 68 then return sets.Luopan end
 end
 
--- Whether the Luopan was last seen above the threshold, so the timer below only
--- asks for a rebuild when that actually changes.
+-- Whether the Luopan was last seen above 68% HP, so the timer below asks for a rebuild only when
+-- that changes.
 Luopan_Was_High = false
 
+-- The engine calls Cycle_Timer about every 2 seconds. It skips the call during an action and
+-- while you are dead, charmed or asleep.
 function Cycle_Timer()
 	if player.status ~= "Idle" then return end
-	-- Nothing else rebuilds gear while idle, so watch for the Luopan crossing
-	-- the threshold and ask for the swap when it does. Calling Luopan() here
-	-- would only compute a set with nowhere to go.
+	-- A change in the Luopan's HP starts no rebuild by itself. While idle, this watches for the
+	-- Luopan crossing 68% and asks for a rebuild when it does, and the rebuild reaches Luopan()
+	-- through choose_set_custom. Calling Luopan() here would only compute a set with nowhere to go.
 	local high = (pet.isvalid and pet.hpp > 68) and true or false
 	if high ~= Luopan_Was_High then
 		Luopan_Was_High = high

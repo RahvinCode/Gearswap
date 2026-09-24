@@ -4,30 +4,32 @@
 include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 
---Set to ingame lockstyle and Macro Book/Set
+-- The lockstyle set, macro book and macro set that jobsetup applies at load.
 LockStylePallet = "3"
 MacroBook = "7"
 MacroSet = "1"
 
--- Use "gs c food" to use the specified food item
+-- The item that "gs c food" uses.
 Food = "Sublime Sushi"
 
---Uses Items Automatically
+-- When true, the engine uses a Remedy on paralysis or silence and a Holy Water on Doom.
 AutoItem = false
 
---Upon Job change will use a random lockstyleset
+-- When true, each load picks a lockstyle set from Lockstyle_List in place of LockStylePallet.
 Random_Lockstyle = false
 
---Lockstyle sets to randomly equip
+-- The lockstyle sets Random_Lockstyle picks from.
 Lockstyle_List = {1,2,6,12}
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA','CRIT') -- ACC affects WS and TP modes
+-- The offense modes this job cycles through, in place of the engine's default TP, ACC and DT.
+-- Each mode needs a sets.OffenseMode.<Mode> and a sets.Idle.<Mode> below, and can also have
+-- a sets.WS.<Mode>.
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA','CRIT')
 
---Set Mode to Damage Taken as Default
+-- The offense mode selected at load.
 state.OffenseMode:set('DT')
 
---Modes for weapons.  You must define the set in sets.Weapons['X']
+-- Weapon modes. Each one needs a sets.Weapons['<Mode>'] of the same name below.
 state.WeaponMode:options('Verethragna','Karambit','Pole','Club')
 state.WeaponMode:set('Verethragna')
 
@@ -36,7 +38,7 @@ jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
 
-	-- Weapon sets
+	-- Weapon sets, one per weapon mode above.
 	sets.Weapons['Verethragna'] = {
 		main = gear.verethragna,
 	}
@@ -51,12 +53,15 @@ function get_sets()
 		main=gear.warpCudgel,
 	}
 
-	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
+	-- Worn in the offhand whenever the main is one-handed and no dual-wield trait is active,
+	-- engaged or idle.
 	sets.Weapons.Shield = {}
-	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
+	-- Worn with the idle set when this character is put to sleep. Its slots are held until the
+	-- sleep ends, and nothing else changes gear while asleep.
 	sets.Weapons.Sleep = {}
 
-	-- Idle sets
+	-- Worn while idle. Every action's precast and midcast also start from this set, so a slot
+	-- their sets leave out keeps its idle piece.
 	sets.Idle = {
 		ammo=gear.staunchPlusOne,
 		head=gear.nullMasque,
@@ -72,6 +77,8 @@ function get_sets()
 		right_ring=gear.shadowRing,
 		back = gear.mnkDADex,
     }
+	-- Worn over sets.Idle while idle in the matching offense mode. sets.Idle.Resting goes over
+	-- them while resting.
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
@@ -84,7 +91,19 @@ function get_sets()
 		waist=gear.carriers,
 	})
 
-	-- Engaged Sets
+	-- Worn over the idle set while a Phantom Roll on you stands at 11. It is for the Roller's
+	-- Ring, which any job can wear and which gives Refresh +1 and Regain +10 at an 11, for example
+	-- left_ring="Roller's Ring". It applies in every offense mode. It is worn only while idle, so
+	-- any action swaps it out and it comes back when the action ends. While moving, a ring here
+	-- replaces the movement set's ring in the same slot. This file's sets.Movement names no ring,
+	-- so either slot is free.
+	sets.Idle.XIRoll = {}
+
+	-- The TP-mode form, merged after sets.Idle.XIRoll while idle in TP mode.
+	sets.Idle.TP.XIRoll = {}
+
+	-- Engaged sets. sets.OffenseMode is merged first in every offense mode, and the mode's own set
+	-- goes over it.
 	sets.OffenseMode = {}
 	sets.OffenseMode.TP = {
 		ammo = gear.coiste,
@@ -123,10 +142,10 @@ function get_sets()
 		legs = gear.mpacaLegs,
 	})
 
-	--This set is used when OffenseMode is SB and Engaged (Augments the TP base set)
+	-- SB mode, built on the TP set.
 	-- MNK gets 35 Native Subtle Blow
 	-- Cap is 75% - 50% caps either I or II
-	sets.OffenseMode.SB = set_combine(sets.OffenseMode[state.OffenseMode.value], {
+	sets.OffenseMode.SB = set_combine(sets.OffenseMode.TP, {
 		waist=gear.moonbowBeltPlusOne, -- SB II 15
 		left_ear=gear.sherida, -- SB II 5
 		left_ring=gear.niqmaddu, -- SB II 5
@@ -139,7 +158,8 @@ function get_sets()
 		neck = gear.warderCharmPlusOne,
 	})
 
-	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode,{
+	-- CRIT mode, built on the TP set.
+	sets.OffenseMode.CRIT = set_combine(sets.OffenseMode.TP,{
 		head = gear.mpacaHead,
 		body = gear.mpacaBody,
 		hands = gear.mpacaHands,
@@ -150,24 +170,29 @@ function get_sets()
 		back = gear.mnkDADex,
 	})
 
-	-- Augments the engaged set while the Footwork buff is up
-	sets.Foot_Work = { feet=gear.anchoriteFeetPlusFour, }
+	-- Worn over the engaged set in every offense mode while Footwork is up.
+	sets.OffenseMode.Footwork = { feet=gear.anchoriteFeetPlusFour, }
 
-	--Used to swap into movement gear when the player is moving and not engaged
+	-- Worn over the idle set while moving and not engaged.
 	sets.Movement = {
 		feet=gear.hermesSandals,
 	}
 
-	--Impetus set has priority over any other modes
-	sets.Impetus = {
+	-- Worn over the engaged set in every offense mode while Impetus is up. The same table sits
+	-- under sets.WS below, so every weaponskill wears it too.
+	sets.OffenseMode.Impetus = {
 		body=gear.bhikkuBodyPlusThree,
 	}
 
-	sets.Boost = {
+	-- Worn while Boost is up, as one table under three keys: over the engaged set here, over the
+	-- idle set on the next line, and on every weaponskill through sets.WS.Boost below.
+	sets.OffenseMode.Boost = {
 		waist=gear.askSash,
 	}
-	
-	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
+	sets.Idle.Boost = sets.OffenseMode.Boost
+
+	-- Worn when another character on this machine, running this engine, casts on you. Spell
+	-- Received mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -180,10 +205,17 @@ function get_sets()
 	sets.Regen_Received = {}
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
+
+	-- The ring slot Zodiac Ring goes in when a spell's element matches the day: "right_ring" or
+	-- "left_ring".
+	Elemental_Bonus_Ring_Slot = "right_ring"
+
+	-- Worn while using a Holy Water or Hallowed Water.
 	sets.Holy_Water = {
 	    neck=gear.nicander,
 	}
 
+	-- An enmity set for Provoke below. The engine does not read it.
 	sets.Enmity = {
 	    ammo=gear.sapience, -- 2
 		head=gear.nullMasque,
@@ -199,8 +231,8 @@ function get_sets()
 		right_ring=gear.petrov, -- 4
 	} -- 61
 
-	-- Used for Magic Spells
 	sets.Precast = {}
+	-- Fast cast gear, worn at the start of every spell.
 	sets.Precast.FastCast = {
 		ammo=gear.sapience, -- 2
 		head = gear.herculeanHelmFC, --13
@@ -217,11 +249,13 @@ function get_sets()
 		back = gear.mnkFC, --10
 	} -- FC 66
 
-	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
+	-- The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this
+	-- set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {
-	
+
 	})
 
+	-- Job abilities. sets.JA is worn for every ability, and a set named for the ability goes over it.
 	sets.JA = {}
 	sets.JA["Hundred Fists"] = {legs = gear.hesychastLegsPlusFour}
 	sets.JA["Berserk"] = {}
@@ -257,7 +291,8 @@ function get_sets()
 	sets.JA["Impetus"] = {}
 	sets.JA["Inner Strength"] = {}
 
-	--Default WS set base
+	-- Worn on every weaponskill. The set named for the weaponskill goes over it, then the offense
+	-- mode's set.
 	sets.WS = { -- VS Base with Impetus Down
 		ammo = gear.coiste,
 		head=gear.mpacaHead,
@@ -274,30 +309,46 @@ function get_sets()
 		back = gear.mnkCrit,
 	}
 
+	-- The Impetus table again, worn on every weaponskill while Impetus is up. A child of sets.WS
+	-- must come after the sets.WS declaration above, which replaces the whole table.
+	sets.WS.Impetus = sets.OffenseMode.Impetus
+	-- The Boost table again, worn on a weaponskill while Boost is up. Boost ends with the next
+	-- attack or weaponskill, so this is for a Boost used just before a weaponskill, between
+	-- auto-attacks.
+	sets.WS.Boost = sets.OffenseMode.Boost
+	-- A child under one weaponskill's set applies to that weaponskill alone, for example
+	-- sets.WS['Dragon Kick'].Footwork = { feet=gear.anchoriteFeetPlusFour, }. It must come after
+	-- that weaponskill's set below. Dragon Kick and Tornado Kick share the sets.WS.Kicks table, so
+	-- a child on either one applies to both.
+
 	-- 35% SB I for MNK
 	-- Belt SB II 15%
 	-- Mpaca Legs -- SB II 5%
 	-- Earring / Ring SB II 10%
 	-- Need 4% SB
-	sets.WS.SB = set_combine( sets.WS, { -- This maximize SB
+	sets.WS.SB = { -- Maximizes subtle blow
 		waist=gear.moonbowBeltPlusOne, -- SB II 15
 		left_ear=gear.sherida, -- SB II 5
 		left_ring=gear.niqmaddu, -- SB II 5
 		legs=gear.mpacaLegs, -- SB II 5
 		ammo=gear.coiste, -- SB 3
 		right_ear = gear.schere, -- SB 3
-	})
+	}
 
-	sets.WS.MEVA = set_combine( sets.WS, {
+	sets.WS.MEVA = {
 		neck = gear.warderCharmPlusOne,
 		left_ring=gear.defending,
-	})
+	}
 
-	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
-	sets.WS.ACC = set_combine(sets.WS,{})
+	-- Worn on weaponskills in ACC mode, over the set named for the weaponskill. List only the
+	-- pieces the mode changes, since every slot named here overrides the weaponskill's own set. A
+	-- weaponskill with an ACC set of its own, sets.WS['<name>'].ACC, takes that instead. The other
+	-- mode sets work the same way, except that sets.WS.TP is never merged.
+	sets.WS.ACC = {}
 
-	sets.WS.PDL = set_combine(sets.WS,{})
+	sets.WS.PDL = {}
 
+	-- Shared by Dragon Kick and Tornado Kick below.
 	sets.WS.Kicks = {
 		ammo=gear.crepuscularPebble,
 		head=gear.mpacaHead,
@@ -314,7 +365,7 @@ function get_sets()
 		back = gear.mnkCrit,
 	}
 
-	--WS Sets
+	-- Sets named for each weaponskill.
 	sets.WS["Combo"] = set_combine(sets.WS,{})
 	sets.WS["Shoulder Tackle"] = set_combine(sets.WS,{})
 	sets.WS["One Inch Punch"] = set_combine(sets.WS,{})
@@ -336,7 +387,9 @@ function get_sets()
 		back = gear.mnkDADex,
 	})
 
-	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
+	-- Treasure Hunter gear. While TH Mode is Tag or Full Time, it is worn for an action aimed at an
+	-- untagged monster and while engaged on one. Full Time also keeps it on whenever engaged. TH
+	-- Mode starts at None, which never wears it, on every job but Thief.
 	sets.TreasureHunter = {
 		ammo=gear.perfectEgg,
 		body=gear.volteJupon,
@@ -349,103 +402,94 @@ end
 -- DO NOT EDIT BELOW THIS LINE UNLESS YOU NEED TO MAKE JOB SPECIFIC RULES
 -------------------------------------------------------------------------------------------------------------------
 
--- Called when the player's subjob changes.
+-- Called when the subjob changes.
 function sub_job_change_custom(new, old)
-	-- Typically used for Macro pallet changing
+	-- Typically used to change the macro book or set.
 end
 
---Adjust custom precast actions
+-- Called before each action, after the engine's own checks. Call cancel_spell() here to stop
+-- the action.
 function pretarget_custom(spell,action)
 
 end
--- Augment basic equipment sets
+-- Called as each action starts. The table it returns is merged over the engine's precast set.
 function precast_custom(spell)
 	local equipSet = {}
-	if spell.type == 'WeaponSkill' then
-		if buffactive.Impetus then
-			equipSet = sets.Impetus
-		end	
-	end
+
 	return equipSet
 end
--- Augment basic equipment sets
+-- Called while each action is in flight. The table it returns is merged over the engine's
+-- midcast set, which is empty for abilities, weaponskills and items.
 function midcast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
--- Augment basic equipment sets
+-- Called when each action ends. The table it returns is merged over the idle or engaged set the
+-- engine rebuilds.
 function aftercast_custom(spell)
 	local equipSet = {}
 
-	return choose_gear()
+	return equipSet
 end
 
--- Called when the pet dies or is summoned
+-- Called when a pet is summoned or lost. The table it returns is merged over the rebuilt idle or
+-- engaged set.
 function pet_change_custom(pet,gain)
 	local equipSet = {}
 
 	return equipSet
 end
 
--- Called during a pet midcast
+-- Called while a pet's action is in flight. The table it returns is merged over sets.Pet_Midcast
+-- and the set named for the action.
 function pet_midcast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
--- Called after the pet performs an action
+-- Called when a pet's action ends. The table it returns is merged over the idle or engaged set
+-- the engine rebuilds.
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
---Function is called when the player gains or loses a buff
+-- Called when a buff is gained or lost. The table it returns is merged over the rebuilt idle or
+-- engaged set. A change during one of your own actions is dressed when the action ends instead.
 function buff_change_custom(name,gain)
 	local equipSet = {}
 
-	return choose_gear()
+	return equipSet
 end
 
---This function is called when a update request the correct equipment set
+-- Called whenever the engine rebuilds the idle or engaged set, which it does after each action,
+-- on a buff or status change, and when movement starts or stops. The table it returns is merged
+-- over that set.
 function choose_set_custom()
 	local equipSet = {}
 
-	return choose_gear()
+	return equipSet
 end
 
---Function is called when the player changes states
+-- Called when the player's status changes, such as engaging, disengaging or resting. The table
+-- it returns is merged over the rebuilt idle or engaged set.
 function status_change_custom(new,old)
 	local equipSet = {}
 
-	return choose_gear()
+	return equipSet
 end
 
---Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
+-- Called with each "gs c" command, in lowercase, that the engine's own commands leave unclaimed.
+-- Use it to add commands of your own. The Weapon Mode, Job Mode and Job Mode 2 commands also call
+-- it, before their gear rebuild.
 function self_command_custom(command)
 
 end
 
---Custom Function
-function choose_gear()
-	local equipSet = {}
-	if player.status == "Engaged" then
-		if buffactive['Impetus'] then
-			equipSet = sets.Impetus
-		end	
-		if buffactive['Footwork'] then
-			equipSet = set_combine(equipSet, sets.Foot_Work)
-		end	
-	end
-	if buffactive['Boost'] then
-		equipSet = set_combine(equipSet, sets.Boost)
-	end
-	return equipSet
-end
-
--- This function is called when the job file is unloaded
+-- Called when the job file unloads, after the engine releases its keybinds and slot holds.
 function user_file_unload()
 
 end

@@ -22,55 +22,54 @@
 --   movement detection inside it, the two weapon-trait checks, skillchain burst tracking,
 --   buff cancellation, and the Escha temporary-item macro.
 --
--- EXPORTS  Nothing new onto E. It WRITES seven fields the state component declares:
---          is_moving (read by builders, display, enchant, hoxne), DualWield and TwoHand
---          (builders, display), the three last_skillchain_* fields (builders), and
---          SpellCastTime, which it zeroes when a busy window expires.
--- CALLERS  run_burst <- th.lua, two_hand_check and escha_temps <- commands.lua, and
---          cancel <- spellreceived.lua. dual_wield_check and two_hand_check are also handed
---          to coroutine.schedule by the root and by the lifecycle component rather than
---          called, so a search for "dual_wield_check(" will not find those two uses.
--- LOADS    Eleventh of fifteen. Two globals it calls resolve LATE -- debug_box_update
---          (display, twelfth) and equip_set_command (the root, fifteenth) -- so neither may
---          be bound to a local in the import block above. Both work only because Lua
---          resolves a global at call time, and both are called from inside main_engine,
---          which never runs before the load completes.
+-- EXPORTS  Nothing onto E. Its functions are globals. It writes these fields the state
+--          component declares: is_moving, DualWield and TwoHand, the three
+--          last_skillchain_* fields, and SpellCastTime, which it zeroes when a busy window
+--          expires.
+-- CALLERS  The root registers main_engine on the outgoing chunk event. th.lua calls
+--          run_burst, commands.lua calls two_hand_check and escha_temps, and
+--          spellreceived.lua calls cancel. The root and the lifecycle component also hand
+--          dual_wield_check and two_hand_check to coroutine.schedule, so a search for
+--          "dual_wield_check(" misses those uses.
+-- LOADS    After every component whose exports it binds. Two globals it calls are declared
+--          in files that load later: debug_box_update in the display component and
+--          equip_set_command in the root. Neither may be bound in the import block below.
+--          Both resolve because Lua reads a global at call time, and main_engine never runs
+--          before the load completes. E.drag_settle, from the display component, is read
+--          from E at the call for the same reason.
 --
--- Two files that load BEFORE this one call into it -- th.lua takes run_burst, and
--- spellreceived.lua takes cancel -- which is the mirror of the same late-resolution
--- arrangement seen from the other side.
+-- The reverse also holds. th.lua and spellreceived.lua load before this file, and their
+-- calls to run_burst and cancel resolve at call time in the same way.
 
 -- requires: rahvings/state, rahvings/core, rahvings/equip
 return function(E)
-    -- Immutable dependencies bound once at construction, so no call below repeats the lookup
-    -- for them. The cross-component mutables are never bound here: the state fields this file
-    -- writes, and Spellstart, are reached through E at every touch, because a file-local copy
-    -- would not be the one the other components read and write.
+    -- The exports this file uses, bound once at construction. The shared mutable fields are
+    -- never bound here. The state fields this file writes, and Spellstart, are read and
+    -- written through E, because a local copy would not be the one the other components see.
     local Cities, Language, skillchains = E.Cities, E.Language, E.skillchains
     local get_mob_by_id, res, settings  = E.get_mob_by_id, E.res, E.settings
     local release_implement             = E.release_implement
 
-    -- main_engine's three independent clocks: the 30 second housekeeping pass, the 2 second
-    -- job-file Cycle_Timer, and the 0.1 second floor on the engine body itself. Each is
-    -- stamped separately so a slow pass cannot make the others drift.
+    -- main_engine's three clocks: the 30 second housekeeping pass, the 2 second job-file
+    -- Cycle_Timer, and the 0.1 second floor on the engine body. Each is stamped on its own,
+    -- so one running late does not shift the others.
     local UpdateTime1                         = os.clock()
     local UpdateTime2                         = os.clock()
     local main_engine_time                    = os.clock()
 
-    -- The last position read from an outgoing 0x015, and the clock it was read at. Field
-    -- order is the packet's own -- X, then Z, then Y -- not the order a reader expects.
+    -- The last position read from an outgoing 0x015 packet, and the clock it was read at.
+    -- The fields follow the packet's order: X, then Z, then Y.
     local Location                            = { x = 0, z = 0, y = 0, t = 0 }
 
-    -- Raised when something has changed that the equipped set should reflect; main_engine
-    -- consumes it on its next pass and lowers it. Deferring the rebuild this way means
-    -- several changes in one tick cost one rebuild rather than several.
+    -- Raised when the movement flag changes. The gated body turns it into one rebuild
+    -- request on its next pass that is not busy, then lowers it. Changes that arrive while
+    -- busy wait and cost one rebuild between them.
     local Require_Update                      = false
     ------------------------------------------------------------------------------------------------
     -- SECTION 19 - AUTOMATION AND COMBAT MONITORING
     ------------------------------------------------------------------------------------------------
-    -- Everything driven by time or by packets rather than by a player action: the polling
-    -- engine and its movement detection, the two weapon-trait checks, skillchain tracking,
-    -- buff cancellation, and the Escha drink macro.
+    -- The polling engine and its movement detection, the two weapon-trait checks, skillchain
+    -- tracking, buff cancellation, and the Escha drink macro.
 
     -- Drink the six Escha temporary items in sequence. One chained command, because each
     -- use has to wait out the one before it.
@@ -80,11 +79,11 @@ return function(E)
             "input /item \"Monarch's Drink\" <me>;wait 2.5;input /item \"Braver's Drink\" <me>;wait 2.5;input /item \"Fighter's Drink\" <me>;wait 2.5;input /item \"Champion's Drink\" <me>;wait 2.5;input /item \"Soldier's Drink\" <me>;wait 2.5;input /item \"Barbarian's Drink\" <me>")
     end
 
-    -- Record a skillchain so a following nuke can be timed to burst on it, or clear the
-    -- record when a weaponskill closes the window. Called from the action handler in th.lua
-    -- for EVERY actor, not just the player, so a chain closed by anyone opens the window.
-    -- The elements and the time are stored here; the gear builders decide whether a given
-    -- cast falls inside the window and matches an element.
+    -- Record a skillchain so a following nuke can burst on it, or clear the record when a
+    -- weaponskill closes the window. The action handler in th.lua calls this for every
+    -- actor, not just the player, so a chain closed by anyone opens the window. This stores
+    -- the elements and the time. The builders decide whether a cast falls inside the window
+    -- and matches an element.
     function run_burst(data)
         local target = data.targets[1]
         local action = target and target.actions[1]
@@ -98,7 +97,7 @@ return function(E)
             log('There was a skillchain')
             local t = get_mob_by_id(data.targets[1].id)
             -- spawn_type 16 is a monster, and 21 yalms is burst range. A chain on anything
-            -- else, or too far away, is recorded as nothing.
+            -- else, or too far away, is not recorded.
             if t and t.spawn_type == 16 and t.distance:sqrt() < 21 then
                 E.last_skillchain_id = t.id
                 E.last_skillchain_time = os.clock()
@@ -150,9 +149,9 @@ return function(E)
         windower.packets.inject_outgoing(0xF1, string.char(0xF1, 0x04, 0, 0, id % 256, math.floor(id / 256), 0, 0))
     end
 
-    -- Re-read whether the character currently has the Dual Wield trait (job trait 18), which
-    -- decides whether the builders may put anything in the offhand. Scheduled after load and
-    -- after a subjob change, and run again on every 30 second housekeeping pass.
+    -- Re-read whether the character has the Dual Wield trait, job trait 18, which decides the
+    -- offhand the builders choose. It is scheduled after load and after a subjob change, and
+    -- the housekeeping pass runs it every 30 seconds.
     function dual_wield_check()
         local current_abilities = windower.ffxi.get_abilities()
         if table.contains(current_abilities.job_traits, 18) then
@@ -162,14 +161,12 @@ return function(E)
         end
     end
 
-    -- Whether a named weapon is two-handed. res.items:with scans the entire item database,
-    -- and the answer for a given name never changes, so every name is resolved once per load
-    -- and remembered -- misses included, or an unknown name would rescan on every check.
+    -- Whether a named weapon is two-handed. res.items:with scans the whole item table, and
+    -- the answer for a name never changes, so each name is resolved once per load and
+    -- remembered. Misses are remembered too, or an unknown name would rescan on every check.
     local name_is_two_handed
-    -- The skill table and the memo live inside a closed block so nothing else in the file can
-    -- reach them; only the forward-declared name_is_two_handed escapes. Lua caps a function's
-    -- locals at 200, and a constructor is one function; the import block binds only what this
-    -- file uses.
+    -- The skill table and the memo are scoped to this block, so only name_is_two_handed can
+    -- reach them.
     do
         -- The six weapon skills the game treats as two-handed: Great Sword, Great Axe,
         -- Scythe, Polearm, Great Katana and Staff.
@@ -186,14 +183,13 @@ return function(E)
         end
     end
 
-    -- Re-read the two-handed flag from the weapon the current mode names, which suppresses
-    -- the sub-slot swaps a two-hander cannot allow.
+    -- Re-read the two-handed flag from the weapon the current mode names. The builders read
+    -- the flag to choose the offhand.
     --
-    -- Two shapes of "no main" are handled differently. A mode with no main entry at all
-    -- answers from the weapon actually worn: after a mode change that is the weapon
-    -- inherited from the previous mode, so the answer is the one that was already right;
-    -- at load it is whatever the character logged in holding. A mode whose main is a
-    -- table carrying no name clears the flag instead.
+    -- Two shapes of a missing main are handled differently. A mode with no main entry
+    -- answers from the weapon worn. After a mode change that is the weapon the previous mode
+    -- left in hand, and at load it is whatever the character logged in holding. A mode whose
+    -- main is a table with no name clears the flag.
     function two_hand_check()
         local weapon_set = sets.Weapons[state.WeaponMode.value]
         local weapon_name = weapon_set and weapon_set.main
@@ -206,37 +202,39 @@ return function(E)
         E.TwoHand = name_is_two_handed(weapon_name)
     end
 
-    -- The main polling engine, registered by the root on the raw outgoing chunk event.
+    -- The main polling engine. The root registers it on the raw outgoing chunk event, and
+    -- that has two consequences. It runs only when the client sends a packet, so it is not
+    -- a reliable timer, and anything that must run on schedule belongs on prerender. And
+    -- every outgoing packet enters here, so the body is gated to once per 0.1 seconds, with
+    -- the movement check above the gate.
     --
-    -- Two consequences of that choice, and both are constraints rather than details. It is
-    -- driven by the client sending packets, so it does NOT tick reliably while the character
-    -- stands still doing nothing -- anything that must run regardless belongs on prerender
-    -- instead. And every outgoing chunk enters here, which is why the body is gated to 0.1
-    -- seconds and why the movement block below sits ABOVE that gate.
-    --
-    -- The 0.1 second rate is a product requirement, not a tuning choice. Make a tick cheaper;
-    -- do not make it rarer.
+    -- The 0.1 second rate is a product requirement. Make a tick cheaper, never rarer.
     function main_engine(id, data)
         local now = os.clock()
-        -- Expire a busy window whose completion message never arrived, so a lost message
-        -- cannot leave the engine wedged and refusing to re-dress the character.
+        -- A box drag settles here, on the clock just read, above every gate and early
+        -- return. A character who is dead, asleep or mid-action can still drag a box, and
+        -- the save is owed either way. It returns at once when nothing was dragged. It is
+        -- read from E at the call because the display component loads after this file.
+        E.drag_settle(now)
+        -- Expire a busy window whose completion never arrived, so a lost message cannot
+        -- leave the engine stuck and refusing to re-dress the character.
         if is_Busy and now - E.Spellstart > E.SpellCastTime then
             is_Busy = false
             E.SpellCastTime = 0
-            -- A cast whose completion was lost lets its implement go here too. From this
-            -- raw handler the re-dress itself is discarded; the claim and the slot's hold
-            -- are cleared, and the next build's sweep completes the dress.
+            -- A cast whose completion was lost lets its implement go here too. This is a raw
+            -- handler, so any equip the release sends is discarded. The claim and the slot's
+            -- hold are still cleared, and the next build's sweep completes the dress.
             release_implement()
         end
-        -- Movement detection, read from the 0x015 this handler already carries: X, Z and Y
-        -- as three floats at packet offset 0x04. It sits above the 0.1 second gate below
-        -- because ANY outgoing chunk consumes that window while only 0x015 reports a
-        -- position -- gating it would drop position updates whenever the client happened to
-        -- send something else first. It keeps its own 0.1 second floor instead, which is the
-        -- interval the half-yalm threshold below is paired with.
+        -- Movement detection, read from the 0x015 packet this handler already carries: X,
+        -- Z and Y as three floats at offset 0x04. It sits above the 0.1 second gate below
+        -- because any outgoing packet uses up that window, while only 0x015 reports a
+        -- position. Under the gate, a position update would be lost whenever another packet
+        -- went first. It keeps its own 0.1 second floor instead, the interval the half-yalm
+        -- threshold below assumes.
         --
-        -- Skipped while mounted, mid-action, dead, charmed or asleep: in each of those the
-        -- position either cannot change usefully or must not move gear.
+        -- It is skipped while mounted, busy, dead, charmed or asleep. In each case the
+        -- position cannot change usefully, or gear must not move.
         if id == 0x15 and now - Location.t >= .1 and not is_Busy and player
             and player.status ~= "Dead" and player.status ~= "Engaged dead"
             and not buffactive['Charm'] and not buffactive['Sleep']
@@ -250,9 +248,9 @@ return function(E)
                 local dz = pz - Location.z
                 local dy = py - Location.y
                 local movement = (dx * dx + dz * dz + dy * dy) > 0.25 -- 0.5 yalms, squared
-                -- Movement gear is only taken up while disengaged, but it is dropped whenever
-                -- motion stops -- so engaging part-way through a run leaves the flag raised
-                -- until the character halts.
+                -- The flag is raised only while disengaged, but lowered whenever motion
+                -- stops. So engaging partway through a run leaves it raised until the
+                -- character halts.
                 if movement and not E.is_moving then
                     if player.status ~= "Engaged" then
                         E.is_moving = true
@@ -271,21 +269,22 @@ return function(E)
         -- just before the early return below, so the throttle holds on both paths.
         if now - main_engine_time < .1 then return end
         if settings.debug then debug_box_update() end
-        -- Hoisted out of the repeated reads below; both are resolved by GearSwap on access.
+        -- Local copies for the tests below, so each global is read once.
         local active_buffs = buffactive
         local player_status = player and player.status
-        -- Nothing past this point should act on a character who cannot act. The clock is
-        -- stamped here as well, so while the character is dead, charmed or asleep the debug
-        -- box above still updates ten times a second rather than on every outgoing chunk,
-        -- and the first full pass after recovery waits out whatever is left of the window.
-        -- The housekeeping clocks below each stamp their own when they fire.
+        -- Nothing past this point may act on a character who cannot act. The clock is
+        -- stamped here as well. While the character is dead, charmed or asleep, the debug
+        -- box above still updates ten times a second rather than on every outgoing packet,
+        -- and the first full pass after recovery waits out the rest of the window. The
+        -- housekeeping clocks below stamp their own when they fire.
         if not player or player_status == "Dead" or player_status == "Engaged dead" or active_buffs['Charm'] or active_buffs['Sleep'] then
             main_engine_time = now
             return
         end
 
-        -- The deferred rebuild. Held off while busy so it cannot overwrite gear an action
-        -- is still using.
+        -- The deferred rebuild, held off while busy so it cannot overwrite gear an action is
+        -- still using. A raw handler cannot equip, so the rebuild is requested as a self
+        -- command.
         if Require_Update and not is_Busy then
             equip_set_command()
             Require_Update = false
@@ -309,7 +308,7 @@ return function(E)
         main_engine_time = now
     end
 
-    -- Version stamp. The root asserts this against Rahvin_GS, so a stale copy of this file
-    -- announces itself at load instead of running.
-    return '2.0'
+    -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
+    -- stops the load with an error that names it.
+    return '2.1'
 end

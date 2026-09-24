@@ -18,51 +18,48 @@
 -- COMPONENT: lifecycle -- section 22: job file load, unload and subjob change
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 22 - Job lifecycle. Four global functions covering the whole life of a job
---   file: the setup call it makes itself, the startup notice about retired features, the
---   teardown that gives every held slot back, and the subjob-change refresh.
+--   Section 22 - Job lifecycle. Four global functions covering the life of a job file: the
+--   setup call the job file makes itself, the startup notice about unsupported leftovers,
+--   the teardown that gives every held slot back, and the subjob-change refresh.
 --
--- EXPORTS  Nothing onto E for another component to read. It CLEARS two E fields at
---          teardown -- ench_active and ench_held_slot, owned by the enchanted item engine --
---          because an item use must not survive the job file that started it.
--- CALLERS  None of the four is called by another engine file, and none is registered by the
---          root. They are reached from outside the engine instead:
---            jobsetup .......... called by the JOB FILE, at file scope
---            file_unload ....... called by GearSwap, which resolves it by name
---            sub_job_change .... called by GearSwap, which resolves it by name
---            migration_notice .. scheduled by the root at 2.5 s after load
---          Only migration_notice is reached from inside the engine at all. Grepping for
---          callers of the other three finds nothing, which is expected rather than a sign
---          this file is dead.
--- LOADS    Fourteenth of fifteen, so every function it calls directly is already defined.
---          The three it hands to coroutine.schedule are resolved when sub_job_change runs,
---          long after load, which is what lets it schedule equip_set_command from the root.
+-- EXPORTS  Nothing onto E. The teardown clears two E fields that the enchanted item engine
+--          sets, ench_active and ench_held_slot, because an item use must not outlive the
+--          job file that started it.
+-- CALLERS  No other engine file calls these four, and the root registers none of them.
+--            jobsetup .......... called by the job file, at file scope
+--            file_unload ....... called by GearSwap, which looks it up by name
+--            sub_job_change .... called by GearSwap, which looks it up by name
+--            migration_notice .. scheduled by the root shortly after load
+--          A search for callers of the first three finds none, and that is expected.
+-- LOADS    After every component whose exports it binds. sub_job_change reads the three
+--          functions it schedules as globals when it runs, long after load. That is how it
+--          can schedule equip_set_command, which the root declares after this file.
 
--- requires: rahvings/core, rahvings/equip, rahvings/display
+-- requires: rahvings/core, rahvings/equip, rahvings/display, rahvings/commands
 return function(E)
-    -- Immutable dependencies bound once at construction, so no call below repeats the lookup
-    -- for them. The cross-component mutables are never bound here: ench_active and
-    -- ench_held_slot are reached through E at every touch, because a file-local copy would
-    -- not be the one the other components read and write.
+    -- The exports this file uses, bound once at construction. The shared mutable fields are
+    -- never bound here. ench_active and ench_held_slot are written through E, because a
+    -- local copy would not be the one the other components read.
     local clear_locked_slots, gs_debug, gs_status, hoxne, reset_set_warnings =
         E.clear_locked_slots, E.gs_debug, E.gs_status, E.hoxne, E.reset_set_warnings
-    local display_unload = E.display_unload
+    local display_unload, drag_flush = E.display_unload, E.drag_flush
     local weapon_lock_drop, release_implement = E.weapon_lock_drop, E.release_implement
-    local strip_clear, disable_clear = E.strip_clear, E.disable_clear
+    local strip_clear, disable_clear, sleep_held = E.strip_clear, E.disable_clear, E.sleep_held
+    local keybind_apply, keybind_release, keybind_list = E.keybind_apply, E.keybind_release, E.keybind_list
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 22 - JOB LIFECYCLE
     ------------------------------------------------------------------------------------------------
     -- The four entry points a job file passes through, in the order they occur: setup on
-    -- load, the retired-feature notice shortly after, the subjob-change refresh, and
-    -- teardown on unload.
+    -- load, the leftover notice shortly after, the subjob-change refresh, and teardown on
+    -- unload.
 
     -- Apply the job file's macro book, lockstyle and keybinds, and print the key list.
     -- The job file calls this itself, so anything raised here aborts the job file.
     function jobsetup(LockStylePallet, MacroBook, MacroSet)
-        -- math.random(0) raises, and an empty Lockstyle_List would reach it. That error
-        -- would abort the whole job file, because jobsetup is called at file scope above
-        -- get_sets -- so an empty list warns and keeps the pallet it was given instead.
+        -- math.random(0) raises, and an empty Lockstyle_List would reach it. Because jobsetup
+        -- runs at file scope above get_sets, that error would abort the whole job file. So
+        -- an empty list warns and keeps the pallet it was given.
         if Random_Lockstyle then
             if #Lockstyle_List > 0 then
                 LockStylePallet = Lockstyle_List[math.random(#Lockstyle_List)]
@@ -72,9 +69,9 @@ return function(E)
             end
         end
 
-        -- One chained command rather than separate sends: the waits sequence the game's own
-        -- responses, and the closing update auto dresses the character once the lockstyle
-        -- has been applied.
+        -- One chained command, so the waits space out the game's responses. gs validate
+        -- lists any set item the character does not carry, and the closing gs c update auto
+        -- dresses the character once the lockstyle is applied.
         windower.send_command('wait 1;input /macro book ' ..
             MacroBook ..
             ';wait 1;input /macro set ' ..
@@ -82,38 +79,21 @@ return function(E)
             ';gs validate;wait 3;input /lockstyleset ' ..
             LockStylePallet .. ';input /echo Change Complete;gs c update auto;')
 
-        -- Every bind is a self command, so each key has a typeable equivalent and a player
-        -- can rebind any of them without touching the engine. file_unload releases all eight.
-        send_command('bind f12 gs c OffenseMode')
-        send_command('bind f11 gs c TreasureHunter')
-        send_command('bind f10 gs c WeaponLock')
-        send_command('bind f9 gs c WeaponMode')
-        send_command('bind ^f12 gs c JobMode')
-        send_command('bind ^f11 gs c JobMode2')
-        send_command('bind ^f10 gs c Hoxne')
-        send_command('bind ^f9 gs c SpellReceived')
+        -- Bind the mode keys from settings.Keybinds. keybind_apply records what it binds,
+        -- and file_unload releases that record. Every key sends a self command, so each has
+        -- a typeable equivalent. A second call in one load re-binds only what changed.
+        keybind_apply()
 
-        -- The startup key list. The two job-mode keys are announced only when the job file
-        -- named that slot, since an unnamed slot is hidden from the status box as well.
-        notice('Stance - ' .. string.format('[%s]', 'F12'))
-        notice('TH Mode - ' .. string.format('[%s]', 'F11'))
-        notice('Weapon Lock - ' .. string.format('[%s]', 'F10'))
-        notice('Weapon Mode - ' .. string.format('[%s]', 'F9'))
-        if UI_Name ~= '' then
-            notice(UI_Name .. ' - ' .. string.format('[%s]', 'Ctrl + F12'))
-        end
-        if UI_Name2 ~= '' then
-            notice(UI_Name2 .. ' - ' .. string.format('[%s]', 'Ctrl + F11'))
-        end
-        notice('Hoxne Ampulla Mode - ' .. string.format('[%s]', 'Ctrl + F10'))
-        notice('Spell Received Gear Mode (Multibox Only) - ' .. string.format('[%s]', 'Ctrl + F9'))
+        -- Print the key list on the notice channel.
+        keybind_list()
     end
 
-    -- Tell a player their job file still carries a feature the engine has retired, so the
-    -- leftover is found without hunting for it. Scheduled rather than called inline: it has
-    -- to run after the job file's main chunk has defined its hooks, or the tests below read
-    -- nil for functions that do exist. The channel is deliberately ungated -- nothing else
-    -- reports this, so a silenced channel would hide it entirely.
+    -- Tell the player when the job file still defines something the engine ignores: the
+    -- check_buff_JA or check_buff_SP hooks, which nothing calls, or a job mode labeled
+    -- Auto Tank or Runes, which drives nothing. The root schedules this shortly after load,
+    -- because it must run after the job file's main chunk has defined its functions.
+    -- Called any earlier, the tests below read nil for functions that exist. It prints on
+    -- notice, the one ungated channel, because nothing else reports these leftovers.
     function migration_notice()
         if check_buff_JA or check_buff_SP then
             notice('Auto Buff was removed: this job file still defines check_buff_JA or ' ..
@@ -126,18 +106,20 @@ return function(E)
         end
     end
 
-    -- Tear the job file down: destroy the display boxes, release every key, and give back
-    -- every slot this engine is holding. GearSwap calls this when the file unloads.
+    -- Tear the job file down: save a pending box drag, take down the display, release the
+    -- keys, and give back the slots this engine holds. GearSwap calls this when the file
+    -- unloads.
     --
-    -- Each hold is cleared directly rather than through its owning subsystem, because those
-    -- subsystems are being torn down in the same breath, and this engine equips nothing from
-    -- here; GearSwap itself may send an item it withheld for a disabled slot once the slot is
-    -- enabled. GearSwap's slot flags outlive the job file, so a slot left disabled stays disabled for
-    -- whatever loads next; the root's load-time release of all sixteen covers only the case
-    -- where the next file is this engine.
+    -- GearSwap's slot flags outlive the job file, so a slot left disabled here stays
+    -- disabled for whatever file loads next. The root's load-time release of all sixteen
+    -- slots covers only a next file that is this engine. Enabling a slot can make GearSwap
+    -- send an item it held back while the slot was disabled.
     function file_unload(file_name)
-        -- The renderer standing steps aside first, while the status box still exists:
-        -- leaving gives the box its background back, and a destroyed object raises on it.
+        -- A box drag the settle has not saved yet is saved now. It touches no box, and
+        -- nothing below depends on it.
+        drag_flush()
+        -- The standing renderer steps aside while the status box still exists. Leaving
+        -- restores the box's own background, which raises on a destroyed box.
         display_unload()
         if gs_status then
             gs_status:destroy()
@@ -146,25 +128,21 @@ return function(E)
             gs_debug:destroy()
         end
 
-        send_command('unbind ^f9')
-        send_command('unbind ^f10')
-        send_command('unbind ^f11')
-        send_command('unbind ^f12')
-        send_command('unbind f9')
-        send_command('unbind f10')
-        send_command('unbind f11')
-        send_command('unbind f12')
+        -- Release the keys this load bound, from the record keybind_apply kept. The live
+        -- settings table may already hold another character's keys at unload, so it is not
+        -- read.
+        keybind_release()
 
-        -- The two holds go first, highest first: every layer below is torn down after them,
-        -- and nothing here re-dresses, so a claim left standing would keep slots shut past
-        -- the unload.
+        -- The disable hold, then the strip hold. Each forgets its slots and enables only
+        -- those no lower layer still shuts. No rebuild follows the teardown, so a hold left
+        -- standing would keep its slots shut past the unload.
         disable_clear()
         strip_clear()
 
-        -- An in-flight item use and the Hoxne hold both own slots; drop their state rather
-        -- than waiting for a tick that will not come. The item use held whatever slot its
-        -- item occupies, so that slot is enabled by the name it recorded; range and ammo
-        -- cover the Hoxne pair.
+        -- An item use in flight and the Hoxne hold both hold slots, and neither gets another
+        -- tick. Their state is dropped by hand, because their own release paths rebuild
+        -- gear. The item use's slot is enabled by the name it recorded, and range and ammo
+        -- are enabled for the Hoxne hold.
         local held = E.ench_held_slot
         E.ench_active      = nil
         E.ench_held_slot   = nil
@@ -173,9 +151,20 @@ return function(E)
         hoxne.recheck_at = 0
         enable('range', 'ammo')
 
-        -- Slots held for received gear. The table is a job-file-visible global declared in
-        -- the interface, so it is emptied here rather than reallocated somewhere the job
-        -- file would not see.
+        -- The Sleep hold, which ranks below the Hoxne hold and above every layer released
+        -- after it. Its own release dresses gear and repaints the status box, which this
+        -- teardown has already destroyed. So its registry is emptied by hand, and each slot
+        -- it held is enabled. The registry is emptied in place, because the equip
+        -- component's resolver holds this same table. Clearing a key during its own pairs
+        -- walk is defined in Lua 5.1.
+        for canon in pairs(sleep_held) do
+            sleep_held[canon] = nil
+            enable(canon)
+        end
+
+        -- Slots held for received gear. active_external_locks is a global the interface
+        -- declares, so the job file sees it. Each held slot is enabled, and the global is
+        -- reset to an empty table.
         if active_external_locks and next(active_external_locks) ~= nil then
             for slot, _ in pairs(active_external_locks) do
                 enable(slot)
@@ -183,12 +172,12 @@ return function(E)
             active_external_locks = {}
         end
 
-        -- A cast in progress lets its implement go, the layer above the lock modes.
+        -- The cast in progress lets its implements go. Each slot passes to the next layer
+        -- that claims it, or is enabled.
         release_implement()
 
-        -- Lock modes last, once no layer above them can still claim a slot: each lock is
-        -- deregistered before its slot is released, so the release is a bare enable. The
-        -- weapon lock's slots go the same way, after them.
+        -- The lock modes, then the weapon lock. Each deregisters a slot before releasing it,
+        -- so the release hands the slot to whatever still claims it, or enables it.
         if clear_locked_slots() > 0 then notice('Lock modes released (unloaded).') end
         weapon_lock_drop()
 
@@ -199,15 +188,15 @@ return function(E)
         end
     end
 
-    -- Refresh everything a subjob change invalidates. GearSwap calls this by name.
+    -- Refresh everything a subjob change invalidates: the display layout, the set-name index
+    -- and the empty-set warnings, then the two weapon traits and the gear. GearSwap calls
+    -- this by name.
     --
-    -- The three scheduled calls are staggered on purpose and the order matters: both trait
-    -- checks must land before the rebuild, or the rebuild dresses the character from a stale
-    -- flag. Dual Wield is the one a subjob change actually moves; two_hand_check reads the
-    -- weapon the current mode names, which a subjob change does not alter, so it is here for
-    -- the case where a job file's own sub_job_change_custom switches weapon mode. They are
-    -- scheduled rather than called because the game has not finished applying the subjob at
-    -- the moment this fires.
+    -- The three scheduled calls are staggered, and their order matters. Both trait checks
+    -- must land before the rebuild, or the rebuild dresses the character from a stale flag.
+    -- A subjob change moves Dual Wield. two_hand_check is here for a job file whose
+    -- sub_job_change_custom switches the weapon mode. The calls are scheduled rather than
+    -- made here because the game has not finished applying the subjob when this fires.
     function sub_job_change(new, old)
         invalidate_layout()
         invalidate_set_index()
@@ -220,7 +209,7 @@ return function(E)
         end
     end
 
-    -- Version stamp. The root asserts this against Rahvin_GS, so a stale copy of this file
-    -- announces itself at load instead of running.
-    return '2.0'
+    -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
+    -- stops the load with an error that names it.
+    return '2.1'
 end

@@ -3,27 +3,28 @@
 include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 
---Set to ingame lockstyle and Macro Book/Set
+-- The in-game lockstyle set, macro book and macro set this file applies on load.
 LockStylePallet = "16"
 MacroBook = "6"
 MacroSet = "1"
 
---Uses Items Automatically
+-- Use a Remedy for paralysis or silence, and a Holy Water for doom, automatically.
 AutoItem = false
 
---Upon Job change will use a random lockstyleset
+-- Pick a random lockstyle from Lockstyle_List on each load, in place of LockStylePallet.
 Random_Lockstyle = true
 
---Lockstyle sets to randomly equip
+-- The lockstyle sets the random pick chooses from.
 Lockstyle_List = {16,17,18}
 
--- Use "gs c food" to use the specified food item
+-- The food "gs c food" uses.
 Food = "Sublime Sushi"
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('DT','TP','SB','Farm') -- ACC affects WS and TP modes
+-- Offense modes, and the one the file starts in. Each mode offered needs its own sets.OffenseMode.<Mode> and sets.Idle.<Mode> below.
+state.OffenseMode:options('DT','TP','SB','Farm')
 state.OffenseMode:set('DT')
 
+-- Weapon modes. Each name needs a matching sets.Weapons entry.
 state.WeaponMode:options('Aeneas','Karambit')
 state.WeaponMode:set('Aeneas')
 
@@ -32,15 +33,18 @@ jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
 
+	-- Weapon sets, one per weapon mode. A set here is worn only once its name is offered in the weapon modes above.
 	sets.Weapons = {}
 	sets.Weapons['Terpsichore'] = {}
 	sets.Weapons['Twashtar'] = {}
 	sets.Weapons['Aeneas'] = {main=gear.aeneas, sub=gear.gleti,}
 	sets.Weapons['Karambit'] = {main=gear.karambit,}
 
-	-- Standard Idle set with -DT, Refresh, Regen and movement gear
+	-- Worn whenever you are not engaged. It is empty here, so each offense mode's idle set below carries the gear.
+	-- It is also the floor under every action, and an empty floor leaves unchanged any slot an action's sets do not name.
 	sets.Idle = {}
 
+	-- Idle sets for each offense mode, merged over the idle set. SB shares the DT table.
 	sets.Idle.DT = {
 		ammo=gear.staunchPlusOne,
     	head=gear.malignanceHead,
@@ -88,9 +92,19 @@ function get_sets()
     	right_ring=gear.moonlightRing,
     	back=gear.moonlightCape,}
 
+	-- Worn over the idle set while a Phantom Roll on you stands at 11.
+	-- It is meant for Roller's Ring, which every job can wear and which grants Refresh +1 and Regain +10 at an 11, e.g. left_ring="Roller's Ring".
+	-- This set applies in every offense mode. The TP set below applies only in TP mode and merges after it.
+	-- It is worn only while idle. This file's idle base names no gear, so an action swaps the ring out only when that action's sets name its slot, and it comes back when the action ends.
+	-- While you move, a ring named here replaces a movement ring in the same slot. This file's sets.Movement names right_ring, so left_ring is the free slot.
+	sets.Idle.XIRoll = {}
+	-- The TP mode version, merged after the one above.
+	sets.Idle.TP.XIRoll = {}
+
+	-- Merged over the idle set while you are moving and not engaged.
 	sets.Movement = {right_ring=gear.shneddickRing,}
 
-	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
+	-- Worn when another character on this machine, running this engine, starts casting one of these spells on you, while Spell Received mode is ON. sets.Cursna_Received is also the Doom set, worn and held while you are doomed with that mode OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -103,13 +117,18 @@ function get_sets()
 	sets.Regen_Received = {}
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
+
+	-- The ring slot Zodiac Ring goes in when an elemental spell matches the day's element: "right_ring" or "left_ring".
+	Elemental_Bonus_Ring_Slot = "right_ring"
+
+	-- Worn when you use a Holy Water or Hallowed Water.
 	sets.Holy_Water = {
 	    neck=gear.nicander,
 	}
 
+	-- Engaged sets. sets.OffenseMode is worn in every offense mode, and the current mode's set merges over it.
 	sets.OffenseMode = {}
 
-	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = {
 		ammo=gear.yamarang,
 		head=gear.malignanceHead,
@@ -125,7 +144,6 @@ function get_sets()
 		right_ring=gear.moonlightRing,
 		back=gear.sacroMantle,
 	}
-	--Base TP set to build off
 	sets.OffenseMode.TP = {
 		ammo = gear.coiste,
     	head = gear.adhemarHeadPlusOnePathA,
@@ -177,10 +195,18 @@ function get_sets()
 
 	--Merged over the engaged set while OffenseMode is ACC, once ACC is added to the options list above.
 	sets.OffenseMode.ACC = {}
+
+	-- Worn over the engaged set in every offense mode while Climactic Flourish is up. Gear that enhances it, such as Maculele Tiara +3 (head), adds damage to the critical hits it forces.
+	-- sets.OffenseMode['Climactic Flourish'] = {}
+
+	-- Worn over the engaged set in every offense mode while Saber Dance is up. Gear that enhances it, such as Horos Tights +3 (legs), raises its minimum double attack rate.
+	-- sets.OffenseMode['Saber Dance'] = {}
+
 	--Merged over the engaged set while a dual-wield trait is active.
 	sets.DualWield = {}
 
 	sets.Precast = {}
+	-- Fast cast, worn at the start of every spell.
 	sets.Precast.FastCast = {
 		ammo=gear.sapience,
 		head = gear.herculeanHelmNuke,
@@ -191,18 +217,18 @@ function get_sets()
     	right_ear=gear.enchanterEarringPlusOne,
     	right_ring=gear.rahabRing,
 	}
+	-- Not read by the engine. The Animated Flourish set below builds on it.
 	sets.Enmity = {}
+	-- Midcast sets for spells from a subjob. sets.Midcast is the base for every cast.
 	sets.Midcast = {}
 	sets.Midcast.SIRD = {}
 	sets.Midcast.Cure = {}
 	sets.Midcast.Enhancing = {}
 	sets.Midcast.Enfeebling = {}
 	sets.Midcast["Stoneskin"] = {}
-	-------------------------------------------------------------------------------
-	---------------------------------  JA Sets  -----------------------------------
-	-- When you combine with idle during JA's you'll get ~2 sec of high defense --- 
-	-------------------- if not overwritten by specified gear ---------------------
-	-------------------------------------------------------------------------------
+
+	-- Job abilities. sets.JA is worn for every job ability, and the set named for the ability merges over it.
+	-- An ability set built on sets.Idle.DT, as several below are, keeps you in defensive gear for the second or two the ability takes, wherever its own gear does not replace it.
 	sets.JA = {}
 
 	sets.JA["Trance"] = {}
@@ -212,9 +238,8 @@ function get_sets()
 	sets.JA["No Foot Rise"] = {}
 	sets.JA["Presto"] = {}
 	sets.JA["Grand Pas"] = {}
-	-------------------------------------------------------------------------------
-	-- Flourishes provide buffs to the Dancer and debuffs to the target monster. --
-	-------------------------------------------------------------------------------
+
+	-- Flourishes, which buff you or debuff the monster. The engine wears sets.Flourish and then the set named for the flourish.
 	sets.Flourish = set_combine(sets.Idle.DT, {head=gear.nyameHead,})
 																					-- Flourishes I : Monster Control
 	sets.Flourish["Animated Flourish"] = set_combine(sets.Flourish, sets.Enmity) 	-- Volatile Enmity spike like Provoke
@@ -228,10 +253,9 @@ function get_sets()
 	sets.Flourish["Climactic Flourish"] = {}										-- Forces Critical Hit(s) on the next attack(s) 
 	sets.Flourish["Striking Flourish"] = {head=gear.nyameHead,}						-- Forces a Double Attack on the next swing 
 	sets.Flourish["Ternary Flourish"] = {}											-- Forces a Triple Attack on the next swing
-	-------------------------------------------------------------------------------
-	-- Waltz Potency gear caps at 50%, while Waltz received potency caps at 30%. -- 
-	-------------------------------------------------------------------------------
-	sets.Waltz = {    
+
+	-- Waltzes. Waltz potency gear caps at 50%, and the potency you receive caps at 30%. The engine wears sets.Waltz and then the set named for the waltz.
+	sets.Waltz = {
 		ammo=gear.yamarang,
     	head = gear.horosHeadPlusOne,
     	body=gear.maxixiBody,
@@ -240,8 +264,8 @@ function get_sets()
     	feet=gear.maxixiFeet,
     	neck = gear.unmovingPlusOne,
     	waist=gear.chaac,
-    	left_ear=gear.enchanterEarringPlusOne,
-    	right_ear=gear.crypticEarring,
+    	left_ear=gear.crypticEarring,
+    	right_ear=gear.enchanterEarringPlusOne,
     	left_ring=gear.metamorphRing,
     	right_ring=gear.carbuncleRingPlusOne,
     	back=gear.moonlightCape,
@@ -254,9 +278,8 @@ function get_sets()
 	sets.Waltz["Divine Waltz"] = sets.Waltz
 	sets.Waltz["Divine Waltz II"] = sets.Waltz
 	sets.Waltz["Healing Waltz"] = sets.Waltz
-	-------------------------------------------------------------------------------
-	---------- Samba duration can be increased using various equipment. -----------
-	-------------------------------------------------------------------------------
+
+	-- Sambas. Gear can extend samba duration.
 	sets.Samba = set_combine(sets.Idle.DT, {head=gear.maxixiHead,}) --  Missing Ambu Cape for +15
 	
 	sets.Samba["Haste Samba"] = {}
@@ -265,20 +288,16 @@ function get_sets()
 	sets.Samba["Drain Samba"] = {}
 	sets.Samba["Drain Samba II"] = {}
 	sets.Samba["Drain Samba III"] = {}
-	-------------------------------------------------------------------------------
-	----------- Jigs duration can be increased using various equipment. ----------- 
-	-------------------------------------------------------------------------------
+
+	-- Jigs. Gear can extend jig duration.
 	sets.Jig = set_combine(sets.Idle.DT, {feet=gear.maxixiFeet,}) -- Horos Tights +3 and Maxixi Toe Shoes +3
 
 	sets.Jig["Spectral Jig"] = sets.Jig
 	sets.Jig["Chocobo Jig"] = sets.Jig
 	sets.Jig["Chocobo Jig II"] = sets.Jig
-	-------------------------------------------------------------------------------
-	----- Step Accuracy depends on your melee hit rate (including your normal -----
-	---- Accuracy equipment). All Steps tested have shown an innate 10 Accuracy --- 
-	-- bonus, which can be further enhanced through various pieces of equipment, -- 
-	----------------------------- merits, and Presto. -----------------------------
-	-------------------------------------------------------------------------------
+
+	-- Steps. The engine wears sets.Step and then the set named for the step, such as sets.Step['Box Step'].
+	-- Step accuracy depends on your melee hit rate, normal accuracy gear included. Every step tested shows an innate 10 accuracy bonus, which gear, merits and Presto raise further.
 	sets.Step = {
 		ammo=gear.yamarang,
     	head=gear.malignanceHead,
@@ -294,13 +313,8 @@ function get_sets()
     	right_ring=gear.chirichRingPlusOne,
     	back=gear.sacroMantle,
 	}
-	
-	sets.JA["Quickstep"] = sets.Step
-	sets.JA["Box Step"] = sets.Step
-	sets.JA["Stutter Step"] = sets.Step
-	sets.JA["Feather Step"] = set_combine(sets.Idle.DT, {})
 
-	--Default WS set base
+	-- Weaponskill base, worn for every weaponskill. The set named for the weaponskill merges over it.
 	sets.WS = {
 		ammo = gear.coiste,
 		head = gear.nyameHead,
@@ -317,10 +331,17 @@ function get_sets()
     	back=gear.sacroMantle,
 	}
 
-	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
+	-- Merged in ACC mode, once ACC is offered above, after the set named for the weaponskill, so its slots win. Name only the slots ACC mode should change. A weaponskill with an ACC set of its own skips it.
 	sets.WS.ACC = {}
-	--WS Sets
-	-- Dagger WS
+
+	-- Worn on every weaponskill while Climactic Flourish is up. Gear that enhances it, such as Maculele Tiara +3 (head), adds damage to the critical hits it forces.
+	-- sets.WS['Climactic Flourish'] = {}
+
+	-- Worn on every weaponskill while Striking Flourish is up. Gear that enhances it, such as Maculele Casaque +3 (body), raises the critical hit rate of the double attack it forces.
+	-- sets.WS['Striking Flourish'] = {}
+
+	-- Sets named for one weaponskill, merged over sets.WS.
+	-- Dagger weaponskills
 	sets.WS["Wasp Sting"] = {}
 	sets.WS["Viper Bite"] = {}
 	sets.WS["Shadowstitch"] = {}
@@ -352,24 +373,24 @@ function get_sets()
     	feet=gear.nyameFeet,
     	neck=gear.baetylPendant,
     	waist=gear.fotiaWaist,
-   		left_ear = gear.moonshadeEarringBAtt,
-    	right_ear=gear.friomisi,
+   		left_ear = gear.friomisi,
+    	right_ear=gear.moonshadeEarringBAtt,
     	left_ring=gear.regalRing,
     	right_ring=gear.ilabrat,
     	back=gear.sacroMantle,}
 	sets.WS["Rudra's Storm"] = {}
 
-	-- Hand to Hand WS
+	-- Hand-to-hand weaponskills
 	sets.WS["Combo"] = {}
 	sets.WS["Shoulder Tackle"] = {}
 	sets.WS["Backhand Blow"] = {}
-	sets.WS["Asuran Fists"] = {} 	-- Only if Karambit Weapon Equipt
-	sets.WS["Dragon Kick"] = {} 	-- Only if Hepatizon Baghnakhs NQ/+1 Weapon Equipt
-	sets.WS["One Inch Punch"] = {} 	-- Must Sub MNK
-	sets.WS["Raging Fists"] = {} 	-- Must Sub MNK
-	sets.WS["Tornado Kick"] = {} 	-- Must Sub MNK
+	sets.WS["Asuran Fists"] = {} 	-- Only with Karambit equipped
+	sets.WS["Dragon Kick"] = {} 	-- Only with Hepatizon Baghnakhs NQ/+1 equipped
+	sets.WS["One Inch Punch"] = {} 	-- Requires the MNK subjob
+	sets.WS["Raging Fists"] = {} 	-- Requires the MNK subjob
+	sets.WS["Tornado Kick"] = {} 	-- Requires the MNK subjob
 
-	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
+	-- Treasure Hunter gear, worn on an action or melee swing against a monster not yet tagged, and throughout a fight in Full Time mode. It is never worn in None mode, where every job but Thief starts.
 	sets.TreasureHunter = {
 		head = gear.herculeanHelmNuke, 
 		legs = gear.herculeanTrousersAccEnmityDown,
@@ -382,93 +403,80 @@ end
 
 -- Called when the player's subjob changes.
 function sub_job_change_custom(new, old)
-	-- Typically used for Macro pallet changing
+	-- A common use is switching the macro book or set.
 end
---Adjust custom precast actions
+-- Called before each action, after the engine's own checks. Cancel the action here with cancel_spell(). Nothing it returns is used.
 function pretarget_custom(spell,action)
-	
+
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the engine's precast set for the action. Every hook from here to status_change_custom adds the job mode's weapons through Weapon_Check below.
 function precast_custom(spell)
 	local equipSet = {}
 
 	return Weapon_Check(equipSet)
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the engine's midcast set for the action.
 function midcast_custom(spell)
 	local equipSet = {}
 
 	return Weapon_Check(equipSet)
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the idle or engaged set worn when an action ends.
 function aftercast_custom(spell)
 	local equipSet = {}
 
 	return Weapon_Check(equipSet)
 end
---Function is called when the player gains or loses a buff
+-- Called when a buff is gained or lost, except while an action is in flight. Gear returned here merges over the idle or engaged set.
 function buff_change_custom(name,gain)
 	local equipSet = {}
 
 	return Weapon_Check(equipSet)
 end
---This function is called when a update request the correct equipment set
+-- Gear returned here merges over every idle and engaged build: after each action, on a buff, status or mode change, and when you start or stop moving.
 function choose_set_custom()
 	local equipSet = {}
 
 	return Weapon_Check(equipSet)
 end
---Function is called when the player changes states
+-- Called when your status changes, such as engaging, disengaging or resting. Gear returned here merges over the idle or engaged set that follows.
 function status_change_custom(new,old)
 	local equipSet = {}
 
 	return Weapon_Check(equipSet)
 end
---Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
+-- Called for a "gs c" command the engine does not handle itself, and for the weapon mode, job mode and job mode 2 commands, which call it before the gear rebuild. The command arrives in lowercase.
 function self_command_custom(command)
 
 end
--- This function is called when the job file is unloaded
+-- Called when the job file unloads, after the engine has released its keys and held slots.
 function user_file_unload()
 
 end
 
-function pet_change_custom(pet,gain)
-	local equipSet = {}
-	
-	return equipSet
-end
-
-function pet_aftercast_custom(spell)
-	local equipSet = {}
-
-	return equipSet
-end
-
-function pet_midcast_custom(spell)
-	local equipSet = {}
-
-	return equipSet
-end
-
+-- Adds the weapon set named by the current job mode, when one exists. This file sets no job mode options, so it adds nothing
+-- until you offer job modes with matching sets.Weapons entries.
 function Weapon_Check(equipSet)
 	equipSet = set_combine(equipSet,sets.Weapons[state.JobMode.value])
 
 	return equipSet
 end
 
+-- Called when a pet is summoned or lost. Gear returned here merges over the idle or engaged set.
 function pet_change_custom(pet,gain)
 	local equipSet = {}
-	
+
 	return equipSet
 end
 
+-- Called when a pet's action ends. Gear returned here merges over the idle or engaged set.
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
+-- Called while a pet's action is in flight. Gear returned here merges over sets.Pet_Midcast and the set named for the action.
 function pet_midcast_custom(spell)
 	local equipSet = {}
 

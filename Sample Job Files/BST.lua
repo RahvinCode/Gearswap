@@ -4,40 +4,40 @@
 include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 
---Set to ingame lockstyle and Macro Book/Set
+-- The in-game lockstyle set, macro book and macro set this file applies on load.
 LockStylePallet = "19"
 MacroBook = "19"
 MacroSet = "1"
 
---Uses Items Automatically
+-- Use a Remedy for paralysis or silence, and a Holy Water for doom, automatically.
 AutoItem = false
 
--- Use "gs c food" to use the specified food item
+-- The food "gs c food" uses.
 Food = "Sublime Sushi"
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC affects WS and TP modes
+-- Offense modes. TP, ACC and DT are the engine's defaults, and more can be added. Each mode picks its own engaged, idle and weaponskill sets, so each one offered needs a sets.OffenseMode.<Mode> and a sets.Idle.<Mode> below.
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA')
 
---Upon Job change will use a random lockstyleset
+-- Pick a random lockstyle from Lockstyle_List on each load, in place of LockStylePallet.
 Random_Lockstyle = false
 
 -- Not read by this engine.
 Organizer = false
 
---Lockstyle sets to randomly equip
+-- The lockstyle sets the random pick chooses from.
 Lockstyle_List = {1,2,6,12}
 
---Set Mode to Damage Taken as Default
+-- The offense mode the file starts in.
 state.OffenseMode:set('DT')
 
---Modes for specific to Beastmaster
+-- Weapon modes. Each name needs a matching sets.Weapons entry.
 state.WeaponMode:options('Decimation','Pangu')
 state.WeaponMode:set('Decimation')
 
---Enable JobMode for UI.
+-- Naming JobMode shows it in chat and on the status box.
 UI_Name = 'Pet'
 
---Modes for specific Pets
+-- Job mode picks the jug pet. Call Beast and Bestial Loyalty equip the sets.Jugs entry the current job mode names.
 state.JobMode:options('None','FatsoFargann','ScissorlegXerin','GenerousArthur','BlackbeardRandy','AcuexFamiliar')
 state.JobMode:set('FatsoFargann')
 
@@ -46,7 +46,7 @@ jobsetup (LockStylePallet,MacroBook,MacroSet)
 
 function get_sets()
 
-	-- This uses a set Jug based off the Pet selected in the "JobMode"
+	-- The jug for each pet in the job mode list, keyed by the job mode value.
 	sets.Jugs = {}
 	sets.Jugs['FatsoFargann'] = {ammo=gear.jugOfCurdledPlasmaBroth }
 	sets.Jugs['AcuexFamiliar'] = {ammo=gear.jugOfVenomousBroth}
@@ -54,7 +54,7 @@ function get_sets()
 	sets.Jugs['BlackbeardRandy'] = {ammo=gear.jugOfMeatyBroth}
 	sets.Jugs['ScissorlegXerin'] = {ammo=gear.jugOfSpicyBroth}
 
-	-- Weapon setup
+	-- Weapon sets, one per weapon mode.
 	sets.Weapons = {}
 
 	sets.Weapons['Decimation'] = {
@@ -67,12 +67,13 @@ function get_sets()
 		sub=gear.ikengaAxe,
 	}
 
-	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
+	-- Worn in the offhand whenever the main is one-handed and no dual-wield trait is active.
 	sets.Weapons['Shield'] = {}
-	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
+	-- Worn over the idle set when you are put to sleep. Its slots stay held until you wake, and the engine re-dresses nothing else while you sleep.
+	-- Put gear here that wakes you, such as a piece that drains HP.
 	sets.Weapons['Sleep'] = {}
 
-	-- Standard Idle set with -DT, Refresh, Regen and movement gear
+	-- Worn whenever you are not engaged. It is also the floor under every action, so a slot an action's sets leave unnamed keeps its idle piece.
 	sets.Idle = {
 		ammo=gear.staunchPlusOne,
 		head = gear.nyameHead,
@@ -89,6 +90,7 @@ function get_sets()
 		back = gear.bstSTP,
     }
 
+	-- Merged over the idle set while a pet is out.
 	sets.Idle.Pet = set_combine(sets.Idle,{
 		hands = gear.gletiHands,
 		feet = gear.gletiFeet,
@@ -97,6 +99,7 @@ function get_sets()
 		back = gear.bstPetRegen,
 	})
 
+	-- Idle sets for each offense mode, merged over the idle set, and Resting, merged over them while you rest.
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {})
@@ -105,12 +108,21 @@ function get_sets()
 	sets.Idle.MEVA = set_combine(sets.Idle, {})
 	sets.Idle.Resting = set_combine(sets.Idle, {})
 
-	--Used to swap into movement gear when the player is moving and not engaged
+	-- Worn over the idle set while a Phantom Roll on you stands at 11.
+	-- It is meant for Roller's Ring, which every job can wear and which grants Refresh +1 and Regain +10 at an 11, e.g. left_ring="Roller's Ring".
+	-- This set applies in every offense mode. The TP set below applies only in TP mode and merges after it.
+	-- It is worn only while idle, so any action swaps it out, and it comes back when the action ends.
+	-- While you move, a ring named here replaces a movement ring in the same slot. This file's sets.Movement names no ring, so either slot is free.
+	sets.Idle.XIRoll = {}
+	-- The TP mode version, merged after the one above.
+	sets.Idle.TP.XIRoll = {}
+
+	-- Merged over the idle set while you are moving and not engaged.
 	sets.Movement = {
 		--feet="Hermes' Sandals",
 	}
 
-	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
+	-- Worn when another character on this machine, running this engine, starts casting one of these spells on you, while Spell Received mode is ON. sets.Cursna_Received is also the Doom set, worn and held while you are doomed with that mode OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -123,10 +135,16 @@ function get_sets()
 	sets.Regen_Received = {}
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
+
+	-- The ring slot Zodiac Ring goes in when an elemental spell matches the day's element: "right_ring" or "left_ring".
+	Elemental_Bonus_Ring_Slot = "right_ring"
+
+	-- Worn when you use a Holy Water or Hallowed Water.
 	sets.Holy_Water = {
 	    neck=gear.nicander,
 	}
 
+	-- Engaged sets. sets.OffenseMode is worn in every offense mode, and the current mode's set merges over it.
 	sets.OffenseMode = {
 		ammo = gear.coiste,
 		head=gear.malignanceHead,
@@ -143,10 +161,8 @@ function get_sets()
 		back=gear.nullShawl,
 	}
 
-	--Base TP set to build off
 	sets.OffenseMode.TP = set_combine (sets.OffenseMode, {})
 
-	--This set is used when OffenseMode is DT and Engaged (Augments the TP base set)
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {
 		body=gear.malignanceBody,
 		legs=gear.malignanceLegs,
@@ -155,7 +171,6 @@ function get_sets()
 		back = gear.bstSTP,
 	})
 
-	--This set is used when OffenseMode is ACC and Engaged (Augments the TP base set)
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
 
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode,{})
@@ -164,10 +179,10 @@ function get_sets()
 		neck=gear.warderCharmPlusOne,
 	})
 
-	--This set is used when OffenseMode is SB and Engaged (Augments the TP base set)
 	-- Cap is 75% - 50% limit in I or II
 	sets.OffenseMode.SB = {}
 
+	-- Merged over the engaged set while a dual-wield trait is active.
 	sets.DualWield = {
 		left_ear=gear.eabani,
 		waist=gear.reiki,
@@ -175,17 +190,13 @@ function get_sets()
 
 	sets.Precast = {}
 
-	-- Used for Magic Spells
+	-- Fast cast, worn at the start of every spell.
 	sets.Precast.FastCast = {}
-
-	sets.Precast.Enmity = {}
 
 	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
-	-- Pet Moves
-
-	-- Default
+	-- Worn while your pet performs an action. The set named for the action merges over it, and then pet_midcast_custom below adds the set for each Ready list the move is in.
 	sets.Pet_Midcast = {
 		head = gear.nyameHead,
 		body = gear.nyameBody,
@@ -200,36 +211,37 @@ function get_sets()
 		back = gear.bstSTP,
 	}
 
-	-- TP based Ready moves
+	-- TP-based Ready moves, in the engine's Ready_TP list.
 	sets.Pet_Midcast.TP = set_combine(sets.Pet_Midcast, {})
 
-	-- Magic Attack Bonus Ready moves
+	-- Ready moves in the Ready_Magic list, dressed for magic attack bonus.
 	sets.Pet_Midcast.MAB = set_combine(sets.Pet_Midcast, {})
 
-	-- Debuff moves that need MACC
+	-- Debuff moves in the Ready_Debuff list, dressed for magic accuracy.
 	sets.Pet_Midcast.MACC = set_combine(sets.Pet_Midcast, {
 		ammo = gear.hesperiidae,
 		left_ear=gear.crepuscularEar,
 		back = gear.bstPetRegen,
 	})
 
+	-- Multi-hit moves in the Ready_Multi list.
 	sets.Pet_Midcast.Multi = set_combine(sets.Pet_Midcast, {
 
 	})
 
-	-- Example for a specific move overwrite
+	-- A set named for one pet action merges over sets.Pet_Midcast. pet_midcast_custom's list set merges after it, so on a slot both name, the list set wins.
 	sets.Pet_Midcast['TP Drainkiss'] = set_combine(sets.Pet_Midcast.MACC, { })
 
-	-- Worn on a Ready move, which arrives as type Monster. The engine merges this set whole and
-	-- reads no child under it, so sets.Ready.Magic, .TP, .Debuff and .Standard are placeholders.
+	-- Worn on a Ready move, which arrives as type Monster. The engine merges this set whole. Its Magic, TP, Debuff and Standard children are
+	-- placeholders the engine never reads, though a child keyed by a buff name merges while that buff is up.
 	sets.Ready = {
 		hands=gear.nukumiHandsPlusOne,
 		legs = gear.gletiLegs,
 	}
 
-	-- Job Abilities
+	-- Job abilities. sets.JA is worn for every job ability, and the set named for the ability merges over it.
 	sets.JA = {}
-	sets.JA['Familiar'] = set_combine(sets.Idle, 
+	sets.JA['Familiar'] = set_combine(sets.Idle,
 	{
 		legs = gear.ankusaLegsPlusThree,
 	})
@@ -271,10 +283,10 @@ function get_sets()
 
 	-- Fight, Heel, Leave, Stay, Snarl, Spur, Ready and Run Wild are type PetCommand. The engine
 	-- merges no sets.JA child for one, and the midcast build that follows replaces whatever the
-	-- precast wore, so a pet command has no set of its own. A ready move arrives as type Monster
-	-- and wears sets.Ready; the pet's own action wears sets.Pet_Midcast.
+	-- precast wore, so a pet command has no set of its own. A Ready move arrives as type Monster
+	-- and wears sets.Ready. The pet's own action wears sets.Pet_Midcast.
 
-	--Default WS set base
+	-- Weaponskill base, worn for every weaponskill. The set named for the weaponskill merges over it.
 	sets.WS = {
 		ammo = gear.coiste,
 		head = gear.gletiHead,
@@ -284,23 +296,27 @@ function get_sets()
 		feet = gear.gletiFeet,
 		neck=gear.beastmasterCollarPlusTwo,
 		waist = gear.sailfi,
-		left_ear=gear.sherida,
-		right_ear=gear.nukumiEarringPlusOne,
+		left_ear=gear.nukumiEarringPlusOne,
+		right_ear=gear.sherida,
 		left_ring=gear.gereRing,
 		right_ring=gear.eponas,
 		back = gear.bstDA,
 	}
 
-	sets.WS.SB = set_combine( sets.WS, { -- This maximize SB
+	-- Worn on every weaponskill while Killer Instinct is up. Killer Instinct shares your pet's killer effect, and a body that augments
+	-- killer effects, such as Nukumi Gausape +3, adds half your total killer effect to the damage you deal.
+	-- sets.WS['Killer Instinct'] = {}
 
-	})
+	-- Merged over the weaponskill sets in SB mode. Subtle Blow gear goes here.
+	sets.WS.SB = {}
 
-	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
-	sets.WS.ACC = set_combine(sets.WS,{})
+	-- Merged in ACC mode after the set named for the weaponskill, so its slots win. Name only the slots ACC mode should change. A weaponskill with an ACC set of its own skips it.
+	sets.WS.ACC = {}
 
-	sets.WS.PDL = set_combine(sets.WS,{})
+	-- Merged over the weaponskill sets in PDL mode, the same way.
+	sets.WS.PDL = {}
 
-	--WS Sets
+	-- Sets named for one weaponskill, merged over sets.WS.
 	sets.WS["Raging Axe"] = set_combine(sets.WS,{})
 	sets.WS["Smash Axe"] = set_combine(sets.WS,{})
 	sets.WS["Gale Axe"] = set_combine(sets.WS,{})
@@ -312,7 +328,7 @@ function get_sets()
 	sets.WS["Decimation"] = set_combine(sets.WS,{})
 	sets.WS["Bora Axe"] = set_combine(sets.WS,{})
 
-	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
+	-- Treasure Hunter gear, worn on an action or melee swing against a monster not yet tagged, and throughout a fight in Full Time mode. It is never worn in None mode, where every job but Thief starts.
 	sets.TreasureHunter = {
 
 	}
@@ -325,14 +341,14 @@ end
 
 -- Called when the player's subjob changes.
 function sub_job_change_custom(new, old)
-	-- Typically used for Macro pallet changing
+	-- A common use is switching the macro book or set.
 end
 
---Adjust custom precast actions
+-- Called before each action, after the engine's own checks. Cancel the action here with cancel_spell(). Nothing it returns is used.
 function pretarget_custom(spell,action)
 
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the engine's precast set for the action. In MEVA mode a weaponskill keeps the magic evasion neck.
 function precast_custom(spell)
 	local equipSet = {}
 	if spell.type == 'WeaponSkill' then
@@ -342,27 +358,28 @@ function precast_custom(spell)
 	end
 	return equipSet
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the engine's midcast set for the action.
 function midcast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the idle or engaged set worn when an action ends.
 function aftercast_custom(spell)
 	local equipSet = {}
 
 	return choose_gear()
 end
 
--- Called when the pet dies or is summoned
+-- Called when a pet is summoned, dismissed or dies. Gear returned here merges over the idle or engaged set.
 function pet_change_custom(pet,gain)
 	local equipSet = {}
 
 	return equipSet
 end
 
--- Called during a pet midcast
+-- Called while your pet's action is in flight. Gear returned here merges over sets.Pet_Midcast and the set named for the action.
+-- This one adds the set for each Ready list the move is in, and prints which set it added last, or Pet Not Set when the move is in none.
 function pet_midcast_custom(spell)
 	local equipSet = {}
 		local message = 'Pet Not Set'
@@ -390,44 +407,44 @@ function pet_midcast_custom(spell)
 	return equipSet
 end
 
--- Called after the pet performs an action
+-- Called when your pet's action ends. Gear returned here merges over the idle or engaged set.
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
---Function is called when the player gains or loses a buff
+-- Called when a buff is gained or lost, except while an action is in flight. Gear returned here merges over the idle or engaged set.
 function buff_change_custom(name,gain)
 	local equipSet = {}
 
 	return choose_gear()
 end
 
---This function is called when a update request the correct equipment set
+-- Gear returned here merges over every idle and engaged build: after each action, on a buff, status or mode change, and when you start or stop moving.
 function choose_set_custom()
 	local equipSet = {}
 
 	return choose_gear()
 end
---Function is called when the player changes states
+-- Called when your status changes, such as engaging, disengaging or resting. Gear returned here merges over the idle or engaged set that follows.
 function status_change_custom(new,old)
 	local equipSet = {}
 
 	return choose_gear()
 end
---Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
+-- Called for a "gs c" command the engine does not handle itself, and for the weapon mode, job mode and job mode 2 commands, which call it before the gear rebuild. The command arrives in lowercase.
 function self_command_custom(command)
 
 end
---Custom Function
+-- A helper this file's aftercast, buff change, status change and choose_set_custom hooks all return, so gear logic written here reaches every idle and engaged build.
 function choose_gear()
 	local equipSet = {}
 
 	return equipSet
 end
 
--- This function is called when the job file is unloaded
+-- Called when the job file unloads, after the engine has released its keys and held slots.
 function user_file_unload()
 
 end

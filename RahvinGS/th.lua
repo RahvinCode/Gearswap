@@ -18,32 +18,30 @@
 -- COMPONENT: th -- section 18: Treasure Hunter tracking, and the action handler
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 18 - Treasure Hunter tracking. Four handler bodies and one housekeeping sweep
---   that together decide whether a mob still needs Treasure Hunter gear, plus the action
---   handler that both records a tagging and dispatches skillchain bursts.
+--   Section 18 - Treasure Hunter tracking. Three event handlers and a timed sweep that
+--   decide whether a mob still needs Treasure Hunter gear, and the action handler. The
+--   action handler records tags, releases what an item use or an interrupted cast held,
+--   dispatches skillchain bursts, and hands job ability packets to the eleven tracker.
 --
--- EXPORTS  E.th_action, the body registered on the raw 'action' event.
--- GLOBALS  on_target_change_for_th, on_incoming_chunk_for_th, on_zone_change_for_th and
---          cleanup_tagged_mobs are declared as globals: the composition root registers the
---          first three on their events, and the polling engine calls the fourth on its
---          30 second pass.
--- STATE    The tagged-mob table is th_info, owned by the state component and shared: this
---          file writes it, the gear builders read it. The table REFERENCE is bound to a
---          local below and captured as an upvalue by every closure here, which is safe
---          because the reference never changes -- only its contents do. Never replace the
---          table itself, or the builders keep reading the old one.
--- LATE     This file loads tenth of fifteen, and three of the globals it calls are declared
---          in files that load AFTER it: run_burst (monitor), display_box_update (display)
---          and equip_set_command (the root). They work only because Lua resolves a global at
---          call time; none of them may be bound to a local in the import block above, and a
---          reader looking for them will not find them earlier in the load order.
+-- EXPORTS  E.th_action, which the root registers on the raw 'action' event.
+-- GLOBALS  on_target_change_for_th, on_incoming_chunk_for_th and on_zone_change_for_th,
+--          which the root registers on their events, and cleanup_tagged_mobs, which the
+--          polling engine calls on its 30 second pass.
+-- STATE    The tagged-mob table is th_info.tagged_mobs. The state component owns th_info,
+--          this file writes it, and the gear builders read it. Both files bind the th_info
+--          reference once at construction, so th_info is changed in place and never
+--          replaced. A replaced th_info would leave the builders reading the old one.
+-- LOADS    After every component whose exports it binds. run_burst (monitor),
+--          display_box_update (display) and equip_set_command (the root) are globals from
+--          files that load after this one. They resolve when called, so none of them may be
+--          bound in the import block.
 --
--- The zone handler is larger than its name suggests and its ordering is load-bearing; see
--- the note on it below before moving anything inside it.
+-- The zone handler does more than its name suggests, and its steps run in a required
+-- order. Read the note above it before moving anything inside it.
 
--- requires: rahvings/state, rahvings/core, rahvings/equip, rahvings/enchant, rahvings/hoxne, rahvings/builders
+-- requires: rahvings/state, rahvings/core, rahvings/equip, rahvings/enchant, rahvings/hoxne, rahvings/builders, rahvings/spellreceived
 return function(E)
-    -- Immutable dependencies bound once at construction, so no call below reaches through E.
+    -- The exports this file uses, bound once at construction.
     local DeathMessages, TaggingCategories, get_mob_by_id = E.DeathMessages, E.TaggingCategories, E.get_mob_by_id
     local build_current_set, cancel_enchantment           = E.build_current_set, E.cancel_enchantment
     local clear_locked_slots, debug, hoxne                = E.clear_locked_slots, E.debug, E.hoxne
@@ -51,23 +49,24 @@ return function(E)
     local hoxne_resume_deadline, settings, th_info        = E.hoxne_resume_deadline, E.settings, E.th_info
     local strip_clear, disable_clear                      = E.strip_clear, E.disable_clear
     local Divergence_Zones, res                           = E.Divergence_Zones, E.res
+    local roll_action, roll_clear                         = E.roll_action, E.roll_clear
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 18 - TREASURE HUNTER TRACKING
     ------------------------------------------------------------------------------------------------
-    -- A mob is worth Treasure Hunter gear until it has been tagged once. Every mob the player
-    -- acts on is stamped in th_info.tagged_mobs, and the entry is dropped when the mob dies,
-    -- when the player zones, or after three minutes without further action on it. The Tag
-    -- mode reads that table to decide when to give the slots back to damage gear.
+    -- A mob needs Treasure Hunter gear until it has been tagged. Every mob the player acts on
+    -- is stamped in th_info.tagged_mobs. The entry is dropped when the mob dies, when the
+    -- player zones, or after three minutes with no action on it. The builders read the table
+    -- to decide when Treasure Hunter gear gives its slots back.
 
     -- Rebuild the equipped set when the player picks a different target while engaged, so a
-    -- newly-targeted mob gets Treasure Hunter gear. Runs on the wrapped 'target change' event.
+    -- newly targeted mob gets Treasure Hunter gear. Runs on the wrapped 'target change' event.
     function on_target_change_for_th(new_index, old_index)
-        -- Two things have to be true before this is a real target change: the player must be
-        -- engaged with the mob the event names, and it must differ from the one last acted on.
-        -- The second test is what stops a re-target to the same mob rebuilding the set. The
-        -- event fires both when the player retargets by hand and when the current target
-        -- dies and the client moves them on, and both paths want the same rebuild.
+        -- A real target change needs two things. The player's current target is the mob the
+        -- event names, and it differs from the last target this handler rebuilt for. The
+        -- second test stops a re-target to the same mob from rebuilding the set. The event
+        -- fires when the player retargets by hand and when the client moves on from a target
+        -- that died, and both want the same rebuild.
         if player.status == 'Engaged' and state.TreasureMode.value ~= 'None' then
             if player.target.index == new_index and new_index ~= th_info.last_player_target_index then
                 th_info.last_player_target_index = player.target.index
@@ -76,17 +75,18 @@ return function(E)
         end
     end
 
-    -- Drop a mob from the tagged table when an action packet reports its death, so a mob that
-    -- respawns on the same spot is tagged again. Runs on the raw 'incoming chunk' event.
+    -- Drop a mob from the tagged table when an action message reports its death, so a mob
+    -- that respawns on the same spot is tagged again. Runs on the raw 'incoming chunk' event,
+    -- where packet 0x29 is the action message.
     function on_incoming_chunk_for_th(id, data, modified, injected, blocked)
         if id == 0x29 and state.TreasureMode.value ~= 'None' then
             local target_id = data:unpack('I', 0x09)
-            -- The tagged-table lookup comes first and the message id is read inside it: every
-            -- action packet reaches this handler, and few of them name a mob being held. The
-            -- target id is the long at 0x09. The message id is the low fifteen bits of the
-            -- halfword at 0x19, and the mask is what clears the top bit -- drop it and a
-            -- packet carrying that bit matches no death message, leaving the mob in the table
-            -- until the 180 second sweep takes it.
+            -- Every action message reaches this handler and few name a tagged mob, so the
+            -- table lookup comes first and the message id is read only on a hit. The target
+            -- id is the long at 0x09, and the message id is the low fifteen bits of the
+            -- halfword at 0x19. The mask clears the top bit. Without it, a packet carrying
+            -- that bit matches no death message, and the mob stays tagged until the
+            -- three-minute sweep drops it.
             if th_info.tagged_mobs[target_id] then
                 local message_id = data:unpack('H', 0x19) % 32768
                 if DeathMessages[message_id] then
@@ -99,19 +99,19 @@ return function(E)
         end
     end
 
-    -- Release everything a zone invalidates, then clear the tagged table. Runs on the raw
-    -- 'zone change' event.
+    -- Release everything that does not survive a zone, then clear the tagged table. Runs on
+    -- the raw 'zone change' event.
     --
-    -- The order is load-bearing. Each of the holds below has to be released BEFORE
-    -- UnlockByMode runs, because UnlockByMode builds its list from the slots nothing claims
-    -- and would skip any slot still held. The Ampulla itself cannot be unequipped from here --
-    -- equips issued inside a raw handler are discarded -- so the mode is switched off and the
-    -- release tick is armed to take the item out through a wrapped command instead.
+    -- The order matters. Every hold below is released before UnlockByMode runs, because
+    -- UnlockByMode enables only the slots nothing claims and would skip a slot still held.
+    -- An equip issued inside a raw handler is discarded, so the Ampulla cannot be taken off
+    -- from here. Instead the Hoxne mode is switched off and the release tick is armed, and
+    -- the tick removes the item through the hoxnerelease self command.
     --
-    -- The two holds go first of all and highest first -- the disable hold, then the strip:
-    -- each outranks every layer beneath it, so a release below one would meet its claim and
-    -- re-assert the very slot it was freeing. Neither issues an equip, which is what makes
-    -- them safe here.
+    -- The two holds are cleared before anything else, highest first: the disable hold, then
+    -- the strip hold. Each outranks every layer below it, so a lower layer released first
+    -- would meet its claim and put the slot back. Neither clear issues an equip, which is
+    -- what makes them safe here.
     function on_zone_change_for_th(new_zone, old_zone)
         local disable_n, disable_label = disable_clear()
         if disable_n > 0 then notice(disable_label .. ': [OFF] (zoned)') end
@@ -124,28 +124,33 @@ return function(E)
             hoxne.release_next  = os.clock() + 3
             notice('Hoxne Ampulla Mode: [OFF] (zoned)')
         end
-        -- An item use cannot survive the zone: the /item never lands, and the slot it is
-        -- holding would ride into the new zone still claimed.
-        local zoned_use = cancel_enchantment()
+        -- An item use does not survive the zone. Its /item never lands, and its slot would
+        -- stay claimed in the new zone. The cancel is quiet, so this handler's own repaint
+        -- at the end is the only one it makes.
+        local zoned_use = cancel_enchantment(true)
         if zoned_use then notice('Canceled [' .. zoned_use .. '] (zoned).') end
         -- Lock modes do not survive a zone either.
         if clear_locked_slots() > 0 then notice('Lock modes released (zoned).') end
-        -- Nor does a cast in progress: its implement lets go before the routine unlock.
+        -- Nor does a cast in progress. Its implement lets go before the routine unlock.
         release_implement()
         UnlockByMode()
+        -- Nor does a Corsair roll, since every roll leaves a character that zones. The
+        -- eleven tracker is cleared above the rebuild below, so the eleven flag is settled
+        -- before that rebuild is queued. When the flag changes, its setter queues a rebuild
+        -- of its own, which also lands after every release above.
+        roll_clear()
 
-        -- Dress for the new zone, once every mode above has let its slots go. Freeing a
-        -- slot only lifts its disable flag: whatever the mode was holding stays worn until
-        -- something rebuilds, so without this the gear rides into the new zone. Last on
-        -- purpose -- rebuilt any earlier it would dress slots that are about to be released
-        -- again. Unconditional, because UnlockByMode frees slots on every zone whether or
-        -- not a lock was held. This is a send rather than an equip: equips issued inside a
-        -- raw handler are discarded, and the send lands the rebuild in a wrapped command.
+        -- Dress for the new zone once every mode above has let its slots go. Freeing a slot
+        -- only lifts its disable flag, and whatever the mode held stays worn until something
+        -- rebuilds. The rebuild comes after every release, so it never dresses a slot that
+        -- is about to be released. It runs on every zone, because UnlockByMode frees slots
+        -- whether or not a hold was standing. It is a send rather than an equip, so the
+        -- rebuild lands in a wrapped command.
         equip_set_command()
 
-        -- Entering Divergence, name the neck lock. The zone is read from the EVENT's id
-        -- rather than from world.area, which inside a raw handler may still name the zone
-        -- just left. Ungated, so it reaches a player running with gs c info off.
+        -- On entering a Dynamis Divergence zone, point the player at the neck lock. The zone
+        -- comes from the event's id, because world.area inside a raw handler may still name
+        -- the zone just left. It prints on notice, so it reaches a player with info off.
         local zone = res.zones[new_zone]
         if zone and Divergence_Zones:contains(zone.en) then
             notice('Entering Dynamis Divergence - Use "gs c dynamisrp" to equip and lock your JSE neck.')
@@ -154,22 +159,20 @@ return function(E)
         if settings.debug then debug('Zoning. Clearing tagged mobs table.') end
         th_info.tagged_mobs:clear()
 
-        -- The status box is repainted last, once, after every hold has let go and the zone
-        -- has been dressed: the tokens leave with the holds, and nothing above this line
-        -- waits on the compose.
+        -- Repaint the status box once, after every hold above has let go, so its hold
+        -- tokens leave with them.
         display_box_update()
     end
 
-    -- Drop every mob the player has not acted on for three minutes. This is what covers the
-    -- cases no event reports: a mob that deaggros, and one left behind when the player dies.
-    -- Only the player's own actions refresh an entry, so an untouched mob always ages out.
+    -- Drop every mob the player has not acted on for three minutes. This covers the cases
+    -- no event reports: a mob that deaggros, and one left behind when the player dies. Only
+    -- the player's own actions refresh an entry, so an untouched mob always ages out.
     -- Called from the polling engine's 30 second pass.
     function cleanup_tagged_mobs()
         local current_time = os.clock()
 
-        -- Assigning nil to a key that already exists is defined behavior during a pairs()
-        -- walk in Lua 5.1, so a stale entry is removed where it is found rather than
-        -- collected into a second table and deleted afterwards.
+        -- Assigning nil to an existing key during a pairs() walk is defined in Lua 5.1, so a
+        -- stale entry is removed where it is found.
         for target_id, action_time in pairs(th_info.tagged_mobs) do
             if current_time - action_time > 180 then
                 th_info.tagged_mobs[target_id] = nil
@@ -182,28 +185,31 @@ return function(E)
     end
 
 
-    -- The action handler, registered by the root on the raw 'action' event. It does three
-    -- jobs, and only the first two are gated on the actor being the player:
+    -- The action handler, which the root registers on the raw 'action' event. It does four
+    -- jobs, and only the first two require the actor to be the player.
     --
-    --   1. Completion routing. An item use that finishes or is interrupted, and a song
-    --      interrupted mid-cast, each release state that aftercast would otherwise have
-    --      released -- an interrupted cast never reaches aftercast at all.
+    --   1. Completion routing. An item use that finishes or is interrupted gives back the
+    --      slot the enchanted item engine held. An interrupted cast pulls in the Hoxne
+    --      window's deadline and queues a rebuild.
     --   2. Treasure Hunter tagging. An action against a mob stamps it in the tagged table.
-    --   3. Skillchain bursts, for EVERY actor, so a chain closed by someone else still opens
-    --      a burst window.
+    --   3. Skillchain bursts, for every actor, so a chain made by someone else still opens a
+    --      burst window.
+    --   4. The eleven tracker, for every actor. Every job ability packet is handed to it,
+    --      and a Corsair roll that lists this character carries its total there.
     E.th_action = function(data)
         if data ~= nil then
             if data.actor_id == player.id then
-                -- Ranged attack finished.
+                -- Category 2: ranged attack finished.
                 if data.category == 2 then
                     if data.param == 26739 then
                         log('Player finished Shooting')
                     end
-                -- Cast finished.
+                -- Category 4: cast finished.
                 elseif data.category == 4 then
                     log('Casting Finished')
-                -- Item use started, or was interrupted before it landed. An interrupt has to
-                -- hand the slot back itself, since no completion will arrive.
+                -- Category 9: item use started, param 24931, or interrupted, param 28787.
+                -- Categories 8 and 12 use the same two params. An interrupted use has to give
+                -- the slot back here, since no completion will arrive.
                 elseif data.category == 9 then
                     if data.param == 24931 then
                         log('Item use')
@@ -213,23 +219,22 @@ return function(E)
                         UnlockByMode()
                         equip_set_command()
                     end
-                -- Item use finished. Deliberately not gated on param: on completion the field
-                -- carries the item id, so testing any single value would match one item only.
+                -- Category 5: item use finished. Not gated on param, because on completion the
+                -- field carries the item id, and any single value would match one item only.
                 elseif data.category == 5 then
                     log('Item Use Finished')
                     enchantment_completed()
                     UnlockByMode()
                     equip_set_command()
-                -- Cast started, or was interrupted.
+                -- Category 8: cast started, or interrupted.
                 elseif data.category == 8 then
                     if data.param == 28787 then
                         log('Spell Interupt')
-                        -- An interrupted cast never reaches aftercast, so the Hoxne borrow
-                        -- window gets its real countdown here, from the rule aftercast
-                        -- applies, keyed on what opened the window rather than on what was
-                        -- interrupted. The deadline is only ever pulled in: an unrelated
-                        -- cast interrupted inside a song's debounce leaves the wave's
-                        -- window where it was.
+                        -- The Hoxne window gets its countdown here by the rule aftercast
+                        -- applies, keyed on the action that opened the window rather than
+                        -- the one interrupted. The deadline is only ever pulled in, so an
+                        -- unrelated cast interrupted inside a song's five seconds leaves
+                        -- the window where it was.
                         if hoxne.window then
                             local deadline = hoxne_resume_deadline(hoxne.owner)
                             if deadline < hoxne.expires then hoxne.expires = deadline end
@@ -238,7 +243,7 @@ return function(E)
                     elseif data.param == 24931 then
                         log('Casting Spell')
                     end
-                -- Ranged attack started, or was interrupted.
+                -- Category 12: ranged attack started, or interrupted.
                 elseif data.category == 12 then
                     if data.param == 24931 then
                         log(player.name, ' is Shooting')
@@ -246,17 +251,20 @@ return function(E)
                         log('Shooting is interrupted')
                     end
                 end
-                -- Treasure Hunter tagging. A tagging-category action against a mob stamps it
-                -- with the current clock. An action against something already tagged only
-                -- refreshes the stamp, which is what keeps a mob still being fought from
-                -- aging out of the table. Outside Full Time the set is rebuilt on the tag,
-                -- because that is the moment Treasure Hunter gear stops earning its slots.
+                -- Treasure Hunter tagging. A tagging-category action against an NPC stamps it
+                -- with the current clock, which also keeps a mob still being fought from
+                -- aging out. Outside Full Time, a tag on a mob the table did not hold queues a
+                -- rebuild, so the build can drop Treasure Hunter gear once the mob is tagged. A
+                -- mob already in the table is only restamped, because the build already reads
+                -- it as tagged. A target the mob lookup cannot find, or one that is not an NPC,
+                -- only has its stamp refreshed, and only when it is already in the table.
                 if state.TreasureMode.value ~= 'None' and TaggingCategories:contains(data.category) then
                     local target = data.targets[1]
                     local target_mob = target and get_mob_by_id(target.id)
                     if target_mob and target_mob.is_npc then
+                        local first_tag = not th_info.tagged_mobs[target.id]
                         th_info.tagged_mobs[target.id] = os.clock()
-                        if state.TreasureMode.value ~= 'Full Time' then
+                        if first_tag and state.TreasureMode.value ~= 'Full Time' then
                             equip_set_command()
                         end
                     elseif target and th_info.tagged_mobs[target.id] then
@@ -264,17 +272,22 @@ return function(E)
                     end
                 end
             end
-            -- Burst dispatch, outside the actor test: a weaponskill or cast from anyone can
-            -- close a skillchain the player is able to burst on.
+            -- Outside the actor test, so every actor counts. A weaponskill, category 3, or a
+            -- spell, category 4, from anyone can make a skillchain the player may burst on.
+            -- run_burst records the chain, and a later weaponskill on that mob closes the
+            -- window. A job ability, category 6, goes to the eleven tracker, because a
+            -- roll's total travels on the roller's packet.
             if data.category == 3 and data.param ~= 0 then
                 run_burst(data)
             elseif data.category == 4 then
                 run_burst(data)
+            elseif data.category == 6 then
+                roll_action(data)
             end
         end
     end
 
-    -- Version stamp. The root asserts this against Rahvin_GS, so a stale copy of this file
-    -- announces itself at load instead of running.
-    return '2.0'
+    -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
+    -- stops the load with an error that names it.
+    return '2.1'
 end

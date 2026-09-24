@@ -22,60 +22,62 @@
 --   JSE capes .............. by job, then by what the cape is augmented for
 --   AF, Relic, Empyrean .... the tiers reached for most, then the full catalog
 --   Current-era sets ....... the armor families, then Non-Set Pieces by slot
---   Referenced items ....... entries minted from what the job files actually ask for
---   Escha and Geas Fete .... the four Nolan augment paths per piece
+--   Referenced items ....... entries minted from the items the job files name
+--   Escha and Geas Fete .... the Nolan augment paths, one entry per path, armor then weapons
 --   Trial of the Magians ... every stage of every trial weapon, one entry per name
 --
--- WHAT THE NUMBER IS FOR. GearSwap equips a set highest priority first. Ordering by HP means
---          max HP RISES before anything can lower it, so a swap never clamps current HP away
---          on the way through -- the whole reason this library exists rather than a job file
---          naming items inline.
+-- PRIORITY GearSwap equips a set highest priority first. Ordering by HP means maximum HP
+--          rises before anything can lower it, so a swap never clamps current HP to a lower
+--          maximum on the way through. That is why a job file names items from this library
+--          rather than inline.
 --
--- WHICH BUILDER AN ENTRY USES IS ITS DOCUMENTATION:
+-- The builder an entry uses documents what its number means:
 --
---   hp_gear(name, hp, extra)     The number is the item's TOTAL HP -- base plus whatever its
+--   hp_gear(name, hp, extra)     The number is the item's total HP, base plus whatever its
 --                                augments add.
 --
---   mp_gear(name, mp, extra)     The item carries MP and no HP. Pass the raw MP; the priority
---                                becomes ceil(mp/10) capped at 10, which compresses the class
---                                into a narrow band low in the order rather than letting a
+--   mp_gear(name, mp, extra)     The item carries MP and no HP. Pass the raw MP. The priority
+--                                becomes ceil(mp/10), capped at 10, which keeps the class in a
+--                                narrow band low in the order rather than letting a
 --                                three-digit MP figure outrank real HP.
 --
---   rank_gear(name, rank, extra) The number is an ordering token, not the item's HP. Main- and
---                                offhand weapons all carry 100; shields, grips and straps stay
---                                below it, so a two-handed main equips ahead of the offhand and
---                                the game clears the sub slot. Guns and bows take hp_gear instead.
+--   rank_gear(name, rank, extra) The number is an ordering token, not the item's HP. Main hand
+--                                and offhand weapons all carry 100, and shields, grips and
+--                                straps stay below it, so a two-handed main equips ahead of the
+--                                offhand and the game clears the sub slot. Guns and bows take
+--                                hp_gear instead.
 --
--- AUGMENTS ARE WRITTEN OUT WHERE THEY ARE A CHOICE. A JSE cape, a Divainy-Gimainy, a dark
---          matter piece -- these carry their augment list verbatim, because no two players'
---          are the same. An item with FIXED augment paths, Souveran and the Nolan sets, gets
---          one entry per path at that path's maximum, named for the path. A Rare item carries
---          no augment list at all -- the game equips the one copy whatever it wears -- so the
---          Trial of the Magians weapons and the Limbus Superior sets are bare names.
+-- AUGMENTS An augment list is written out where the augments are a choice. A JSE cape, a
+--          Divainy-Gimainy or a dark matter piece carries its list verbatim, because no two
+--          players' are the same. An item with fixed augment paths, such as the Nolan sets,
+--          gets one entry per path at that path's maximum, named for the path. GearSwap
+--          equips a Rare item whatever augments it carries, so a Rare item such as a Limbus
+--          Superior piece is a bare name. The Trial of the Magians weapons are bare names too,
+--          because their augments differ by stage and by path.
 --
--- A NAME MUST MATCH THE GAME EXACTLY. GearSwap compares against the item's name and its log
---          name, case-insensitively. A name matching neither equips nothing AND reports
---          nothing -- which is why a misspelling here is worse than an outright error.
+-- NAMES    A name must match the game exactly. GearSwap compares it with the item's name and
+--          its log name, ignoring case. A name that matches neither equips nothing and
+--          reports nothing, which makes a misspelling here worse than an outright error.
 --
--- NAMING. Keys are the item name in camelCase (moonlightRing, warderCharm); quality tiers are
---          spelled out, PlusOne through PlusFour; a second copy in another bag is numbered for
---          it (rostam2 is the wardrobe2 copy), so a set can ask for one particular one.
---          AF, Relic and Empyrean pieces are family plus slot plus tier
---          (reverenceBodyPlusFour). Capes are job plus purpose (rngSnapshot, drkFC), split
---          again by defensive augment or leading stat where one job builds several of a kind
---          (corDAPdt, brdWSDChr).
+-- KEYS     A key is the item name in camelCase, as in moonlightRing. Quality tiers are spelled
+--          out, PlusOne through PlusFour, as in warderCharmPlusOne. A second copy in another
+--          bag is numbered for it, as rostam2 is the wardrobe2 copy, so a set can ask for one
+--          particular copy. AF, Relic and Empyrean pieces are family plus slot plus tier, as
+--          in reverenceBodyPlusFour. Capes are job plus purpose, as in rngSnapshot and drkFC,
+--          split again by defensive augment or leading stat where one job builds several of a
+--          kind, as in corDAPdt and brdWSDChr.
 --
--- EXPORTS  `gear` and the three builders, all globals. This file is included by each JOB FILE
---          individually, never by the engine, and no engine file reads `gear` -- the library
---          reaches the game only through the sets a job file builds out of it. A job file may
---          also call the builders itself, to mint an entry this library does not carry.
+-- EXPORTS  gear and the three builders, all globals. Each job file includes this file itself.
+--          The engine never includes it and no engine file reads gear, so the library reaches
+--          the game only through the sets a job file builds from it. A job file may also call
+--          the builders itself, to mint an entry this library does not carry.
 
 gear = {}
 
--- The shared constructor under all three builders: a GearSwap gear table carrying the name and
--- the priority, with any extra attributes -- an augment list, a bag -- copied in beside them.
--- Private, because which builder was used is the entry's documentation and calling this
--- directly would erase that.
+-- The shared constructor under all three builders. It returns a GearSwap gear table carrying
+-- the name and the priority, with any extra attributes, such as an augment list or a bag,
+-- copied in beside them. It is private, because the builder an entry uses is that entry's
+-- documentation, and calling this directly would erase it.
 local function build(item_name, priority, extra_attributes)
     local gear_table = { name = item_name, priority = priority }
     if extra_attributes then
@@ -86,20 +88,19 @@ local function build(item_name, priority, extra_attributes)
     return gear_table
 end
 
--- An item carrying HP. The number passed IS the priority, and is the item's total HP, so the
--- ordering falls out of the data rather than being assigned. The only builder whose number is
--- reconciled against the game's own item data.
+-- An item carrying HP. The number passed is the priority, and it is the item's total HP, so
+-- the order follows from the data rather than being assigned.
 function hp_gear(item_name, hp_val, extra_attributes)
     return build(item_name, hp_val, extra_attributes)
 end
 
--- An item carrying MP and no HP. The raw MP goes in and is compressed to 1-10, which keeps the
--- whole class in a narrow band low in the order instead of letting a three-digit MP figure
--- outrank real HP. It is NOT a floor: a piece here still outranks any hp_gear entry whose total
--- HP is below its scaled number, and the pieces carrying negative priorities -- the two HP-to-MP
--- converter rings, and the pieces whose own HP is negative, the Apogee set among them -- sit
--- below everything. Zero or nil MP gives
--- priority 0, tied with the unprioritized entries rather than last, and never throws.
+-- An item carrying MP and no HP. The raw MP goes in and is compressed to 1 to 10, which keeps
+-- the whole class in a narrow band low in the order instead of letting a three-digit MP figure
+-- outrank real HP. It is not a floor. A piece here still outranks any hp_gear entry whose total
+-- HP is below its scaled number. The entries with negative priorities sit below everything:
+-- the two HP-to-MP converter rings, and the pieces whose own HP is negative, the Apogee set
+-- among them. Zero or nil MP gives priority 0, tied with entries that carry no priority rather
+-- than last, and never raises an error.
 function mp_gear(item_name, mp_val, extra_attributes)
     local scaled = 0
     if mp_val and mp_val > 0 then
@@ -108,11 +109,11 @@ function mp_gear(item_name, mp_val, extra_attributes)
     return build(item_name, scaled, extra_attributes)
 end
 
--- An item whose number is a deliberate ordering token, not a stat. Every MAIN- OR OFFHAND
--- weapon carries rank 100, and a tie is resolved by GearSwap equipping the lowest slot first,
--- which puts the main hand ahead of the sub. Shields, grips and straps stay below 100 so a
--- two-hander can clear the offhand before they are tried. Guns and bows are hp_gear entries
--- like any other piece; the only range-slot items that take a rank are Terpander and Dunna, the
+-- An item whose number is an ordering token, not a stat. Every main hand or offhand weapon
+-- carries rank 100, and GearSwap breaks a tie by equipping the lowest slot first, which puts
+-- the main hand ahead of the sub. Shields, grips and straps stay below 100, so a two-handed
+-- weapon can clear the offhand before they are tried. Guns and bows are hp_gear entries like
+-- any other piece. The only range-slot items that take a rank are Terpander and Dunna, the
 -- latter under two keys.
 function rank_gear(item_name, rank_val, extra_attributes)
     return build(item_name, rank_val, extra_attributes)
@@ -304,9 +305,8 @@ gear.whmCure = hp_gear("Alaunus's Cape", 0,
     { augments = { 'MND+20', 'Eva.+20 /Mag. Eva.+20', 'MND+10', '"Cure" potency +10%', 'Damage taken-5%', } }) --FC 10, DT 5
 
 
--- AF, Relic and Empyrean, grouped by job and by line. This block collects the tiers the job
--- files reach for most, but it is neither complete nor pruned: some entries here are unused,
--- and plenty of pieces the job files do use are declared in the fuller catalog below.
+-- AF, Relic and Empyrean, grouped by job and by line. This block holds the tiers the job files
+-- reach for most. It is not complete, and the full catalog below carries the rest.
 
 --Assimilator BLU Artifact
 gear.assimilatorHeadPlusOne = hp_gear("Assimilator's Keffiyeh +1", 46)   --Macc 18, MAB 18, Int 23
@@ -501,8 +501,9 @@ gear.ebersFeetPlusThree = hp_gear("Ebers Duckbills +3", 71)  --DT 11, Auspice +1
 
 --[==[ The full AF, Relic and Empyrean catalog: every variant the client resources carry,
      whether or not anything asks for it, so a job file can name one without minting it.
-     Priorities are base HP throughout -- these have no player-chosen augments to add.
-     Two eras per line: the 75-era base/+1/+2, and the Reforged 109/+1/+2/+3/+4. ]==] --
+     Priorities are base HP throughout, since these pieces have no player-chosen augments.
+     A line has its original era, with tiers up to +2, and its Reforged era, with tiers up
+     to +4. GEO and RUN have the Reforged era only. ]==] --
 
 --WAR Artifact (75-era)
 gear.fighterHead = hp_gear("Fighter's Mask", 15)           --Enmity 1
@@ -3427,8 +3428,8 @@ gear.vanyaFeetPathD = hp_gear("Vanya Clogs", 13,
 --Volte
 gear.volteLegs = hp_gear("Volte Brais", 54) --FC 8, Refresh 1
 
--- Non-set pieces, grouped by the slot they occupy rather than by family. This is where the
--- weapons live, and with them most of the rank_gear entries in the library.
+-- Non-set pieces, grouped by the slot they occupy rather than by family, starting with the
+-- weapons.
 
 --Weapons
 gear.aegis = hp_gear("Aegis", 0)                                             --MDT II 50
@@ -3565,11 +3566,12 @@ gear.crocea6 = rank_gear("Crocea Mors", 100, { bag = "wardrobe6" })          --F
 gear.crocea7 = rank_gear("Crocea Mors", 100, { bag = "wardrobe7" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
 gear.crocea8 = rank_gear("Crocea Mors", 100, { bag = "wardrobe8" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
 
--- Superior 4 and 5 weapons, grips and shields, as bg-wiki's Superior Equipment category
--- tiers them (the resource carries the tier on armor only). Main- and offhand
--- weapons take the weapon rank; the Limbus grips and shields hold 99, because their rank
--- augments reach HP+100 and HP+150 and an offhand must stay under the rank. Rostam and
--- Crocea Mors are enumerated per wardrobe, above; every other Superior weapon is one entry.
+-- Superior 4 and 5 weapons, grips and shields, tiered as bg-wiki's Superior Equipment
+-- category lists them, since the item resources carry the tier on armor only. Main hand and
+-- offhand weapons take the weapon rank. The Limbus grips and shields hold 99, because their
+-- rank augments reach HP+100 and HP+150 and an offhand must stay under the weapon rank.
+-- Rostam and Crocea Mors are listed once per wardrobe above, and every other Superior weapon
+-- is one entry.
 --Superior 4
 gear.abyssScythe = rank_gear("Abyss Scythe", 100)             --DRK
 gear.agogeChopper = rank_gear("Agoge Chopper", 100)           --WAR
@@ -3848,15 +3850,21 @@ gear.futharkTorque = hp_gear("Futhark Torque", 0)                --Meva 20, Enmi
 gear.futharkTorquePlusOne = hp_gear("Futhark Torque +1", 0)      --Meva 25, Enmity 7
 
 --Waist
+gear.anrinObi = hp_gear("Anrin Obi", 0)                   --Darksday/dark weather bonuses
 gear.audumbla = hp_gear("Audumbla Sash", 0)               --PDT 4, SIRD 10
 gear.austerityPlusOne = hp_gear("Austerity Belt +1", 0)   --Conserve MP 9, Drain/Aspir 5
 gear.carriers = hp_gear("Carrier's Sash", 20)             --All Elemental Resists +15
 gear.corneliaBelt = hp_gear("Cornelia's Belt", 0)         --Haste 10, Counter 5, STR 10
+gear.dorinObi = hp_gear("Dorin Obi", 0)                   --Earthsday/earth weather bonuses
 gear.embla = hp_gear("Embla Sash", 0)                     --FC 5, Sublimation 3, Enhancing Dur 10
 gear.flumeBelt = hp_gear("Flume Belt", 0)                 --PDT 4, Convert 2% Dam to MP
 gear.fotiaWaist = hp_gear("Fotia Belt", 0)                --Latent WSD 10
+gear.furinObi = hp_gear("Furin Obi", 0)                   --Windsday/wind weather bonuses
 gear.gishdubar = hp_gear("Gishdubar Sash", 0)             --Cursna Rec +10
+gear.hyorinObi = hp_gear("Hyorin Obi", 0)                 --Iceday/ice weather bonuses
 gear.ioskeha = hp_gear("Ioskeha Belt", 0)                 --DA 8, Haste 7, Acc 12
+gear.karinObi = hp_gear("Karin Obi", 0)                   --Firesday/fire weather bonuses
+gear.korinObi = hp_gear("Korin Obi", 0)                   --Lightsday/light weather bonuses
 gear.ligeiaSash = hp_gear("Ligeia Sash", 0)               --Elemental Siphon 10
 gear.moonbowBeltPlusOne = hp_gear("Moonbow Belt +1", 0)   --DT 6, TA 8, SB II 15, STR/DEX 20
 gear.nesanicaBelt = hp_gear("Nesanica Belt", 0)           --H2H Skill 5, Evasion Skill 5
@@ -3865,11 +3873,13 @@ gear.olympus = hp_gear("Olympus Sash", 0)                 --Enhancing 5, Element
 gear.orpheusWaist = hp_gear("Orpheus's Sash", 0)          --Elemental Attacks 1-15 Based on Distance
 gear.patentia = hp_gear("Patentia Sash", 0)               --DW x?, STP 5
 gear.porous = hp_gear("Porous Rope", 20)                  --INT/MND/CHR 7, Macc 5, MP 20
+gear.rairinObi = hp_gear("Rairin Obi", 0)                 --Lightningday/lightning weather bonuses
 gear.reiki = hp_gear("Reiki Yotai", 0)                    --DW 7, STP 4
 gear.sailfi = hp_gear("Sailfi Belt +1", 0)                --DA 5, TA 2, STR 15
 gear.sarissaphoroi = hp_gear("Sarissaphoroi Belt", 0)     --DA 2, TA2, SB 5, Haste 3
 gear.siegel = hp_gear("Siegel Sash", 0)                   --FC Enhancing 8, Stoneskin+
 gear.srodaBelt = hp_gear("Sroda Belt", 0)                 --Cure Pot 35, Regen Pot 20, Regen Dur 15, Healing/Enhancing Cost +25
+gear.suirinObi = hp_gear("Suirin Obi", 0)                 --Watersday/water weather bonuses
 gear.sulla = hp_gear("Sulla Belt", 0)                     --Enmity 3, Atk 30
 gear.windbuffetPlusOne = hp_gear("Windbuffet Belt +1", 0) --TA 2, QA 2
 gear.witful = hp_gear("Witful Belt", 0)                   --FC 3, QC 3
@@ -4121,6 +4131,7 @@ gear.aptitude = hp_gear("Aptitude Mantle", 0)          --CP 25
 gear.colossusMantle = hp_gear("Colossus's Mantle", 20) --MDT 2, Lightsday MDT 3, MP 20
 gear.navarchMantle = hp_gear("Navarch's Mantle", 0)    --Snapshot
 gear.sokolski = hp_gear("Sokolski Mantle", 70)         --HP Swap
+gear.twilightCape = hp_gear("Twilight Cape", 25)       --Day/Weather Elemental Magic+, MP 25
 
 --Treasure Hunter
 gear.chaac = hp_gear("Chaac Belt", 0)                 --TH 1
@@ -4130,11 +4141,10 @@ gear.hoxneRing = hp_gear("Hoxne Ring", -150)          --TH 2, TH +5%
 gear.perfectEgg = hp_gear("Per. Lucky Egg", 0)        --TH 1
 gear.volteHead = hp_gear("Volte Cap", 57)             --TH 1
 
---[==[ Items the job files ask for by name, minted from those references rather than chosen:
-     an inline augment list is carried across verbatim, a bag choice is kept so the set still
-     asks for that copy, and a variant of an item already priced above inherits its price.
-     This is the section that grows on its own -- a new reference is what puts an entry
-     here. ]==] --
+--[==[ Items the job files ask for by name, minted from those references rather than chosen.
+     An inline augment list is carried across verbatim, a bag choice is kept so the set
+     still asks for that copy, and a variant of an item already priced above takes that
+     price. An item a job file names that the library lacks gets its entry here. ]==] --
 
 gear.abyssalBeadNecklacePlusTwo = hp_gear("Abyssal Beads +2", 0)           --Macc 15, Acc 15, Att 40
 gear.acroBreechesRapidShot = hp_gear("Acro Breeches", 50, {
@@ -4644,12 +4654,13 @@ gear.vararRingPlusOne1 = hp_gear("Varar Ring +1", 0, { bag = "wardrobe" })      
 gear.pupDA = hp_gear("Visucius's Mantle", 0, {
     augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Dbl.Atk."+10', 'Damage taken-5%', }, })                                                                              --DA 10, DT 5, Acc 20, Acc 10
 
---[==[ The Escha and Geas Fete sets. Each piece has four fixed Nolan augment paths, and the
-     convention is one entry per path at that path's maximum rank rather than one averaged
-     entry, named nameSlot[PlusOne]PathX. A piece's four are not necessarily all in this
-     section -- some are minted earlier, under the same naming. The paths differ enough that
-     a set naming the wrong one wears the right item with the wrong augments, and the game
-     will not say so. ]==] --
+--[==[ The Escha and Geas Fete sets. Each piece has four fixed Nolan augment paths, and each
+     path gets its own entry at that path's maximum rank rather than one averaged entry. An
+     entry is named nameSlotPathX, or nameSlotPlusOnePathX for a +1 piece. A piece's four
+     entries may not all be in this section, since some are minted earlier under the same
+     naming. None of these pieces is Rare, so GearSwap equips only a copy whose augments
+     match the entry. A set naming a path the carried copy does not have leaves the slot as
+     it was, and GearSwap does not report it. ]==] --
 
 --Despair Armor Set -- Nolan paths
 gear.despairHeadPathA = hp_gear("Despair Helm", 88, {
@@ -5815,9 +5826,10 @@ gear.souveranFeetPlusOnePathD = hp_gear("Souveran Schuhs +1", 187, {
 
 --[==[ The Nolan weapons: every weapon Nolan augments, one entry per path at that path's
      maximum rank, named nameKeyPathX like the Escha sets above. None of them is Rare, so
-     an entry equips only a copy whose augments match its list; the strings are the game's
-     own abbreviations, which is all the comparison reads. Main- and offhand weapons carry
-     the weapon rank; the bows, guns and harp are priced by HP, the shield by its path's HP. ]==] --
+     an entry equips only a copy whose augments match its list. The strings are the game's
+     own abbreviations, which is all the comparison reads. Main hand and offhand weapons
+     carry the weapon rank. The bows, guns and harp are priced by HP, and the shield by its
+     path's HP. ]==] --
 
 --Escha - Zi'Tah
 gear.mijinPathA = rank_gear("Mijin", 100, {
@@ -6127,12 +6139,13 @@ gear.vijayaBowPathD = hp_gear("Vijaya Bow", 0, {
     augments = { 'DMG:+15', 'Rng.Atk.+15', 'Crit.hit rate +3%', }, })
 
 --[==[ Trial of the Magians weapons: every stage of every trial line, under its in-game
-     name. One entry per name and no augment list -- the augments differ by stage and by
-     path, and a set naming augments the copy does not carry equips nothing where the
-     item is not Rare, so a bare name is the only entry that always dresses. Main- and
-     offhand weapons carry the weapon rank; bows, guns, crossbows and the harp are priced
-     by HP like any other range-slot piece. The Empyrean, Relic and Mythic weapons the
-     trials also upgrade keep their entries above, one name covering every level. ]==] --
+     name. Each name has one entry with no augment list. The augments differ by stage and
+     by path, and where the item is not Rare, a set naming augments the copy does not
+     carry equips nothing, so a bare name is the only entry that always dresses. Main hand
+     and offhand weapons carry the weapon rank. Bows, guns, crossbows, the harp and the
+     shield are priced by HP like any other piece outside the weapon rank. The Empyrean,
+     Relic and Mythic weapons the trials also upgrade keep their entries above, one name
+     covering every level. ]==] --
 
 --Trial of the Magians: Axes
 gear.alardAxe = rank_gear("Alard's Axe", 100)                   --Lv.80

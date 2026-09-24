@@ -2,31 +2,33 @@
 include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 
---Set to ingame lockstyle and Macro Book/Set
+-- The lockstyle set, macro book and macro set that jobsetup applies at load.
 LockStylePallet = "6"
 MacroBook = "3"
 MacroSet = "1"
 
---Uses Items Automatically
+-- When true, the engine uses a Remedy on paralysis or silence and a Holy Water on Doom.
 AutoItem = false
 
---Upon Job change will use a random lockstyleset
+-- When true, each load picks a lockstyle set from Lockstyle_List in place of LockStylePallet.
 Random_Lockstyle = false
 
---Lockstyle sets to randomly equip
+-- The lockstyle sets Random_Lockstyle picks from.
 Lockstyle_List = { 1, 2, 6, 12 }
 
--- Use "gs c food" to use the specified food item
+-- The item that "gs c food" uses.
 Food = "Tropical Crepe"
 
---Set default mode (TP,ACC,DT)
-state.OffenseMode:options('TP', 'ACC', 'DT', 'PDL', 'SB', 'CRIT', 'Enspell')
+-- The offense modes this job cycles through, in place of the engine's default TP, ACC and DT.
+-- Each mode needs a sets.OffenseMode.<Mode> and a sets.Idle.<Mode> below, and can also have
+-- a sets.WS.<Mode>. state.OffenseMode:set picks the mode selected at load.
+state.OffenseMode:options('TP', 'ACC', 'DT', 'PDL', 'SB', 'MEVA', 'CRIT', 'Enspell')
 state.OffenseMode:set('DT')
 
 -- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup(LockStylePallet, MacroBook, MacroSet)
 
---Modes for TP
+-- Weapon modes. Each one needs a sets.Weapons['<Mode>'] of the same name below.
 state.WeaponMode:options('Seraph Blade', 'Sanguine Blade', 'Chant du Cygne', 'Savage Blade', 'Evisceration',
 	'Aeolian Edge', 'Black Halo', 'Ullr', 'Crocea')
 state.WeaponMode:set('Sanguine Blade')
@@ -37,7 +39,7 @@ function get_sets()
 	--		sets.Weapons
 	-- ===================================================================================================================
 
-	--Set the weapon options.  This is set below in job customization section
+	-- Weapon sets, one per weapon mode above.
 	sets.Weapons = {}
 
 	sets.Weapons['Seraph Blade'] = {
@@ -87,25 +89,30 @@ function get_sets()
 		sub = gear.demersalDegenPlusOne,
 	}
 
-	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
+	-- Worn in the offhand whenever the main is one-handed and no dual-wield trait is active,
+	-- engaged or idle.
 	sets.Weapons.Shield = {
 		sub = gear.sacroBulwark,
 	}
 
-	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
+	-- Worn with the idle set when this character is put to sleep. Its slots are held until the
+	-- sleep ends, and nothing else changes gear while asleep.
 	sets.Weapons.Sleep = {
 		sub = gear.caliburnus,
 	}
 
-	--Default arrow to use
+	-- The arrow for the Ullr weapon mode. RA is not an offense mode, so the engine never puts
+	-- Ammo.RA in a set on its own. The ranged sets below name it: the shot's precast, the shot in
+	-- ACC mode, and ranged weaponskills. No offense mode has an Ammo entry here, so idle and melee
+	-- keep their own ammo in every mode.
 	Ammo.RA = "Beryllium Arrow"
-	Ammo.ACC = "Beryllium Arrow"
 
 	-- ===================================================================================================================
 	--		sets.Idle
 	-- ===================================================================================================================
 
-	-- Standard Idle set with -DT, Refresh, Regen and movement gear
+	-- Worn while idle. Every action's precast and midcast also start from this set, so a slot
+	-- their sets leave out keeps its idle piece.
 	sets.Idle = {
 		ammo = gear.staunchPlusOne,      -- 3/3
 		head = gear.vitiationChapeauPlusFour, -- +3 Refresh
@@ -121,6 +128,8 @@ function get_sets()
 		right_ring = gear.stikiniRingPlusOne2, -- +1 Refresh
 		back = gear.rdmFCPdt,            -- 10/0
 	}
+	-- Every offense mode, and resting, share the base idle set in this file. Each key below is the
+	-- same table as sets.Idle.
 	sets.Idle.TP = sets.Idle
 	sets.Idle.ACC = sets.Idle
 	sets.Idle.DT = sets.Idle
@@ -131,17 +140,27 @@ function get_sets()
 	sets.Idle.Enspell = sets.Idle
 	sets.Idle.Resting = sets.Idle
 
-	-- Set is only applied when sublimation is charging
+	-- Worn over the idle set while a Phantom Roll on you stands at 11. It is for the Roller's
+	-- Ring, which any job can wear and which gives Refresh +1 and Regain +10 at an 11, for example
+	-- left_ring="Roller's Ring". It applies in every offense mode. sets.Idle.TP is the same table
+	-- as sets.Idle in this file, so TP mode shares this set. It is worn only while idle, so any
+	-- action swaps it out and it comes back when the action ends. While moving, a ring here
+	-- replaces the movement set's ring in the same slot. This file's sets.Movement names no ring,
+	-- so either slot is free.
+	sets.Idle.XIRoll = {}
+
+	-- Worn over the idle set while Sublimation is charging.
 	sets.Idle.Sublimation = set_combine(sets.Idle, {
 		waist = gear.embla, -- +3 Submlimation when active
 	})
 
-	-- Gear to swap out for Movement
+	-- Worn over the idle set while moving and not engaged.
 	sets.Movement = {
 		legs = gear.carmineLegsPlusOnePathA,
 	}
 
-	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
+	-- Worn when another character on this machine, running this engine, casts on you. Spell
+	-- Received mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 		neck = gear.nicander,
@@ -154,18 +173,24 @@ function get_sets()
 	sets.Regen_Received = {}
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
+
+	-- The ring slot Zodiac Ring goes in when a spell's element matches the day: "right_ring" or
+	-- "left_ring".
+	Elemental_Bonus_Ring_Slot = "right_ring"
+
+	-- Worn while using a Holy Water or Hallowed Water.
 	sets.Holy_Water = {
 		neck = gear.nicander,
 	}
 
-	-- Read by sets.WS.SB below; add subtle blow pieces here to use that mode
+	-- Subtle blow gear. sets.WS.SB below is this same table, so weaponskills in SB mode wear it.
 	sets.Subtle_Blow = {}
 
 	-- ===================================================================================================================
 	--		sets.OffenseMode
 	-- ===================================================================================================================
 
-	-- 'TP','ACC','DT','PDL','SB','CRIT','Enspell'
+	-- The engaged base, merged first in every offense mode. The mode's own set goes over it.
 	sets.OffenseMode = {
 		ammo = gear.coiste,
 		head = gear.malignanceHead,
@@ -185,6 +210,8 @@ function get_sets()
 	sets.OffenseMode.TP = set_combine(sets.OffenseMode, {})
 	sets.OffenseMode.DT = set_combine(sets.OffenseMode, {})
 	sets.OffenseMode.ACC = set_combine(sets.OffenseMode, {})
+	-- A placeholder. PDT is not offered above. To offer it, add 'PDT' to state.OffenseMode:options
+	-- and add sets.Idle.PDT = sets.Idle with the other idle modes. This engaged set is ready.
 	sets.OffenseMode.PDT = set_combine(sets.OffenseMode, {})
 	sets.OffenseMode.MEVA = set_combine(sets.OffenseMode, {})
 
@@ -222,20 +249,21 @@ function get_sets()
 		waist = gear.orpheusWaist,
 		left_ear = gear.malignanceEar,
 		right_ear = gear.lethargyEarringPlusOne,
-		left_ring = gear.freke,
-		right_ring = gear.metamorphPlusOne,
+		left_ring = gear.metamorphPlusOne,
+		right_ring = gear.freke,
 		back = gear.nullShawl,
 	})
 	sets.OffenseMode.PDL = set_combine(sets.OffenseMode, {})
 
+	-- Worn while engaged with the Dual Wield trait active, over the mode's set.
 	sets.DualWield = {
 		waist = gear.reiki,
 		left_ear = gear.eabani,
 	}
 
-	sets.Saboteur = { hands = gear.lethargyHandsPlusThree, }
-
-	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
+	-- Treasure Hunter gear. While TH Mode is Tag or Full Time, it is worn for an action aimed at an
+	-- untagged monster and while engaged on one. Full Time also keeps it on whenever engaged. TH
+	-- Mode starts at None, which never wears it, on every job but Thief.
 	sets.TreasureHunter = {
 		ammo = gear.perfectEgg,
 		head = gear.volteHead,
@@ -247,9 +275,10 @@ function get_sets()
 	--		sets.Precast
 	-- ===================================================================================================================
 
-	-- Used for Magic Spells
+	-- Precast sets, worn as an action starts.
 	sets.Precast = {}
 
+	-- Fast cast gear, worn at the start of every spell.
 	-- 42% Fast Cast is needed on RDM (Fast Cast IX - 38%)
 	-- 10% is Quick Magic limit
 	sets.Precast.FastCast = {
@@ -268,22 +297,23 @@ function get_sets()
 		back = gear.perimedeCape,          -- 4 Quick Magic
 	}                                      -- 50%+ total Fast Cast and 11% Quick Magic
 
-	-- Used for Enhancing Magic
+	-- Merged over the fast cast set for enhancing magic.
 	sets.Precast.Enhancing = set_combine(sets.Precast.FastCast, {})
 
-	-- Used for Healing Magic
+	-- Merged over the fast cast set for Cure, Curaga and Cura spells.
 	sets.Precast.Cure = set_combine(sets.Precast.FastCast, {})
 
+	-- Ranged attacks. The Flurry sets below go over it while Flurry is on you.
 	sets.Precast.RA = set_combine(sets.Precast, {
 		ammo = Ammo.RA,
 		waist = gear.yemaya,         -- 0 / 5
 		right_ring = gear.crepuscularRing, -- 3
 	})
 
-	-- Flurry
+	-- While Flurry is on you.
 	sets.Precast.RA.Flurry = set_combine(sets.Precast.RA, {})
 
-	-- Flurry II
+	-- While Flurry II or Embrava is on you.
 	sets.Precast.RA.Flurry_II = set_combine(sets.Precast.RA.Flurry, {})
 
 	sets.Precast.BlueMagic = set_combine(sets.Precast.FastCast, {})
@@ -292,29 +322,30 @@ function get_sets()
 	--		sets.Midcast
 	-- ===================================================================================================================
 
-	--The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this set does not name keeps its idle piece.
+	-- The base for every cast. sets.Idle is merged underneath it on every midcast, so a slot this
+	-- set does not name keeps its idle piece.
 	sets.Midcast = set_combine(sets.Idle, {})
 
 	sets.Midcast.Utsusemi = set_combine(sets.Midcast, {})
 
-	-- Ranged Attack Gear (Normal Midshot)
-	sets.Midcast.RA = set_combine(sets.Midcast, {})
+	-- Ranged attacks, while the shot is in flight. It names the arrow, so every shot keeps it on in
+	-- every mode instead of the idle set's Staunch Tathlum +1. A set named for the offense mode
+	-- goes over it, except in TP mode.
+	sets.Midcast.RA = set_combine(sets.Midcast, { ammo = Ammo.RA })
 
-	-- Ranged Attack Gear (High Accuracy Midshot)
 	sets.Midcast.RA.ACC = set_combine(sets.Midcast.RA, {
-		ammo = Ammo.ACC,
+		ammo = Ammo.RA,
 	})
 
-	-- Ranged Attack Gear (Physical Damage Limit)
 	sets.Midcast.RA.PDL = set_combine(sets.Midcast.RA, {})
 
-	-- Ranged Attack Gear (Critical Build)
 	sets.Midcast.RA.CRIT = set_combine(sets.Midcast.RA, {})
 
-	--Spell interruption rate down. Merged under every midcast except a ranged attack, so any specific set overwrites it.
+	-- Spell interruption rate down. Merged under every midcast except a ranged attack, so any
+	-- specific set overwrites it.
 	sets.Midcast.SIRD = {}
 
-	-- Cure Set
+	-- Cure spells. Curaga takes its own set below.
 	sets.Midcast.Cure = {
 		ammo = gear.staunchPlusOne,
 		head = gear.kaykausHeadPlusOnePathB, -- 11
@@ -333,12 +364,13 @@ function get_sets()
 
 	sets.Midcast.Curaga = set_combine(sets.Midcast.Cure, {})
 
-	-- Regen
+	-- Regen spells, over sets.Midcast.Enhancing.
 	sets.Midcast.Regen = {
 		feet = gear.bunziFeet,
 	}
 
-	-- Enhancing Duration on SELF
+	-- Enhancing magic, built for duration. Every enhancing spell starts from this set, and the
+	-- sets below go over it.
 	sets.Midcast.Enhancing = {
 		sub = gear.ammurapi,
 		ammo = gear.staunchPlusOne,
@@ -356,14 +388,22 @@ function get_sets()
 		back = gear.rdmFCPdt, -- 20
 	}                   -- 150% Duration
 
-	-- Enhancing Duration on OTHERS
+	-- Enhancing spells cast on someone else, and self-casts under Accession. Merged after
+	-- sets.Midcast.Enhancing and before the family set.
 	sets.Midcast.Enhancing.Others = set_combine(sets.Midcast.Enhancing, {
 		head = gear.lethargyHeadPlusThree,
 		body = gear.lethargyBodyPlusThree,
 		legs = gear.lethargyLegsPlusThree,
 	})
 
-	-- Spells that require SKILL - RDM only needs 500 or more except Temper II
+	-- Worn on enhancing spells cast on someone else, or under Accession, while Composure is up.
+	-- The Lethargy set bonus lengthens those spells under Composure and does nothing for a spell
+	-- on yourself.
+	-- sets.Midcast.Enhancing.Others.Composure = {}
+
+	-- Spells that scale with enhancing skill: Temper, the first-tier en-spells and the Boost-stat
+	-- spells. RDM needs only 500 skill for these. Temper II, which wants more, has a set of its own
+	-- below.
 	sets.Midcast.Enhancing.Skill = set_combine(sets.Midcast.Enhancing, {
 		sub = gear.ammurapi,
 		head = gear.befouledCrown,
@@ -377,18 +417,19 @@ function get_sets()
 		right_ear = gear.mimir,
 	})
 
-	-- used to boost Gain Spells
+	-- Gain spells, over sets.Midcast.Enhancing.
 	sets.Midcast.Enhancing.Gain = set_combine(sets.Midcast.Enhancing, {
 		hands = gear.vitiationGlovesPlusThree,
 	})
 
-	-- Elemental
+	-- Elemental bar-spells.
 	sets.Midcast.Enhancing.Elemental = set_combine(sets.Midcast.Enhancing, {})
 
-	-- Status
+	-- Status bar-spells.
 	sets.Midcast.Enhancing.Status = set_combine(sets.Midcast.Enhancing, {})
 
-	-- Blue Magic
+	-- Blue magic, for a BLU subjob. The engine never merges sets.Midcast.BlueMagic itself, only the
+	-- family set a spell's list names.
 	sets.Midcast.BlueMagic = {}
 	sets.Midcast.BlueMagic.Skill = set_combine(sets.Midcast.Enhancing, {})
 	sets.Midcast.BlueMagic.Nuke = set_combine(sets.Midcast.Enhancing, {})
@@ -396,7 +437,7 @@ function get_sets()
 	sets.Midcast.BlueMagic.ACC = set_combine(sets.Midcast.Enhancing, {})
 	sets.Midcast.BlueMagic.Enmity = set_combine(sets.Enmity, {})
 
-	-- Enfeebling
+	-- Enfeebling magic. The engine adds .MACC, .Potency or .Duration from its own spell lists.
 	sets.Midcast.Enfeebling = {
 		ammo = gear.regalGem,
 		head = gear.vitiationChapeauPlusFour,
@@ -406,17 +447,18 @@ function get_sets()
 		feet = gear.vitiationBootsPlusThree,
 		neck = gear.duelistTorquePlusTwo,
 		waist = gear.obstinateSash,
-		left_ear = gear.regalEarring,
-		right_ear = gear.snotra,
-		left_ring = gear.stikiniRingPlusOne2,
-		right_ring = gear.stikiniRingPlusOne1,
+		left_ear = gear.snotra,
+		right_ear = gear.regalEarring,
+		left_ring = gear.stikiniRingPlusOne1,
+		right_ring = gear.stikiniRingPlusOne2,
 		back = gear.rdmFCPdt,
 	}
 
-	-- Skill Based ('Dispel','Aspir','Aspir II','Aspir III','Drain','Drain II','Drain III','Frazzle','Frazzle II','Stun','Poison','Poison II','Poisonga')
+	-- Enfeebles that only need to land, such as Dispel, Frazzle and Poison. The elemental debuffs,
+	-- such as Burn and Frost, take this set too.
 	sets.Midcast.Enfeebling.MACC = set_combine(sets.Midcast.Enfeebling, {})
 
-	-- Potency Basted ('Paralyze','Paralyze II','Slow','Slow II','Addle','Addle II','Distract','Distract II','Distract III','Frazzle III','Blind','Blind II')
+	-- Potency-based enfeebles, such as Paralyze, Slow, Addle, Distract, Blind and Gravity.
 	sets.Midcast.Enfeebling.Potency = set_combine(sets.Midcast.Enfeebling, {
 		ammo = gear.regalGem,          -- 10%
 		body = gear.lethargyBodyPlusThree, -- 14%
@@ -425,17 +467,24 @@ function get_sets()
 		neck = gear.duelistTorquePlusTwo,     -- 10%
 	})
 
-	-- Duration Based ('Sleep','Sleep II','Sleepga','Sleepga II','Diaga','Dia','Dia II','Dia III','Bio','Bio II','Bio III','Silence','Gravity','Gravity II','Inundation','Break','Breakaga', 'Bind', 'Bind II')
+	-- Duration-based enfeebles, such as Sleep, Dia, Bio, Silence, Bind, Break and Inundation.
 	sets.Midcast.Enfeebling.Duration = set_combine(sets.Midcast.Enfeebling, {
 		head = gear.vitiationChapeauPlusFour, -- 15s (3 seconds x 5 merits)
 		hands = gear.regalCuffs,        --20% swaps out with Saboteur active
-		right_ear = gear.snotra,        -- 10%
-		left_ring = gear.kishar,        -- 10%
+		left_ear = gear.snotra,         -- 10%
+		right_ring = gear.kishar,       -- 10%
 		waist = gear.obstinateSash,     -- 5%
 		neck = gear.duelistTorquePlusTwo,      -- 25%
 	})
 
-	-- Specific gear for spells
+	-- Worn while Saboteur is up on every spell that merges sets.Midcast.Enfeebling, which includes
+	-- the elemental debuffs, enfeebling ninjutsu and enfeebling songs. The Lethargy Gantherots
+	-- raise Saboteur's bonus and must be worn during the cast. Diaga and Dispelga have sets of their
+	-- own below, which take the place of this family set, so the same table sits under each of them.
+	sets.Midcast.Enfeebling.Saboteur = { hands = gear.lethargyHandsPlusThree, }
+
+	-- Sets named for one spell. Such a set takes the place of the spell's family set, which is why
+	-- these start from the family set with set_combine.
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
 		neck = gear.nodens,
 		waist = gear.siegel,
@@ -447,21 +496,24 @@ function get_sets()
 		head = gear.amalricCoifPlusOne
 	})
 
-	-- Spells that require SKILL - RDM only needs +500 skill except Temper II
+	-- Temper II keeps scaling with enhancing skill past 500, so it has a skill set of its own.
 	sets.Midcast["Temper II"] = set_combine(sets.Midcast.Enhancing, {
 		ammo = gear.psilomene,
 		head = gear.befouledCrown,
 		hands = gear.vitiationGlovesPlusThree,
 		legs = gear.atrophyLegsPlusThree,
 		neck = gear.incanterTorque,
-		left_ear = gear.mimir,
-		right_ear = gear.andoaaEarring,
+		left_ear = gear.andoaaEarring,
+		right_ear = gear.mimir,
 		waist = gear.olympus,
 		back = gear.perimedeCape,
 	}) -- Max Enhancing 672
 
 	sets.Midcast["Diaga"] = set_combine(sets.Midcast.Enfeebling, sets.TreasureHunter)
 	sets.Midcast["Dispelga"] = set_combine(sets.Midcast.Enfeebling, sets.TreasureHunter)
+	-- The Saboteur table from sets.Midcast.Enfeebling again, for the two spells above.
+	sets.Midcast["Diaga"].Saboteur = sets.Midcast.Enfeebling.Saboteur
+	sets.Midcast["Dispelga"].Saboteur = sets.Midcast.Enfeebling.Saboteur
 
 	sets.Midcast.Refresh = set_combine(sets.Midcast.Enhancing, {
 		head = gear.amalricCoifPlusOne,
@@ -477,6 +529,7 @@ function get_sets()
 
 	sets.Midcast.Dark.Absorb = set_combine(sets.Midcast.Enfeebling, {})
 
+	-- Elemental nukes. A magic burst uses sets.Midcast.Burst instead.
 	sets.Midcast.Nuke = {
 		sub = gear.ammurapi,
 		ammo = gear.ghastlyTathlumPlusOne,
@@ -487,13 +540,15 @@ function get_sets()
 		feet = gear.lethargyFeetPlusThree,
 		neck = gear.mizukageNoKubikazari,
 		waist = gear.acuityBeltPlusOne,
-		left_ear = gear.regalEarring,
-		right_ear = gear.malignanceEar,
+		left_ear = gear.malignanceEar,
+		right_ear = gear.regalEarring,
 		left_ring = gear.metamorphPlusOne,
 		right_ring = gear.freke,
 		back = gear.rdmFCPdt,
 	}
 
+	-- Magic bursts, in place of sets.Midcast.Nuke. A nuke bursts when it lands on the skillchain's
+	-- target within 8 seconds and its element matches the skillchain.
 	sets.Midcast.Burst = set_combine(sets.Midcast.Nuke, {
 		left_ring = gear.mujinBand,
 		neck = gear.mizukageNoKubikazari,
@@ -503,7 +558,7 @@ function get_sets()
 	--		sets.JA
 	-- ===================================================================================================================
 
-	-- Job Abilities
+	-- Job abilities. sets.JA is worn for every ability, and a set named for the ability goes over it.
 	sets.JA = {}
 	sets.JA["Chainspell"] = { body = gear.vitiationBodyPlusThree }
 	sets.JA["Saboteur"] = {}
@@ -512,7 +567,8 @@ function get_sets()
 	sets.JA["Convert"] = {}
 	sets.JA["Composure"] = {}
 
-	-- Dancer JA Section
+	-- Dancer abilities, for a DNC subjob. Each family set is worn for its abilities, with a set
+	-- named for one ability over it.
 	sets.Flourish = set_combine(sets.Idle.DT, {})
 
 	sets.Jig = set_combine(sets.Idle.DT, {})
@@ -535,6 +591,8 @@ function get_sets()
 	--		sets.WS
 	-- ===================================================================================================================
 
+	-- Worn on every weaponskill. The set named for the weaponskill goes over it, then the offense
+	-- mode's set.
 	sets.WS = {
 		ammo = gear.coiste,
 		head = gear.nyameHead,
@@ -551,15 +609,18 @@ function get_sets()
 		back = gear.rdmWSDDt,
 	}
 
-	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
-	sets.WS.ACC = set_combine(sets.WS, {})
+	-- Worn on weaponskills in ACC mode, over the set named for the weaponskill. List only the
+	-- pieces the mode changes, since every slot named here overrides the weaponskill's own set. A
+	-- weaponskill with an ACC set of its own, sets.WS['<name>'].ACC, takes that instead. The other
+	-- mode sets work the same way, except that sets.WS.TP is never merged.
+	sets.WS.ACC = {}
 
-	sets.WS.PDL = set_combine(sets.WS,
-		{
-			ammo = gear.crepuscularPebble,
-			right_ring = gear.sroda,
-		})
+	sets.WS.PDL = {
+		ammo = gear.crepuscularPebble,
+	}
 
+	-- WSD and MAB are not offense modes here. They are shared sets for the weaponskills below to
+	-- point to.
 	sets.WS.WSD = set_combine(sets.WS,
 		{
 			ammo = gear.oshashaTreatise,
@@ -575,19 +636,23 @@ function get_sets()
 			right_ear = gear.regalEarring,
 		})
 
-	sets.WS.CRIT = set_combine(sets.WS, {
+	-- CRIT mode. Chant du Cygne below uses this same table as its own set.
+	sets.WS.CRIT = {
 		ammo = gear.yetshilaPlusOne,
 		head = gear.blisteringSalletPlusOne,
 		neck = gear.fotiaNeck,
 		waist = gear.fotiaWaist,
 		right_ring = gear.hetairoi,
 		back = gear.rdmCrit,
-	})
+	}
 
-	sets.WS.RA = set_combine(sets.WS, {})
+	-- Ranged weaponskills, over sets.WS. It names the arrow, so a ranged weaponskill fires Ammo.RA
+	-- in every offense mode.
+	sets.WS.RA = { ammo = Ammo.RA }
 
 	sets.WS.SB = sets.Subtle_Blow
 
+	-- Sets named for each weaponskill.
 	sets.WS["Seraph Blade"] = set_combine(sets.WS.MAB, {
 		right_ring = gear.weatherspoon,
 		right_ear = gear.moonshadeEarringAcc,
@@ -615,81 +680,94 @@ end
 -- DO NOT EDIT BELOW THIS LINE UNLESS YOU NEED TO MAKE JOB SPECIFIC RULES
 -------------------------------------------------------------------------------------------------------------------
 
--- Called when the player's subjob changes.
+-- Called when the subjob changes.
 function sub_job_change_custom(new, old)
-	-- Typically used for Macro pallet changing
+	-- Typically used to change the macro book or set.
 end
 
---Adjust custom precast actions
+-- Called before each action, after the engine's own checks. Call cancel_spell() here to stop
+-- the action.
 function pretarget_custom(spell, action)
 
 end
 
--- Augment basic equipment sets
+-- Called as each action starts. The table it returns is merged over the engine's precast set.
 function precast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
--- Augment basic equipment sets
+-- Called while each action is in flight. The table it returns is merged over the engine's
+-- midcast set, which is empty for abilities, weaponskills and items.
 function midcast_custom(spell)
 	local equipSet = {}
-	if buffactive['Saboteur'] and spell.skill == 'Enfeebling Magic' then
-		equipSet = sets.Saboteur
-	end
+
 	return equipSet
 end
 
--- Augment basic equipment sets
+-- Called when each action ends. The table it returns is merged over the idle or engaged set the
+-- engine rebuilds.
 function aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
---Function is called when the player gains or loses a buff
+-- Called when a buff is gained or lost. The table it returns is merged over the rebuilt idle or
+-- engaged set. A change during one of your own actions is dressed when the action ends instead.
 function buff_change_custom(name, gain)
 	local equipSet = {}
 	return equipSet
 end
 
---This function is called when a update request the correct equipment set
+-- Called whenever the engine rebuilds the idle or engaged set, which it does after each action,
+-- on a buff or status change, and when movement starts or stops. The table it returns is merged
+-- over that set.
 function choose_set_custom()
 	local equipSet = {}
 
 	return equipSet
 end
 
---Function is called when the player changes states
+-- Called when the player's status changes, such as engaging, disengaging or resting. The table
+-- it returns is merged over the rebuilt idle or engaged set.
 function status_change_custom(new, old)
 	local equipSet = {}
 
 	return equipSet
 end
 
---Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
+-- Called with each "gs c" command, in lowercase, that the engine's own commands leave unclaimed.
+-- Use it to add commands of your own. The Weapon Mode, Job Mode and Job Mode 2 commands also call
+-- it, before their gear rebuild.
 function self_command_custom(command)
 
 end
 
--- This function is called when the job file is unloaded
+-- Called when the job file unloads, after the engine releases its keybinds and slot holds.
 function user_file_unload()
 
 end
 
+-- Called when a pet is summoned or lost. The table it returns is merged over the rebuilt idle or
+-- engaged set.
 function pet_change_custom(pet, gain)
 	local equipSet = {}
 
 	return equipSet
 end
 
+-- Called when a pet's action ends. The table it returns is merged over the idle or engaged set
+-- the engine rebuilds.
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
+-- Called while a pet's action is in flight. The table it returns is merged over sets.Pet_Midcast
+-- and the set named for the action.
 function pet_midcast_custom(spell)
 	local equipSet = {}
 

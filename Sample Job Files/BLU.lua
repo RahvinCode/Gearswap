@@ -4,34 +4,34 @@
 include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 
---Set to ingame lockstyle and Macro Book/Set
+-- The in-game lockstyle set, macro book and macro set this file applies on load.
 LockStylePallet = "11"
 MacroBook = "8"
 MacroSet = "2"
 
--- Use "gs c food" to use the specified food item
+-- The food "gs c food" uses.
 Food = "Sublime Sushi"
 
---Uses Items Automatically
+-- Use a Remedy for paralysis or silence, and a Holy Water for doom, automatically.
 AutoItem = false
 
---Upon Job change will use a random lockstyleset
+-- Pick a random lockstyle from Lockstyle_List on each load, in place of LockStylePallet.
 Random_Lockstyle = false
 
--- 'TP','ACC','DT' are standard Default modes.  You may add more and assign equipsets for them ( Idle.X and OffenseMode.X )
-state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA') -- ACC affects WS and TP modes
+-- Offense modes. TP, ACC and DT are the engine's defaults, and more can be added. Each mode picks its own engaged, idle and weaponskill sets, so each one offered needs a sets.OffenseMode.<Mode> and a sets.Idle.<Mode> below.
+state.OffenseMode:options('TP','ACC','DT','PDL','SB','MEVA')
 
---Lockstyle sets to randomly equip
+-- The lockstyle sets the random pick chooses from.
 Lockstyle_List = {1,2,6,12}
 
---Set default mode (TP,ACC,DT)
+-- The offense mode the file starts in.
 state.OffenseMode:set('DT')
 
 -- Apply the macro book, macro set and lockstyle, bind the mode keys, and print the key list.
 jobsetup (LockStylePallet,MacroBook,MacroSet)
 
--- Blue Magic classification.  Buckets follow the spell's mechanic, because the
--- mechanics do not share gear.  The same buckets are in RahvinGS/interface.lua's SECTION 5.
+-- Blue magic lists. Each blue spell takes the midcast set of the list that names it. The lists follow what a spell's damage or
+-- effect scales with, since those do not share gear. The engine declares the same lists, and these copies replace them, so edit a list here to move a spell.
 BluePhysical = S { 'Amorphic Spikes', 'Asuran Claws', 'Barbed Crescent', 'Battle Dance',
     'Benthic Typhoon', 'Bilgestorm', 'Bloodrake', 'Bludgeon', 'Body Slam', 'Cannonball',
     'Claw Cyclone', 'Death Scissors', 'Delta Thrust', 'Dimensional Death', 'Disseverment',
@@ -74,22 +74,20 @@ BlueACC = S { '1000 Needles', 'Absolute Terror', 'Auroral Drape', 'Awful Eye',
     'MP Drainkiss', 'Mortal Ray', 'Osmosis', 'Reaving Wind', 'Sandspin', 'Sandspray',
     'Sound Blast', 'Venom Shell', 'Voracious Trunk', 'Yawn' }
 
---Weapons specific to Blue Mage
+-- Weapon modes. Each name needs a matching sets.Weapons entry.
 state.WeaponMode:options('Almace','Naegling','Black Halo','Cleave')
 state.WeaponMode:set('Almace')
 
---Enable JobMode for UI.
+-- Naming JobMode shows it in chat and on the status box.
 UI_Name = 'Mode'
 
---Modes for specific to Blue Mage
+-- Job mode. self_command_custom below loads the matching blue magic spell set and macro set when you cycle it.
 state.JobMode:options('AoE','Melee')
 state.JobMode:set('Melee')
 
 function get_sets()
 
-	--Set the weapon options.  This is set below in job customization section
-
-	-- Weapon setup
+	-- Weapon sets, one per weapon mode.
 	sets.Weapons = {}
 
 	sets.Weapons['Almace'] = {
@@ -113,15 +111,16 @@ function get_sets()
 		sub = gear.nibiruCudgelPathB,
 	}
 
-	--Worn in the offhand whenever the main is one-handed and no dual-wield trait is active, engaged or idle.
+	-- Worn in the offhand whenever the main is one-handed and no dual-wield trait is active.
 	sets.Weapons.Shield = {
 		sub=gear.genmeiShield,
 	}
 
-	-- Worn when this character is put to sleep, and held until the sleep ends; nothing else re-dresses while asleep.
+	-- Worn over the idle set when you are put to sleep. Its slots stay held until you wake, and the engine re-dresses nothing else while you sleep.
+	-- Put gear here that wakes you, such as a piece that drains HP.
 	sets.Weapons.Sleep = {}
 
-	-- Standard Idle set with -DT, Refresh, Regen and movement gear
+	-- Worn whenever you are not engaged. It is also the floor under every action, so a slot an action's sets leave unnamed keeps its idle piece.
 	sets.Idle = {
 		ammo=gear.staunchPlusOne,
 		head=gear.malignanceHead,
@@ -137,6 +136,7 @@ function get_sets()
 		right_ring = gear.stikiniRingPlusOne2, -- +1 Refresh
 		back = gear.bluDA,
     }
+	-- Idle sets for each offense mode, merged over the idle set, and Resting, merged over them while you rest.
 	sets.Idle.TP = set_combine(sets.Idle, {})
 	sets.Idle.ACC = set_combine(sets.Idle, {})
 	sets.Idle.DT = set_combine(sets.Idle, {})
@@ -148,11 +148,21 @@ function get_sets()
 		waist=gear.carriers,
 	})
 
+	-- Worn over the idle set while a Phantom Roll on you stands at 11.
+	-- It is meant for Roller's Ring, which every job can wear and which grants Refresh +1 and Regain +10 at an 11, e.g. left_ring="Roller's Ring".
+	-- This set applies in every offense mode. The TP set below applies only in TP mode and merges after it.
+	-- It is worn only while idle, so any action swaps it out, and it comes back when the action ends.
+	-- While you move, a ring named here replaces a movement ring in the same slot. This file's sets.Movement names no ring, so either slot is free.
+	sets.Idle.XIRoll = {}
+	-- The TP mode version, merged after the one above.
+	sets.Idle.TP.XIRoll = {}
+
+	-- Merged over the idle set while you are moving and not engaged.
 	sets.Movement = {
 		legs = gear.carmineLegsPlusOnePathA,
     }
 
-	--Worn when another character on this machine, running this engine, casts on you; Spell Received Mode must be ON. sets.Cursna_Received is also the Doom set, worn when that mode is OFF.
+	-- Worn when another character on this machine, running this engine, starts casting one of these spells on you, while Spell Received mode is ON. sets.Cursna_Received is also the Doom set, worn and held while you are doomed with that mode OFF.
 	sets.Cure_Received = {}
 	sets.Cursna_Received = {
 	    neck=gear.nicander,
@@ -165,15 +175,22 @@ function get_sets()
 	sets.Regen_Received = {}
 	sets.Refresh_Received = {}
 	sets.Waltz_Received = {}
+
+	-- The ring slot Zodiac Ring goes in when an elemental spell matches the day's element: "right_ring" or "left_ring".
+	Elemental_Bonus_Ring_Slot = "right_ring"
+
+	-- Worn when you use a Holy Water or Hallowed Water.
 	sets.Holy_Water = {
 	    neck=gear.nicander,
 	}
 
+	-- Not read by the engine. The SB weaponskill set below is this same table.
 	sets.Subtle_Blow = {
 		neck=gear.bathyPlusOne,
-		left_ring = gear.chirichPlusOne2,
+		right_ring = gear.chirichPlusOne2,
 	}
 
+	-- Engaged sets. sets.OffenseMode is worn in every offense mode, and the current mode's set merges over it.
 	sets.OffenseMode = {
 	    ammo = gear.coiste,
 		head=gear.malignanceHead,
@@ -232,8 +249,8 @@ function get_sets()
 		feet = gear.gletiFeet,
 		neck=gear.warderCharmPlusOne,
 		waist=gear.reiki,
-		left_ear=gear.telos,
-		right_ear=gear.eabani,
+		left_ear=gear.eabani,
+		right_ear=gear.telos,
 		left_ring=gear.chirichRingPlusOne,
 		right_ring=gear.lehkoHabhokaRing,
 		back = gear.bluDA,
@@ -244,6 +261,7 @@ function get_sets()
 		right_ring = gear.chirichPlusOne2,
 	})
 
+	-- Merged over the engaged set while a dual-wield trait is active.
 	sets.DualWield = {
 		left_ear=gear.eabani,
 		waist=gear.reiki,
@@ -251,7 +269,7 @@ function get_sets()
 
 	sets.Precast = {}
 
-	-- Used for Magic Spells
+	-- Fast cast, worn at the start of every spell.
 	-- 10% FC from sword
 	sets.Precast.FastCast = {
 		ammo=gear.impatiens, -- Quick Magic 2
@@ -269,11 +287,12 @@ function get_sets()
 		back = gear.bluFCSird, --10
 	} -- 79 and 10% Quick Magic
 
+	-- Merged over the fast-cast set for blue magic.
 	sets.Precast.BlueMagic = set_combine (sets.Precast.FastCast, {
 		body=gear.hashishinBodyPlusThree, -- 16
 	})
 
-	-- Job Abilities
+	-- Job abilities. sets.JA is worn for every job ability, and the set named for the ability merges over it.
 	sets.JA = {}
 	sets.JA["Azure Lore"] = {}
 	sets.JA["Chain Affinity"] = {}
@@ -283,7 +302,7 @@ function get_sets()
 	sets.JA["Unbridled Learning"] = {}
 	sets.JA["Unbridled Wisdom"] = {}
 
-	-- Dancer JA Section
+	-- Dancer abilities from the subjob. Each family set is worn for its abilities, and a child named for the ability merges over it.
 
 	sets.Flourish = set_combine(sets.Idle.DT, {})
 	sets.Jig = set_combine(sets.Idle.DT, { })
@@ -309,7 +328,7 @@ function get_sets()
 		waist=gear.ruminationSash, --10
 	}
 
-	-- Cure Set
+	-- Cure spells. The blue magic healing set below copies it.
 	sets.Midcast.Cure = {
 		ammo=gear.staunchPlusOne,
 		head = gear.nyameHead,
@@ -326,7 +345,7 @@ function get_sets()
 		back = gear.bluFCSird,
     } --35 %
 
-	-- Enhancing Skill
+	-- Enhancing magic. Raise, Reraise and the -na spells take it too, and the blue magic skill set below copies it.
 	sets.Midcast.Enhancing = {
 	    ammo=gear.staunchPlusOne,
 		head = gear.telchineCapBEnhDur,
@@ -343,9 +362,10 @@ function get_sets()
 		back = gear.bluFCSird,
 	}
 
-	-- High MACC for landing spells
+	-- Enfeebling magic, dressed for magic accuracy.
 	sets.Midcast.Enfeebling = {}
 
+	-- Elemental nukes. The blue magic nuke set below copies it.
 	sets.Midcast.Nuke = {
 		ammo=gear.pemphredoTathlum,
 		head=gear.hashishinHeadPlusThree,
@@ -362,7 +382,8 @@ function get_sets()
 		back = gear.bluFCSird,
 	}
 
-	-- Blue Magic
+	-- Blue magic. Each spell takes the one subfamily set its list above names, unless it has a set of its own. The engine never wears sets.Midcast.BlueMagic itself.
+	-- Physical, Breath and Buff are not declared here. Until you declare one, a spell in that list wears only sets.Midcast, and the engine reports the missing set.
 	sets.Midcast.BlueMagic = {}
 	sets.Midcast.BlueMagic.Skill = set_combine(sets.Midcast.Enhancing, {})
 	sets.Midcast.BlueMagic.Nuke = set_combine(sets.Midcast.Nuke, {})
@@ -377,14 +398,26 @@ function get_sets()
 		feet=gear.hashishinFeetPlusThree,
 		neck=gear.nullLoop,
 		waist=gear.nullWaist,
-		left_ear=gear.telos,
-		right_ear=gear.hashishinEarringPlusOne,
+		left_ear=gear.hashishinEarringPlusOne,
+		right_ear=gear.telos,
 		left_ring = gear.stikiniRingPlusOne1,
 		right_ring = gear.stikiniRingPlusOne2,
 		back=gear.nullShawl,
 	})
 
-	-- Specific gear for spells
+	-- The three buff sets below sit on sets.Midcast, where each merges on every spell while its buff is up. sets.Midcast.BlueMagic itself is never worn,
+	-- so a child there does nothing. A declared subfamily can carry one instead, such as sets.Midcast.BlueMagic.Nuke['Burst Affinity'], to dress only that subfamily.
+
+	-- Worn on every spell while Chain Affinity is up, and the next physical blue spell uses the buff up. Gear that enhances it, such as Hashishin Kavuk +3 (head), raises that spell's base damage.
+	-- sets.Midcast['Chain Affinity'] = {}
+
+	-- Worn on every spell while Burst Affinity is up, and the next magical blue spell uses the buff up. Gear that enhances it, such as Hashishin Basmak +3 (feet), raises that spell's WSC.
+	-- sets.Midcast['Burst Affinity'] = {}
+
+	-- Worn on every spell while Efflux is up, and the next physical blue spell uses the buff up. Gear that enhances it, such as Hashishin Tayt +3 (legs), adds to Efflux's TP bonus.
+	-- sets.Midcast.Efflux = {}
+
+	-- Sets named for one spell. Each replaces the family set for that spell.
 	sets.Midcast["Stoneskin"] = set_combine(sets.Midcast.Enhancing, {
 		left_ring = gear.stikiniRingPlusOne1,
 		right_ring = gear.stikiniRingPlusOne2,
@@ -396,8 +429,8 @@ function get_sets()
 		waist=gear.gishdubar
 	})
 	
-    -- White Wind heals floor(MaxHP/7)*2 and is affected by Cure Potency, but NOT by
-    -- Blue Magic Skill or MND.  Prioritize max HP, then Cure Potency.
+    -- White Wind heals floor(MaxHP/7)*2. Cure potency raises it, but blue magic skill and MND do not,
+    -- so favor max HP first and cure potency second.
     sets.Midcast["White Wind"] = {}
 
     sets.Midcast["Aquaveil"] = set_combine(sets.Midcast.Enhancing, {
@@ -455,6 +488,7 @@ function get_sets()
 		neck=gear.quanpur,
 	})
 
+	-- Weaponskill base, worn for every weaponskill. The set named for the weaponskill merges over it.
 	sets.WS = {
 		ammo = gear.coiste,
 		head=gear.hashishinHeadPlusThree,
@@ -466,15 +500,15 @@ function get_sets()
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.ishvara,
-		left_ring=gear.epimanondas,
-		right_ring=gear.eponas,
+		left_ring=gear.eponas,
+		right_ring=gear.epimanondas,
 		back = gear.bluWSDDt,
 	}
 
-	--Merged after the set named for the weaponskill, so its slots win. Skipped where sets.WS['<name>'].ACC exists. Never merged in TP mode.
+	-- Merged in ACC mode after the set named for the weaponskill, so its slots win. Name only the slots ACC mode should change. A weaponskill with an ACC set of its own skips it.
 	sets.WS.ACC = {}
 
-	-- This will augement the WS sets when in the Subtle Blow statnce
+	-- Merged over the weaponskill sets in SB mode, the same way.
 	sets.WS.SB = sets.Subtle_Blow
 
 	sets.WS['Black Halo'] = {
@@ -488,8 +522,8 @@ function get_sets()
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.ishvara,
-		left_ring=gear.epimanondas,
-		right_ring=gear.eponas,
+		left_ring=gear.eponas,
+		right_ring=gear.epimanondas,
 		back = gear.bluWSDDt,
 	}
 
@@ -504,8 +538,8 @@ function get_sets()
 		waist = gear.sailfi,
 		left_ear = gear.moonshadeEarringAcc,
 		right_ear=gear.ishvara,
-		left_ring=gear.epimanondas,
-		right_ring=gear.eponas,
+		left_ring=gear.eponas,
+		right_ring=gear.epimanondas,
 		back = gear.bluWSDDt,
 	}
 
@@ -520,18 +554,19 @@ function get_sets()
 		waist=gear.fotiaWaist,
 		left_ear=gear.odr,
 		right_ear=gear.hashishinEarringPlusOne,
-		left_ring=gear.lehkoHabhokaRing,
-		right_ring=gear.eponas,
+		left_ring=gear.eponas,
+		right_ring=gear.lehkoHabhokaRing,
 		back = gear.bluDA,
 	}
 
-	-- Worn on the action that tags a monster. The engine merges it only while TH Mode is not None, and every job but Thief starts at None.
+	-- Treasure Hunter gear, worn on an action or melee swing against a monster not yet tagged, and throughout a fight in Full Time mode. It is never worn in None mode, where every job but Thief starts.
 	sets.TreasureHunter = {
 		waist=gear.chaac,
 		body=gear.volteJupon,
 		ammo=gear.perfectEgg,
 	}
 
+	-- Merged over the blue magic set while Diffusion is up. A spell with a set of its own above does not take it.
 	sets.Diffusion = {
 	    feet = gear.luhlazaFeetPlusOne,
 	}
@@ -544,14 +579,14 @@ end
 
 -- Called when the player's subjob changes.
 function sub_job_change_custom(new, old)
-	-- Typically used for Macro pallet changing
+	-- A common use is switching the macro book or set.
 end
 
---Adjust custom precast actions
+-- Called before each action, after the engine's own checks. Cancel the action here with cancel_spell(). Nothing it returns is used.
 function pretarget_custom(spell,action)
 
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the engine's precast set for the action. In MEVA mode a weaponskill keeps the magic evasion neck.
 function precast_custom(spell)
 	local equipSet = {}
 	if spell.type == 'WeaponSkill' then
@@ -561,39 +596,41 @@ function precast_custom(spell)
 	end
 	return equipSet
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the engine's midcast set for the action.
 function midcast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
--- Augment basic equipment sets
+-- Gear returned here merges over the idle or engaged set worn when an action ends.
 function aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
---Function is called when the player gains or loses a buff
+-- Called when a buff is gained or lost, except while an action is in flight. Gear returned here merges over the idle or engaged set.
 function buff_change_custom(name,gain)
 	local equipSet = {}
 
 	return equipSet
 end
---This function is called when a update request the correct equipment set
+-- Gear returned here merges over every idle and engaged build: after each action, on a buff, status or mode change, and when you start or stop moving.
 function choose_set_custom()
 	local equipSet = {}
 
 	return equipSet
 end
---Function is called when the player changes states
+-- Called when your status changes, such as engaging, disengaging or resting. Gear returned here merges over the idle or engaged set that follows.
 function status_change_custom(new,old)
 	local equipSet = {}
 
 	return equipSet
 end
---Called for a "gs c" command the engine did not handle itself, and for the Weapon Mode, Job Mode and Job Mode 2 commands, which call it before the gear rebuild.
+-- Called for a "gs c" command the engine does not handle itself, and for the weapon mode, job mode and job mode 2 commands, which call it before the gear rebuild. The command arrives in lowercase.
+-- Here, a job mode change, by key, by gs c jobmode or by gs c jobmode AoE, loads the matching AzureSets spell set, magic for AoE and tp for Melee, and switches the macro set to match.
+-- Testing the first word keeps jobmode2 and other commands that merely contain jobmode from triggering it.
 function self_command_custom(command)
-	if command == 'jobmode' then
+	if command:match('^(%S+)') == 'jobmode' then
 		if state.JobMode.value == 'AoE' then
 			send_command('input //aset spellset magic;input /macro book 8;wait .1; input /macro set 2')
 		else
@@ -602,23 +639,26 @@ function self_command_custom(command)
 	end
 end
 
--- This function is called when the job file is unloaded
+-- Called when the job file unloads, after the engine has released its keys and held slots.
 function user_file_unload()
 
 end
 
+-- Called when a pet is summoned or lost. Gear returned here merges over the idle or engaged set.
 function pet_change_custom(pet,gain)
 	local equipSet = {}
-	
+
 	return equipSet
 end
 
+-- Called when a pet's action ends. Gear returned here merges over the idle or engaged set.
 function pet_aftercast_custom(spell)
 	local equipSet = {}
 
 	return equipSet
 end
 
+-- Called while a pet's action is in flight. Gear returned here merges over sets.Pet_Midcast and the set named for the action.
 function pet_midcast_custom(spell)
 	local equipSet = {}
 

@@ -20,122 +20,122 @@
 -- CONTENTS
 --   Section 7  - Libraries and settings .... the four libraries, the saved settings file,
 --                                           and the two on-screen boxes
---   Section 8  - Shared constants .......... the lookup tables more than one subsystem reads
+--   Section 8  - Shared constants .......... the constants and lookup tables other
+--                                           components read
 --   Section 9  - Spell and ability data .... which incoming action calls for which set
 --   Section 11 - Core utilities ............ the chat channels, the clock, the item and party
---                                           helpers, and the multibox cast announce
+--                                           helpers, the elemental bonus chooser, and the
+--                                           multibox cast announce
 --
--- THIS FILE IS THE SUPPLY DEPOT. It drives nothing; it holds what the rest of the engine
---          reads. Forty-five exports and seven globals, and ELEVEN of the other fourteen
---          files draw on them -- every component except interface, state and the root. A
---          constant only one component uses belongs with that component; what is here is
---          here because two or more of them share it.
+-- This file holds what the rest of the engine reads. It registers no event and runs no
+-- subsystem of its own.
 --
--- IT REPLACES TWO NAMES LUA PROVIDES, both deliberately. GearSwap gives the job file and
---          every file it includes ONE shared environment, so `print` declared below does not
---          add a name -- it takes over Lua's, for the engine and the job file alike, and it
---          reads its first argument as a chat mode. `debug` is the milder case: a file-local
---          shadowing the stdlib debug table, from its declaration to the end of this
---          constructor and inside every component that imports it.
---
--- SECTION ORDER AND LOAD ORDER DISAGREE HERE, and this is the one place in the engine where
---          they do. It owns sections 7-9 and 11 yet constructs THIRD, behind state and its
---          section 10, because it copies state's cached handles at construction. Section
---          numbers are a reading order; the manifest decides what runs when.
---
--- THE ONE PIECE OF LIVE STATE it keeps is the multibox announce debt -- E.outgoing_cast_active
---          and the deadline beside it. Any other character holding gear for an announced cast
---          is waiting on a completion this file owes it.
---
--- EXPORTS  45 fields plus seven globals: five chat channels, the writer beneath them, and
---          round. settings and res are the widest, at eight importers each.
--- LOADS    Third of fifteen. Takes get_mob_by_id, get_party and send_ipc from state. No
---          global it calls resolves late -- every name reached from here is already in hand.
+-- GLOBALS  print, and the five chat channels written through it: log, info, warn, notice and
+--          gear_report. GearSwap gives the job file and every file it includes one shared
+--          environment, so this print replaces Lua's for the engine and the job file alike.
+--          It reads its first argument as a chat mode. debug is not a global. It is a
+--          file-local that shadows Lua's debug table here and in every component that
+--          imports it.
+-- STATE    The live settings table, and the multibox announce debt: the flag
+--          E.outgoing_cast_active, which state.lua declares, and the deadline beside it.
+--          While the debt stands, other characters may be holding gear for a cast this
+--          character announced.
+-- EXPORTS  The settings table and what its load reported, the two boxes, the config,
+--          resource and extdata libraries, the shared constants and data tables, and the
+--          helper functions, all as E fields.
+-- LOADS    After state.lua, because it binds state's cached handles at construction:
+--          get_mob_by_id, get_party and send_ipc. This is the one place load order departs
+--          from section order, since state holds section 10. Every global it calls exists
+--          before it loads.
 
 -- requires: rahvings/state
 return function(E)
-    -- The cached API handles state.lua resolved once, bound here so no call below reaches
-    -- through E. Two other windower.ffxi calls in this file -- the client language and the
-    -- stratagem recast read -- go through that table directly, with no cached handle.
+    -- The API handles state.lua caches, bound once so no call below reaches through E. The
+    -- two other windower.ffxi calls in this file, for the client language and the stratagem
+    -- recasts, have no cached handle and call windower.ffxi directly.
     local get_mob_by_id, get_party, send_ipc = E.get_mob_by_id, E.get_party, E.send_ipc
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 7 - LIBRARIES AND USER SETTINGS
     ------------------------------------------------------------------------------------------------
-    -- Everything the engine borrows from outside itself, plus the settings that survive a
-    -- reload and the two boxes those settings dress.
+    -- The libraries the engine uses, the settings that persist across reloads, and the two
+    -- on-screen boxes those settings describe.
 
-    -- The four libraries the engine leans on: config writes the settings file back to disk,
-    -- res is the game's own resource tables, socket gives a wall clock in milliseconds, and
-    -- extdata decodes the per-item blob holding enchantment charges and timers. `require` is
-    -- GearSwap's own include here, not Lua's -- it hands back the table the addon already
-    -- loaded, which is how three of these four resolve, and searches its paths only for the
-    -- one the addon has not, config.
+    -- The four libraries the engine uses. config reads and writes the settings file, res
+    -- holds the game's resource tables, socket supplies a wall clock, and extdata decodes
+    -- the per-item data that holds enchantment charges and timers.
+    --
+    -- require here is GearSwap's include, not Lua's. It returns the table already loaded
+    -- under that name in package.loaded. GearSwap has loaded all four before any job file
+    -- runs, as well as the files and xml libraries the settings load uses below, so each
+    -- call returns the addon's own copy.
     local config = require('config')
     local res = require('resources')
     local socket = require('socket')
     local extdata = require('extdata')
 
     -- What the settings file holds on a first run, and the shape config.load merges a saved
-    -- file into. The six booleans are the toggles commands.lua flips; delay is the multibox
-    -- announce window in seconds, which spellreceived.lua's failsafe also times against.
+    -- file into. The six booleans are the toggles commands.lua flips. delay is the multibox
+    -- announce window in seconds, and the spell-received failsafe times against it too.
+    --
+    -- Every setting needs a key here. The config library lowercases each tag it parses and
+    -- maps it back onto a default's spelling, so a key absent from this table lands under a
+    -- lowercase name nothing reads.
     local default = {
         visible = true,
         oneline = false,
-        -- Which renderer draws the status box, beside the one-line flag above: that is the
-        -- VIEW axis and this is the RENDERER axis. A saved file that already carries either
-        -- key keeps its own value through the merge below, so a change to either reaches an
-        -- installed file only through the display silo's version.
+        -- Which renderer draws the status box. oneline above chooses the view, and this
+        -- chooses the renderer. A saved file that carries either key keeps its own value
+        -- through the merge, so a changed default for either reaches an installed file only
+        -- when the display silo's version is raised.
         Display_Style = 'lattice',
-        -- A floor of the player's own for the status box's value column, in characters;
-        -- zero leaves the column sized by the widest mode option and the header. It is
-        -- listed here because a setting reaches the engine ONLY through this table: the
-        -- config library lowercases every tag it parses and maps it back onto a default's
-        -- own spelling, so a key absent from here lands under a name nothing reads.
+        -- The player's floor on the width of the status box's value column, in characters.
+        -- Zero leaves the column sized by the widest mode option and the header.
         Display_MinValueCells = 0,
         debug = false,
         info = true,
         warn = true,
         gear_reporting = false,
         -- The lattice style's panel: the body behind the text, the strip behind the header
-        -- line, the border and its width, and how far the panel reaches past the text at
-        -- the sides (pad) and below (pad_bottom); above, the strip meets the border. Colors
-        -- are red, green, blue and alpha, as the boxes' own are.
-        -- The rig: a four-by-four grid of gear slots in cols text columns the layout keeps
-        -- clear at the right of every mode row, plus a gutter column, in the stacked view
-        -- only; gap is the space between cells and inset the recess's margin around the
-        -- grid. Every hue is the color that layer already draws elsewhere on the box, so
-        -- nothing already read has to be relearned: a strip hold the orange of its own
-        -- token, the disable hold the cyan of its DIS token, a lock mode and the weapon
-        -- lock the one violet the LCK row and the lock tokens share, Hoxne the green of
-        -- its own header square. ench is the only layer with no color of its own today.
-        -- other is for a held slot whose layer has no hue, and socket for a slot nothing
-        -- holds.
+        -- line, and the border with its width. pad is how far the panel reaches past the
+        -- text at the sides, and pad_bottom how far below it. At the top, the strip meets
+        -- the border. Colors are red, green, blue and alpha, as the boxes' own are.
+        --
+        -- The rig is a four-by-four grid of gear slots, drawn in the stacked view only. It
+        -- sits in the cols text columns the layout keeps clear at the right of every mode
+        -- row, beside a gutter column. gap is the space between cells, and inset is the
+        -- recess's margin around the grid.
+        --
+        -- A held slot's hue follows its layer, and a layer that already has a color on the
+        -- box keeps it here. A strip hold takes the orange of its token, the disable hold
+        -- the cyan of its DIS token, a lock mode and the weapon lock the violet the LCK row
+        -- and the lock tokens share, and Hoxne the green of its header square. The item use,
+        -- Sleep gear, the cast implement and received gear have no color elsewhere, so each
+        -- has its own here. other is for a held slot whose layer has no hue, and socket for a
+        -- slot nothing holds.
         Lattice = {
             body = { red = 0, green = 0, blue = 0, alpha = 190 },
             strip = { red = 30, green = 30, blue = 50, alpha = 220 },
             border = { red = 110, green = 110, blue = 110, alpha = 255, width = 1 },
             pad = 4,
-            -- The clear space below the last line. There is no matching value above it:
-            -- the panel's top is whatever the crown's band needs to meet the border, and
-            -- that band is derived from the measured line height rather than set here, so
-            -- it holds when the box changes size.
+            -- The clear space below the last line. There is no matching value for the top.
+            -- The panel's top is wherever the strip meets the border, and the strip's depth
+            -- comes from the measured line height, so it holds when the box changes size.
             pad_bottom = 2,
             rig = {
                 enabled = true,
-                -- The grid is measured in TEXT COLUMNS, not pixels: it reserves this many
+                -- The grid is measured in text columns, not pixels. It reserves cols columns
                 -- at the right of every mode row and sizes its cells to fill them, so it
-                -- scales with the font instead of pinning a pixel size to one setup.
+                -- scales with the font.
                 cols = 9, gap = 2, inset = 3,
-                -- Columns kept empty between the widest mode row and the grid, so the
-                -- two never touch whatever the crown's spacing rounds to. Part of the
-                -- layout's reservation, not of the grid's width.
+                -- Columns kept empty between the widest mode row and the grid, so the two
+                -- never touch however the spacing rounds. They are part of the layout's
+                -- reservation, not of the grid's width.
                 gutter = 1,
                 recess = { red = 0, green = 0, blue = 0, alpha = 235 },
                 socket = { red = 70, green = 82, blue = 104, alpha = 235 },
-                -- Keyed by slot_claim's own return strings, and every key is spelled AS a
-                -- quoted string: strip and hoxne are also exported names, and a bare key
-                -- is indistinguishable from a use of the name it shares.
+                -- Keyed by the strings slot_claim returns. Each key is written as a quoted
+                -- string, because strip and hoxne are also exported names.
                 hue = {
                     ['strip']  = { red = 255, green = 132, blue = 64,  alpha = 255 },
                     ['disable'] = { red = 90, green = 200, blue = 255, alpha = 255 },
@@ -143,16 +143,20 @@ return function(E)
                     ['weapon'] = { red = 186, green = 150, blue = 255, alpha = 255 },
                     ['hoxne']  = { red = 80,  green = 220, blue = 110, alpha = 255 },
                     ['ench']   = { red = 236, green = 236, blue = 140, alpha = 255 },
+                    ['sleep']  = { red = 110, green = 120, blue = 255, alpha = 255 },
+                    ['implement'] = { red = 240, green = 80, blue = 80, alpha = 255 },
+                    ['spell']  = { red = 255, green = 110, blue = 200, alpha = 255 },
                     ['other']  = { red = 235, green = 235, blue = 235, alpha = 255 },
                 },
             },
         },
-        -- The halo style: no background on any object, four text objects at one
-        -- position. Three satellite blocks, each with its plane's stroke, weight and
-        -- color -- font, size, padding and edge anchoring are copied from Display_Box at
-        -- entry, so the four share one grid; the mode box's own stroke and weight while
-        -- the style stands; the plane hues; and the cap on a value's width in cells,
-        -- zero for none. Every stroke is width 2: weight and hue carry the separation.
+        -- The halo style draws four text objects at one position, none with a background.
+        -- crown, labels and hold are the three satellite objects, each with its own stroke,
+        -- weight and color. Their font, size, padding and edge anchoring are copied from
+        -- Display_Box when the style is entered, so all four share one grid. values is the
+        -- status box's own stroke and weight while the style stands. hue holds the text
+        -- colors, and value_cap caps a value's width in cells, with zero for no cap. Every
+        -- stroke is width 2, so weight and hue carry the separation.
         Halo = {
             crown = { text = { red = 246, green = 246, blue = 240, alpha = 255, stroke = { width = 2, alpha = 255, red = 8, green = 8, blue = 10 } }, pos = { x = 0, y = 0 }, bg = { visible = false, red = 0, green = 0, blue = 0, alpha = 0 }, flags = { bold = true, draggable = false }, padding = 3 },
             labels = { text = { red = 168, green = 176, blue = 186, alpha = 255, stroke = { width = 2, alpha = 255, red = 8, green = 8, blue = 10 } }, pos = { x = 0, y = 0 }, bg = { visible = false, red = 0, green = 0, blue = 0, alpha = 0 }, flags = { bold = false, draggable = false }, padding = 3 },
@@ -171,34 +175,48 @@ return function(E)
         Display_Box = { text = { size = 11, font = 'Consolas', red = 255, green = 255, blue = 255, alpha = 255, stroke = { width = 2, alpha = 255, red = 15, green = 15, blue = 15 } }, pos = { x = 0, y = 0 }, bg = { visible = true, red = 0, green = 0, blue = 0, alpha = 190 }, flags = { bold = true }, padding = 3 },
         Debug_Box = { text = { size = 11, font = 'Consolas', red = 255, green = 255, blue = 255, alpha = 255, stroke = { width = 2, alpha = 255, red = 15, green = 15, blue = 15 } }, pos = { x = 0, y = 50 }, bg = { visible = true, red = 0, green = 0, blue = 0, alpha = 190 }, flags = { bold = true }, padding = 3 },
         delay = 3,
+        -- The key each mode is bound to, under the mode's command word, or '' for a mode with
+        -- no key. A value is in Windower's spelling: f1 to f12, with ^ for Ctrl, ! for Alt or
+        -- ~ for Shift in front. Only keybind_apply reads them, and it validates each value
+        -- before binding it. The keys are quoted strings because hoxne is also an exported
+        -- name.
+        Keybinds = {
+            ['offensemode'] = 'f12', ['treasurehunter'] = 'f11', ['weaponlock'] = 'f10',
+            ['weaponmode'] = 'f9', ['jobmode'] = '^f12', ['jobmode2'] = '^f11',
+            ['hoxne'] = '^f10', ['spellreceived'] = '^f9',
+        },
         -- One stamp per versioned silo, per character: the version of that silo the
         -- character last loaded, under the character's lowercased name.
         Settings_Version = { display = {}, halo = {} },
     }
 
-    -- Every setting belongs to one silo, so a version reset can name what it returns to
-    -- default and leave the rest alone. An entry written as a.b is a sub-block another
-    -- silo's key carries, kept through that key's reset. A silo listed in SETTINGS_VERSIONS
-    -- resets when the version stamped for the character playing is behind the engine's; a
-    -- silo with no version never resets.
+    -- Every setting belongs to one silo, so a version reset returns one silo to its
+    -- defaults and leaves the rest alone. An entry written as a.b is a sub-block carried
+    -- under another silo's key, and it is kept through that key's reset. A silo listed in
+    -- SETTINGS_VERSIONS resets when the version stamped for the character playing is behind
+    -- the engine's. A silo with no version never resets.
     local SETTINGS_SILOS = {
         display   = { 'Display_Box', 'Debug_Box', 'Display_Style', 'Lattice', 'oneline', 'visible',
                       'Display_MinValueCells' },
-        -- The halo style's blocks are their own silo: a calibration change delivers its
-        -- new defaults without resetting the boxes, the style or the view.
+        -- The halo style's blocks are a silo of their own, so a new halo version resets them
+        -- and leaves the boxes, the style and the view alone.
         halo      = { 'Halo' },
         positions = { 'Display_Box.pos', 'Debug_Box.pos' },
         channels  = { 'debug', 'info', 'warn', 'gear_reporting' },
         timing    = { 'delay' },
+        -- Unversioned, so a player's keys survive every engine update. A changed default
+        -- here does not reach a file that already carries the block.
+        keybinds  = { 'Keybinds' },
         stamps    = { 'Settings_Version' },
     }
-    -- The engine's current version of each silo that can reset. Raising a number here is
-    -- what delivers a changed default in that silo to settings files already saved: every
-    -- key the silo names goes back to the default above, while the sub-blocks another silo
-    -- names -- both box positions -- are kept as the player left them.
+    -- The engine's current version of each silo that can reset. Raising a number here
+    -- delivers that silo's changed defaults to settings files already saved. Every key the
+    -- silo names goes back to its default above, while the sub-blocks another silo names,
+    -- the two box positions, are kept as the player left them.
     local SETTINGS_VERSIONS = { display = 2, halo = 1 }
 
-    -- The sub-blocks other silos keep under a key a reset replaces.
+    -- The names of the sub-blocks other silos keep under key, which a reset of key carries
+    -- over.
     local function settings_kept_under(key)
         local kept = {}
         for _, keys in pairs(SETTINGS_SILOS) do
@@ -211,10 +229,12 @@ return function(E)
     end
 
     -- Reset every versioned silo whose stamp for this character is behind the engine's,
-    -- keeping the sub-blocks other silos own, and stamp every versioned silo current. The
-    -- stamps are kept per character because the config library carries a new key into
-    -- the global block at the first save, so one shared stamp would read as current for
-    -- every other character. Returns the silos reset, sorted.
+    -- keeping the sub-blocks other silos own, then stamp every versioned silo as current.
+    -- Returns the names of the silos reset, sorted.
+    --
+    -- The stamps are kept per character. The config library carries a new key into the
+    -- global block at the first save, so a single shared stamp would read as current for
+    -- every other character.
     local function settings_reset_stale(settings, name)
         local reset = {}
         for silo, current in pairs(SETTINGS_VERSIONS) do
@@ -239,20 +259,89 @@ return function(E)
         return reset
     end
 
-    -- The live settings table: eight components read it, as many as res. A write here
-    -- changes behavior immediately but survives nothing -- display.lua is the only caller
-    -- of config.save, and it saves only while logged in.
-    local settings = config.load(default)
+    -- The shared settings file in the data folder, which seeds a character's own file the
+    -- first time that character loads. A migration load reads it. Nothing writes, deletes or
+    -- renames it.
+    local SHARED_SETTINGS_PATH = 'data/settings.xml'
+
+    -- Every settings file the config library writes ends with this tag and one newline.
+    local SETTINGS_TAIL = '</settings>'
+
+    -- Why a settings file cannot be loaded, or nil when it can. The text is read once, and
+    -- its tail is checked before the parser runs. The XML parser has no end-of-input test
+    -- and answers a truncated file with its innermost open element as the root, which
+    -- loads as bare defaults and reports nothing. The parse below is the one xml.read
+    -- performs once a file exists.
+    local function settings_refusal(fileobj)
+        local text = fileobj:read() or ''
+        -- Anchored at the end, so only a file ending in the tag passes. None of the tag's
+        -- characters is special in a pattern, and the trailing %s* admits the newline the
+        -- library writes, or a CRLF.
+        if not text:find(SETTINGS_TAIL .. '%s*$') then
+            return 'does not end with ' .. SETTINGS_TAIL
+        end
+        local parsed, err = require('xml').parse(text)
+        if not parsed then return err or 'XML error' end
+    end
+
+    -- Load this character's own settings file, data/<Character>/settings.xml, beside the
+    -- character's job files. The name uses the game's capitalization, and Windows matches
+    -- the folder name without regard to case. Returns the settings table and, for a file
+    -- that will not load, a record of its path and the reason.
+    --
+    -- A refused file is never handed to the config library. The library keeps every table
+    -- config.load returns for the life of the client, and its load, logout and login
+    -- handler re-parses each one and reprints its error line at every logout and login.
+    -- The session runs on a copy of the defaults instead, and nothing prints here.
+    -- display.lua prints the path and the reason once the client has settled, and refuses
+    -- every save while the record stands.
+    --
+    -- A character with no file of its own is migrated when the shared file exists. A load
+    -- of the shared file returns its global section merged with this character's section,
+    -- and config.load writes that seed as the new file's global section, so every position,
+    -- style, toggle and version stamp carries over. A refused shared file creates no file
+    -- for this character, and the next load tries the migration again.
+    --
+    -- The seed's metatable is removed before the seed is passed back. table.copy keeps the
+    -- metatable of the table it copies, and the table config.load returned carries the
+    -- library's metatable, whose __index is a function. Handed back to config.load as
+    -- defaults, that __index answers the table library's request for an iterator with the
+    -- wrong function. With the metatable in place, the migration raises inside config.load
+    -- before any file is written, and the job file fails to load.
+    local function load_settings(name)
+        local files = require('files')
+        local path = 'data/' .. name .. '/settings.xml'
+        local own = files.new(path)
+        if own:exists() then
+            local reason = settings_refusal(own)
+            if reason then return table.copy(default), { path = path, reason = reason } end
+            return config.load(path, default)
+        end
+        local shared = files.new(SHARED_SETTINGS_PATH)
+        if not shared:exists() then return config.load(path, default) end
+        local reason = settings_refusal(shared)
+        if reason then
+            return table.copy(default), { path = SHARED_SETTINGS_PATH, reason = reason }
+        end
+        local seed = table.copy(config.load(SHARED_SETTINGS_PATH, default))
+        setmetatable(seed, nil)
+        return config.load(path, seed)
+    end
+
+    -- The live settings table. A write to it changes behavior at once but is not saved by
+    -- itself. display.lua is the only caller of config.save, and it saves only while logged
+    -- in and only when the load that produced this table was not refused.
+    local settings, settings_refused = load_settings(player.name)
 
     -- The silos whose stamp for this character is behind are reset before anything reads
-    -- them, so the boxes below are built on the reset values; the root announces the reset
-    -- and saves it once the client has settled.
+    -- them, so the boxes below are built on the reset values. display.lua announces the
+    -- reset and saves it, in a call the root schedules once the client has settled.
     local settings_reset = settings_reset_stale(settings, player.name:lower())
 
-    -- Push one box's saved appearance and position onto it. Four of the keys read here --
-    -- text.fonts and the italic, right and bottom flags -- are absent from the default table
-    -- above; texts.new fills them in from the text library's own defaults. So this runs AFTER
-    -- the box exists, or unpack(cfg.text.fonts) unpacks a nil.
+    -- Apply one box's saved appearance and position to it. Four of the keys read here are
+    -- absent from the default table above: text.fonts and the italic, right and bottom
+    -- flags. texts.new fills them in from the text library's defaults, so this must run
+    -- after the box is created, or unpack(cfg.text.fonts) unpacks a nil.
     local function apply_box_settings(box, cfg)
         box:pos(cfg.pos.x, cfg.pos.y)
         box:font(cfg.text.font, unpack(cfg.text.fonts))
@@ -273,15 +362,24 @@ return function(E)
     end
 
     -- The two on-screen boxes: the mode display and the debug readout. display.lua writes
-    -- their text, commands.lua shows and hides them, and lifecycle.lua destroys them at unload.
-    local gs_status = texts.new("", settings.Display_Box, settings)
-    local gs_debug = texts.new("", settings.Debug_Box, settings)
+    -- their text, commands.lua shows and hides them, and lifecycle.lua destroys them at
+    -- unload.
+    --
+    -- Neither box is given the settings root. Given the root, the text library writes the
+    -- whole settings file when the box is created and again whenever a drag is released,
+    -- and it registers a refresh callback that destroying the box never removes. Without
+    -- the root, the library applies the block and nothing else, and every save is the
+    -- engine's own. A box's position call still writes x and y into its own block by
+    -- reference, so a drag reaches the settings table as it happens, and display.lua's
+    -- drag settle saves it.
+    local gs_status = texts.new("", settings.Display_Box)
+    local gs_debug = texts.new("", settings.Debug_Box)
 
-    -- Restore both boxes, then state draggability and visibility explicitly, BOTH WAYS.
-    -- The hide() call is not redundant: texts.new records a new box as hidden in the library's
-    -- own table without telling the primitive underneath, so a box that is only ever shown
-    -- leaves an empty background sitting on screen when its setting is off. Dragging is
-    -- allowed only while a box is visible, and commands.lua keeps that pairing when it toggles.
+    -- Restore both boxes, then set draggability and visibility explicitly, in both
+    -- directions. texts.new records a new box as hidden in the library's own table without
+    -- telling the text object, so a box that is shown but never hidden leaves an empty
+    -- background on screen when its setting is off. A box can be dragged only while it is
+    -- visible, and commands.lua keeps that pairing when it toggles a box.
     apply_box_settings(gs_status, settings.Display_Box)
     apply_box_settings(gs_debug, settings.Debug_Box)
     gs_status:draggable(settings.visible and true or false)
@@ -292,14 +390,13 @@ return function(E)
     ------------------------------------------------------------------------------------------------
     -- SECTION 8 - SHARED CONSTANTS AND LOOKUP TABLES
     ------------------------------------------------------------------------------------------------
-    -- The tables two or more subsystems read. A constant with one reader belongs beside that
-    -- reader; these are here because moving any of them would leave a component reaching
-    -- across the engine for it.
+    -- The constants and lookup tables other components read. Each is exported at the end of
+    -- this file and bound in its reader's import block.
 
     -- Action classification -----------------------------------------------------------------------
 
-    -- Spell types that carry a recast timer. pretargetcheck consults it before spending a
-    -- get_spell_recasts call, so a type absent here is never checked for cooldown at all.
+    -- Spell types that carry a recast timer. pretargetcheck reads the spell recasts only for
+    -- these types, so a type absent here is never checked for cooldown.
     local HasRecastTimer                      = {
         ['WhiteMagic']   = true,
         ['BlackMagic']   = true,
@@ -311,10 +408,10 @@ return function(E)
         ['Trust']        = true,
     }
 
-    -- Spell types long enough to need a busy window: precast sizes one from the listed cast
-    -- time, aftercast leaves a 2.5 second tail. The same eight types as the table above, and
-    -- separate on purpose -- they answer different questions, and adding a type to one is not
-    -- adding it to the other.
+    -- Spell types long enough to need a busy window. precast sizes the window from the
+    -- listed cast time, and aftercast leaves a 2.5 second tail. It holds the same types as
+    -- the table above but answers a different question, so a type added to one is not
+    -- added to the other.
     local RecastTimers                        = {
         ['WhiteMagic']   = true,
         ['BlackMagic']   = true,
@@ -326,24 +423,27 @@ return function(E)
         ['Trust']        = true,
     }
 
-    -- Buff and action-type names, so the comparison sites read as words instead of literals.
-    -- The first two are numeric because spellreceived matches them against the id in a buff
-    -- packet; the six below are strings because hooks keys them into buffactive, whose
-    -- incapacitation entries arrive by name.
+    -- Buff and action-type names, so the comparison sites read as words. The two buff ids
+    -- are numbers because spellreceived.lua compares them with the id a buff event carries.
+    -- The six incapacitation buffs are names, because hooks.lua indexes buffactive with
+    -- them. TYPE_JA, TYPE_WS and TYPE_SCH match spell.type, and TYPE_MS matches
+    -- spell.action_type.
     local BUFF_ACCESSION                      = 366
     local BUFF_DIVINE_SEAL                    = 78
     local BUFF_SLEEP, BUFF_STUN, BUFF_KO      = 'Sleep', 'Stun', 'KO'
     local BUFF_PETRI, BUFF_CHARM, BUFF_TERROR = 'Petrification', 'Charm', 'Terror'
     local TYPE_JA, TYPE_WS, TYPE_MS, TYPE_SCH = 'JobAbility', 'WeaponSkill', 'Magic', 'Scholar'
 
-    -- Action categories that count as tagging a mob for Treasure Hunter. th.lua stamps the
-    -- target with the clock on any of them, so a mob still being fought never ages out of the
-    -- tagged table; a category absent here refreshes no tag, whatever it does in game.
+    -- Action categories that count as tagging a mob for Treasure Hunter: 1 melee, 2 ranged
+    -- attack, 3 weapon skill, 4 spell, 6 job ability, 11 monster TP move and 14 unblinkable
+    -- job ability. th.lua stamps the target with the clock on any of them, so a mob still
+    -- being fought never ages out of the tagged table. A category absent here refreshes no
+    -- tag.
     local TaggingCategories                   = S { 1, 2, 3, 4, 6, 11, 14 }
 
-    -- Action-message ids reporting a death, the same six GearSwap itself treats as fatal.
-    -- th.lua drops a mob from the tagged table on any of them, ahead of the 180 second sweep
-    -- that would otherwise retire it. Keyed rather than S{} so the test is a plain index.
+    -- Action-message ids that report a death, the same set GearSwap treats as fatal. th.lua
+    -- drops a mob from the tagged table on any of them, ahead of the 180 second sweep that
+    -- would otherwise retire it. The table is keyed by id, so the test is a plain index.
     local DeathMessages                       = {
         [6] = true,   -- <actor> defeats <target>.
         [20] = true,  -- <target> falls to the ground.
@@ -355,45 +455,44 @@ return function(E)
 
     -- Job, zone and element reference -------------------------------------------------------------
 
-    -- The sixteen storm spells. builders.lua merges sets.Storms over the enhancing midcast
-    -- build for any of them; interface.lua declares that set empty, so a job file that never
-    -- fills it loses nothing.
+    -- The storm spells, both tiers. builders.lua merges sets.Storms over the enhancing
+    -- midcast build for any of them. interface.lua declares that set empty, so a job file
+    -- that never fills it loses nothing.
     local Storms                              = S { "Aurorastorm", "Voidstorm", "Firestorm", "Sandstorm", "Rainstorm", "Windstorm", "Hailstorm", "Thunderstorm",
         "Aurorastorm II", "Voidstorm II", "Firestorm II", "Sandstorm II", "Rainstorm II", "Windstorm II", "Hailstorm II", "Thunderstorm II" }
 
-    -- The three Utsusemi tiers. builders.lua routes them to sets.Precast.Utsusemi and
-    -- sets.Midcast.Utsusemi, and runs the shadow count check on the precast side.
+    -- The Utsusemi tiers. builders.lua routes them to sets.Precast.Utsusemi and
+    -- sets.Midcast.Utsusemi, and counts the ninja tools at precast.
     local UtsusemiSpell                       = S { 'Utsusemi: Ichi', 'Utsusemi: Ni', 'Utsusemi: San' }
 
-    -- The four Dynamis Divergence zones. The zone handler names them at entry, pointing the
-    -- player at the neck lock; what holds a Dynamis neck on is that mode's claim, and no
-    -- slot is treated specially inside these zones by any release path.
+    -- The Dynamis Divergence zones. On entering one, the zone handler points the player at
+    -- the neck lock. That lock mode's claim is what holds a Dynamis neck on, and no release
+    -- path treats any slot specially inside these zones.
     local Divergence_Zones                    = S { "Dynamis - San d'Oria [D]", "Dynamis - Bastok [D]", "Dynamis - Windurst [D]", "Dynamis - Jeuno [D]" }
 
-    -- Jobs for which Silence is worth spending a Remedy. spellreceived.lua tests main and sub
-    -- against it, so a listed sub job qualifies; Paralysis spends one on any job, Silence
-    -- only on these.
+    -- Jobs for which Silence is worth a Remedy. spellreceived.lua tests the main job and the
+    -- sub job against it, so a listed sub job qualifies. Paralysis spends a Remedy on any
+    -- job, and Silence only on these.
     local Mage_Job                            = S { 'BLM', 'RDM', 'WHM', 'BRD', 'BLU', 'GEO', 'SCH', 'NIN', 'PLD', 'RUN', 'DRK', 'SMN' }
 
-    -- The town zones. Nothing reads this list today -- monitor.lua binds it and never asks
-    -- it -- and both the list and that binding are kept deliberately rather than deleted.
+    -- The town zones. monitor.lua binds this list, and nothing in the engine reads it.
     local Cities                              = S { "Ru'Lude Gardens", "Upper Jeuno", "Lower Jeuno", "Port Jeuno", "Port Windurst", "Windurst Waters", "Windurst Woods", "Windurst Walls", "Heavens Tower", "Port San d'Oria", "Northern San d'Oria",
         "Southern San d'Oria", "Chateau d'Oraguille", "Port Bastok", "Bastok Markets", "Bastok Mines", "Metalworks", "Aht Urhgan Whitegate", "The Colosseum", "Tavnazian Safehold", "Nashmau", "Selbina",
         "Mhaura", "Rabao", "Norg", "Kazham", "Eastern Adoulin", "Western Adoulin", "Celennia Memorial Library", "Mog Garden", "Leafallia" }
 
-    -- The client's language, lowercased to index a resource row. monitor.lua names it to pull
-    -- buff names out of res.buffs when matching a cancel pattern. Read once at construction,
-    -- because it cannot change without a client restart.
+    -- The client's language, lowercased to index a resource row. monitor.lua uses it to read
+    -- buff names from res.buffs when matching a cancel pattern. It is read once, because it
+    -- cannot change without a client restart.
     local Language                            = windower.ffxi.get_info().language:lower()
 
-    -- Skillchains keyed by add-effect message id: 288-301 chain damage, 385-398 chain healing,
-    -- 767-770 the Umbra and Radiance chains. run_burst records the elements, and the gear
-    -- builders use them to dress a nuke landing inside the burst window. Only elements is
-    -- read; id restates the key and english names the chain for anyone reading the table.
+    -- Skillchains keyed by add-effect message id: 288 to 301 are chain damage, 385 to 398
+    -- chain healing, and 767 to 770 the Umbra and Radiance chains. run_burst records the
+    -- elements, and the gear builders use them to dress a nuke that lands inside the burst
+    -- window. Only elements is read. id repeats the key, and english names the chain.
     --
-    -- THE THIRTY-TWO ROWS MUST COVER THOSE THREE RANGES EXACTLY. run_burst tests the id
-    -- against the ranges, then indexes here and reads .elements without a nil guard -- so an
-    -- id admitted by the range test but missing a row throws inside an event handler.
+    -- The rows must cover those three ranges exactly. run_burst tests the id against the
+    -- ranges, then indexes this table and reads .elements with no nil guard, so an id the
+    -- range test admits without a row here throws inside an event handler.
     local skillchains                         = {
         [288] = { id = 288, english = 'Light', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
         [289] = { id = 289, english = 'Darkness', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
@@ -430,8 +529,8 @@ return function(E)
     }
 
     -- Action types whose precast gear is their final gear. builders.lua returns from the
-    -- midcast build immediately for these, and equip.lua counts a precast for one of them as
-    -- the phase that names the set in the merge report -- because no later phase will.
+    -- midcast build at once for these. equip.lua counts a precast for one of them as the
+    -- phase that names the set in the merge report, since no later phase will.
     local PRECAST_FINAL                       = {
         WeaponSkill = true,
         JobAbility  = true,
@@ -454,13 +553,13 @@ return function(E)
     -- Equipment slots -----------------------------------------------------------------------------
 
     -- Every spelling of a slot, folded onto one name. A job file may write ear1, lear,
-    -- learring or left_ear and mean the same slot; merge_into canonicalizes through this
-    -- before assigning, so the last of them wins instead of four keys surviving side by side.
-    -- Slot ownership canonicalizes for the same reason, or a held left_ear would not match a
-    -- request for ear1.
+    -- learring or left_ear for the same slot. merge_into canonicalizes through this table
+    -- before assigning, so the last spelling wins instead of four keys surviving side by
+    -- side. Slot ownership canonicalizes too, or a held left_ear would not match a request
+    -- for ear1.
     --
-    -- THE 27 KEYS ARE EXACTLY GEARSWAP'S OWN slot_map. A key missing here is a slot the
-    -- engine silently drops from a set that GearSwap would have equipped.
+    -- The keys match GearSwap's own slot_map exactly. A key missing here is a slot the
+    -- engine silently drops from a set GearSwap would have equipped.
     local CANON_SLOT                          = {
         main = 'main',
         sub = 'sub',
@@ -491,20 +590,117 @@ return function(E)
         right_ring = 'right_ring',
     }
 
+    -- Elemental bonus gear ------------------------------------------------------------------------
+    -- The tables the elemental bonus chooser and builders.lua's per-cast inputs read: the
+    -- day, weather and distance mechanics as numbers, each stated once.
+
+    -- Element name to id, under both of each element's names. GearSwap's refresh.lua, at
+    -- lines 387 and 455, writes world.day_element and world.weather_element in the language
+    -- GearSwap's own setting holds. That is English until a job file calls
+    -- set_language('japanese'), which switches them mid-session, so the table maps the
+    -- English and the Japanese names alike and follows the setting without reading it. A
+    -- spell needs no lookup, because spell.element_id carries the number. Clear weather is
+    -- 'None', id 15. The only spells whose element is 15 are the element-less ones, Meteor
+    -- among them, which the chooser's caller refuses by id.
+    local function element_ids()
+        local ids = {}
+        for id, entry in pairs(res.elements) do
+            ids[entry.english] = id
+            ids[entry.japanese] = id
+        end
+        return ids
+    end
+    local ELEMENT_ID                          = element_ids()
+    local LIGHT_ID                            = 6
+    local DARK_ID                             = 7
+    local NONE_ID                             = 15
+    -- Elemental Magic's skill id in res/skills.lua, the skill whose spells Zodiac Ring
+    -- serves. It is compared by id, because GearSwap writes spell.skill in the language its
+    -- own setting holds and stamps the id beside it on every spell row.
+    local ELEMENTAL_MAGIC_SKILL               = 36
+
+    -- The element that a day or weather of the keyed element penalizes. Fire penalizes Ice,
+    -- and so on around the cycle Fire > Ice > Wind > Earth > Lightning > Water > Fire. Light
+    -- and Dark penalize each other. There is no row for 15, because clear weather penalizes
+    -- nothing. No Windower resource carries this wheel.
+    local BEATS                               = { [0] = 1, [1] = 2, [2] = 3, [3] = 4, [4] = 5, [5] = 0, [6] = 7, [7] = 6 }
+
+    -- The single-element obi for each spell element, by id. Each forces the day and weather
+    -- procs of its own element only, so for a spell of that element it can force a bonus
+    -- and never a penalty. Hachirin-no-Obi forces every proc, penalties included.
+    local SINGLE_OBI                          = {
+        [0] = 'Karin Obi', [1] = 'Hyorin Obi', [2] = 'Furin Obi', [3] = 'Dorin Obi',
+        [4] = 'Rairin Obi', [5] = 'Suirin Obi', [6] = 'Korin Obi', [7] = 'Anrin Obi',
+    }
+    local HACHIRIN                            = 'Hachirin-no-Obi'
+    local SASH                                = "Orpheus's Sash"
+    local CAPE                                = 'Twilight Cape'
+    local RING                                = 'Zodiac Ring'
+
+    -- Orpheus's Sash: its elemental affinity in percent, by whole yalms to the target's
+    -- center, with row 13 serving every longer distance. The rows follow a straight line from
+    -- +15 within two yalms to +1 at thirteen, rounded. Only the two endpoints are known, and
+    -- the rows between them are interpolated.
+    local SASH_PCT                            = {
+        [0] = 15, [1] = 15, [2] = 15, [3] = 14, [4] = 12, [5] = 11, [6] = 10,
+        [7] = 9, [8] = 7, [9] = 6, [10] = 5, [11] = 4, [12] = 2, [13] = 1,
+    }
+    -- Below this affinity, which means beyond ten yalms, the sash is not a candidate and the
+    -- job file's own waist stays.
+    local SASH_MIN_PCT                        = 5
+
+    -- Iridescence by staff name: the percent it adds to a matching weather's bonus and to an
+    -- opposing weather's penalty. It rides the weather proc and never touches the day term.
+    -- It is read against the main the built set carries, cures included.
+    local IRIDESCENCE                         = { ['Chatoyant Staff'] = 10, ['Iridal Staff'] = 5 }
+
+    -- The weather term by world.weather_intensity: clear, single, double.
+    local WEATHER_PCT                         = { [0] = 0, [1] = 10, [2] = 25 }
+
+    -- The day term, Twilight Cape's and Zodiac Ring's additions, and the cap on the whole
+    -- day-and-weather term, in percent. PROC is the chance that an unforced day or weather
+    -- effect procs. The cap holds for cures as it does for damage.
+    local DAY_PCT                             = 10
+    local CAPE_PCT                            = 5
+    local RING_PCT                            = 3
+    local PROC                                = 1 / 3
+    local CAP_PCT                             = 40
+
+    -- Each candidate's resource row, for the wearability test that runs before its bag read.
+    -- GearSwap's equip_processing.lua, at lines 196 to 207, drops an item on four tests, and
+    -- these pieces can fail two of them: the job mask and the level. A piece GearSwap would
+    -- drop must never displace the job file's own. Twilight Cape is the one piece not every
+    -- job can wear, and the rest are listed so one code path serves every candidate.
+    local CANDIDATE_ROW                       = {
+        ['Karin Obi']       = res.items[15435],
+        ['Hyorin Obi']      = res.items[15436],
+        ['Furin Obi']       = res.items[15437],
+        ['Dorin Obi']       = res.items[15438],
+        ['Rairin Obi']      = res.items[15439],
+        ['Suirin Obi']      = res.items[15440],
+        ['Korin Obi']       = res.items[15441],
+        ['Anrin Obi']       = res.items[15442],
+        ['Hachirin-no-Obi'] = res.items[28419],
+        ["Orpheus's Sash"]  = res.items[26359],
+        ['Twilight Cape']   = res.items[16259],
+        ['Zodiac Ring']     = res.items[15858],
+    }
+
     ------------------------------------------------------------------------------------------------
     -- SECTION 9 - SPELL AND ABILITY DATA
     ------------------------------------------------------------------------------------------------
-    -- The two tables the multibox spell-received system runs on: whether an incoming action is
-    -- tracked at all, which set it calls for, and who besides the named target will receive it.
+    -- The two tables the multibox spell-received system runs on. They say whether an action
+    -- is tracked at all, which set it calls for, and who besides the named target receives it.
 
     -- Tracked spells by spell id, and the gate on the whole feature: a spell absent here is
     -- never announced and never dresses a receiver. equip names the received set through
-    -- spellreceived's SR_SET_KEY; aoe means the spell always reaches a party, and accession,
-    -- majesty and divine mean it does while that one effect is up. name and category are unread.
+    -- spellreceived.lua's SR_SET_KEY. aoe means the spell always reaches the party, and
+    -- accession, majesty and divine mean it does while that effect is up. name and category
+    -- are not read.
     local spell_info                          = {
-        -- Single-target enhancements, widened by Accession. Two rows differ: Phalanx II
-        -- spreads under nothing at all, and Cursna is the table's only divine row -- Divine
-        -- Seal, or a Yagrush in the Cursna set, widens it as well.
+        -- Single-target enhancements, widened by Accession. Two rows differ. Phalanx II
+        -- spreads under nothing, and Cursna is the only divine row, so Divine Seal, or a
+        -- Yagrush worn for the cast, widens it as well.
         [20] = { name = "Cursna", category = 'track_cursna', equip = "cursna_set", aoe = false, majesty = false, accession = true, divine = true },
         [106] = { name = "Phalanx", category = 'track_phalanx', equip = "phalanx_set", aoe = false, majesty = false, accession = true, divine = false },
         [107] = { name = "Phalanx II", category = 'track_phalanx', equip = "phalanx_set", aoe = false, majesty = false, accession = false, divine = false },
@@ -513,9 +709,9 @@ return function(E)
         [111] = { name = "Regen III", category = 'track_regen', equip = "regen_set", aoe = false, majesty = false, accession = true, divine = false },
         [477] = { name = "Regen IV", category = 'track_regen', equip = "regen_set", aoe = false, majesty = false, accession = true, divine = false },
         [504] = { name = "Regen V", category = 'track_regen', equip = "regen_set", aoe = false, majesty = false, accession = true, divine = false },
-        -- Protect and Shell, both families sharing one received set. The -ra forms are already
-        -- party-wide. Of the single-target forms, Accession widens both lines and Majesty only
-        -- the Protect line -- which is why the two lines are flagged differently.
+        -- Protect and Shell, both families sharing one received set. The -ra forms are
+        -- already party-wide. Of the single-target forms, Accession widens both lines and
+        -- Majesty only the Protect line, which is why the two lines are flagged differently.
         [43] = { name = "Protect", category = 'track_protect_shell', equip = "protect_shell_set", aoe = false, majesty = true, accession = true, divine = false },
         [44] = { name = "Protect II", category = 'track_protect_shell', equip = "protect_shell_set", aoe = false, majesty = true, accession = true, divine = false },
         [45] = { name = "Protect III", category = 'track_protect_shell', equip = "protect_shell_set", aoe = false, majesty = true, accession = true, divine = false },
@@ -536,8 +732,8 @@ return function(E)
         [132] = { name = "Shellra III", category = 'track_protect_shell', equip = "protect_shell_set", aoe = true, majesty = false, accession = false, divine = false },
         [133] = { name = "Shellra IV", category = 'track_protect_shell', equip = "protect_shell_set", aoe = true, majesty = false, accession = false, divine = false },
         [134] = { name = "Shellra V", category = 'track_protect_shell', equip = "protect_shell_set", aoe = true, majesty = false, accession = false, divine = false },
-        -- Cure, Curaga and Cura. Majesty widens every single-target Cure; Accession only the
-        -- first four, so V and VI spread under Majesty alone. The -ga and Cura forms are
+        -- Cure, Curaga and Cura. Majesty widens every single-target Cure, and Accession only
+        -- the first four, so V and VI spread under Majesty alone. The -ga and Cura forms are
         -- already party-wide.
         [1] = { name = "Cure", category = 'track_cure', equip = "cure_set", aoe = false, majesty = true, accession = true, divine = false },
         [2] = { name = "Cure II", category = 'track_cure', equip = "cure_set", aoe = false, majesty = true, accession = true, divine = false },
@@ -559,17 +755,17 @@ return function(E)
         [894] = { name = "Refresh III", category = 'track_refresh', equip = "refresh_set", aoe = false, majesty = false, accession = false, divine = false },
     }
 
-    -- Tracked job abilities, keyed by ability id and read the same way as spell_info. Two of
-    -- the widening flags are absent, having no ability equivalent; accession is carried on
-    -- every row and read by nothing.
+    -- Tracked job abilities, keyed by ability id and read the same way as spell_info. The
+    -- majesty and divine flags are absent, since no ability has an equivalent. accession is
+    -- carried on every row and read by nothing.
     --
-    -- WHAT THIS TABLE HOLDS DECIDES WHETHER FOUR CANCEL PATHS ARE CORRECT. An announced cast
-    -- leaves other characters holding slots until a completion arrives, and four paths that
-    -- cancel an action do not send one: the ON-Locked refusal in the precast hook, and the
-    -- three ammunition cancels (no round named, none in the bags, not enough). They are safe
-    -- only because the actions they reject -- Tomahawk, Angon, a ranged attack -- are not in
-    -- this table and so never announced. Adding a non-Waltz entry here makes all four live,
-    -- and the symptom appears on another character.
+    -- Four cancel paths depend on what this table holds. An announced action leaves other
+    -- characters holding slots until a completion arrives, and four paths cancel an action
+    -- without sending one. They are the ON-Locked refusal in the precast hook and the three
+    -- ammunition cancels, for no round named, none carried, and too few carried. They are
+    -- safe because nothing they cancel is tracked: Tomahawk, Angon, ranged attacks, ranged
+    -- weapon skills and Bounty Shot. A tracked entry for any of those would leave the other
+    -- characters holding gear until their own failsafe expires.
     local ability_info                        = {
         [190] = { name = "Curing Waltz", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false },
         [191] = { name = "Curing Waltz II", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false },
@@ -580,8 +776,8 @@ return function(E)
         [262] = { name = "Divine Waltz II", category = 'track_waltz', equip = "waltz_set", aoe = true, accession = false },
     }
 
-    -- The moment receivers stop waiting on an announced cast. Past it E.outgoing_cast_active
-    -- is stale, and outgoing_cast_busy clears it on the next read rather than on a timer.
+    -- The os.clock time an outstanding announce expires. Past it E.outgoing_cast_active is
+    -- stale, and outgoing_cast_busy clears it at the next read rather than on a timer.
     local outgoing_cast_deadline              = 0
 
     -- Scratch list for the party scan below, reused so a scan costs no table.
@@ -590,14 +786,15 @@ return function(E)
     ------------------------------------------------------------------------------------------------
     -- SECTION 11 - CORE UTILITIES
     ------------------------------------------------------------------------------------------------
-    -- The helpers with no subsystem of their own: everything the engine says out loud, the
-    -- clock it says it at, the questions it asks about carried gear and the party, and the
-    -- announce that tells the other characters a cast is on its way.
+    -- The helpers with no subsystem of their own: the chat channels, the clock, the questions
+    -- the engine asks about carried gear and the party, and the announce that tells the
+    -- other characters a cast is on its way.
 
     -- Chat output ---------------------------------------------------------------------------------
 
-    -- Flatten varargs into one string, tolerating nil and non-string arguments. The single
-    -- argument case returns it untouched, so an existing string is not re-built.
+    -- Join the arguments into one string, converting each with tostring. A single argument
+    -- is returned untouched, so a string is not rebuilt and a table or nil reaches print as
+    -- it is.
     local function join(...)
         if select('#', ...) < 2 then return (...) end
         local parts = {}
@@ -605,15 +802,14 @@ return function(E)
         return table.concat(parts)
     end
 
-    -- The three gated channels, each behind its own toggle and its own chat mode: log traces
-    -- for whoever is reading the engine, info is ordinary feedback, warn is a problem the
-    -- player should act on. Ten of the fourteen other files speak through these three;
-    -- counting notice and gear_report below, eleven speak through the block as a whole.
+    -- The three gated channels, each with its own chat mode. log traces the engine's work
+    -- for a maintainer and is gated by the debug setting. info is ordinary feedback and warn
+    -- is a problem the player should act on, and each has a toggle of its own.
     --
-    -- A CHAT MODE BELONGS TO ITS CHANNEL. Writing 8, 80, 121, 123, 207 or 221 into a raw
+    -- A chat mode belongs to its channel. Writing 8, 80, 121, 123, 207 or 221 into a raw
     -- add_to_chat anywhere else goes around the channel that owns it. The confirmation for
-    -- switching a channel OFF cannot go out on the channel it just silenced, which is what
-    -- notice(), the one channel with no toggle of its own, is there for.
+    -- switching a channel off cannot go out on the channel it just silenced, and notice, the
+    -- one channel with no toggle, exists for that.
     function log(...)
         if settings.debug then print(80, join(...)) end
     end
@@ -627,27 +823,28 @@ return function(E)
     end
 
     -- Mode changes, setting confirmations, and the answer to a command that asked a question.
-    -- The one channel with no gate, because a command the player just typed must be answered
-    -- whatever the toggles say. commands.lua is far and away its heaviest caller.
+    -- It is the one channel with no gate, because a command the player just typed must be
+    -- answered whatever the toggles say.
     function notice(...)
         print(221, join(...))
     end
 
-    -- The set-selection trace: which set was tried, which was merged, which was missing. Off
-    -- by default and turned on with 'gs c gearreporting'. equip.lua is the only caller, and it
-    -- reports every phase, where warn and info speak only for the phase that chose the gear.
+    -- The set-selection trace: which set was tried, which was merged and which was missing.
+    -- It is off by default and turned on with gs c gearreporting. equip.lua is the only
+    -- caller, and it reports every phase, where warn and info speak only for the phase that
+    -- chose the gear.
     function gear_report(...)
         if settings.gear_reporting then print(207, join(...)) end
     end
 
-    -- The writer under all five channels. Takes a chat mode and a value, dispatches on the
-    -- value's type, and walks a table one entry per line to four levels. Long lines are not
-    -- wrapped here -- the game breaks them itself, wherever they happen to fall.
+    -- The writer under all five channels. It takes a chat mode and a value, dispatches on
+    -- the value's type, and walks a table one entry per line, four levels deep. Long lines
+    -- are not wrapped here. The game breaks them itself, wherever they fall.
     --
-    -- THIS IS LUA'S print, REPLACED. GearSwap hands the job file and every file it includes one
-    -- shared environment, so the name declared here is the one both of them get. It reads its
-    -- FIRST argument as a chat mode, so a bare print(value) hands the value to add_to_chat
-    -- where the mode belongs; a stray debugging print does not behave the way Lua's would.
+    -- This replaces Lua's print. GearSwap gives the job file and every file it includes one
+    -- shared environment, so the job file gets this print too. It reads its first argument
+    -- as a chat mode, so a bare print(value) sends 'Value is Nil' with the value as the
+    -- mode, and a debugging print does not behave the way Lua's would.
     function print(mode, msg)
         if msg == nil then
             windower.add_to_chat(mode, 'Value is Nil')
@@ -698,10 +895,10 @@ return function(E)
         end
     end
 
-    -- The debug channel. Takes one already-built string, not varargs, and four components
-    -- import it. Because Lua builds that string before the call, a caller wraps its own site
-    -- in `if settings.debug then` -- the gate inside here stops the printing, never the
-    -- concatenation. This local also shadows Lua's stdlib debug table from here down.
+    -- The debug channel. It takes one string, already built, not varargs. Lua builds that
+    -- string before the call, so each caller wraps its site in `if settings.debug then`. The
+    -- gate inside stops the printing, never the concatenation. This local shadows Lua's
+    -- debug table from here to the end of the constructor.
     local function debug(message)
         if not settings.debug then return end
         windower.add_to_chat(121, "[Rahvin Debug] " .. message)
@@ -709,30 +906,28 @@ return function(E)
 
     -- General helpers -----------------------------------------------------------------------------
 
-    -- Wall clock in whole milliseconds. socket rather than os.clock because every timestamp
-    -- this returns crosses to another game client over IPC, and os.clock counts from each
-    -- process's own start. Deadlines nobody else reads stay on os.clock, which is compared
-    -- only against itself.
+    -- Wall clock in whole milliseconds. Its timestamps are compared across game clients over
+    -- IPC, and os.clock counts from each process's own start, so it reads socket instead. A
+    -- deadline no other client reads stays on os.clock.
     local function get_time()
         return math.floor(socket.gettime() * 1000)
     end
 
     -- Spell-received announces -------------------------------------------------------------------
 
-    -- Pay the completion an announce owes its receivers, and clear the flag. Receivers equip
-    -- and HOLD slots the moment the announce arrives, so an action that ends after announcing
-    -- has a debt: unpaid, those characters wear received gear until their own failsafe expires.
-    -- Idempotent, so a path that cannot tell whether it already paid may just call it again.
+    -- Send the completion an announce owes its receivers, and clear the flag. Receivers
+    -- equip and hold slots as soon as the announce arrives. Without the completion, they
+    -- wear the received gear until their own failsafe expires. A second call does nothing,
+    -- so a path that cannot tell whether the completion went out may call it again.
     local function finish_outgoing_cast()
         if not E.outgoing_cast_active then return end
         E.outgoing_cast_active = false
         send_ipc(string.format("RAHVIN|COMPLETE|%s|%.0f", player.name, get_time()))
     end
 
-    -- Is an announce still outstanding? builders.lua asks before announcing another, so two
-    -- casts in quick succession do not leave receivers holding gear for the first. A flag past
-    -- its deadline is stale and is cleared here rather than by any timer -- the expiry costs
-    -- nothing until somebody asks.
+    -- Whether an announce is still outstanding. builders.lua asks at precast and announces
+    -- only when none is, so a cast already announced at pretarget is not announced twice. A
+    -- flag past its deadline is stale and is cleared here, when asked, rather than by a timer.
     local function outgoing_cast_busy()
         if not E.outgoing_cast_active then return false end
         if os.clock() < outgoing_cast_deadline then return true end
@@ -742,9 +937,9 @@ return function(E)
 
     -- Table, number and gear-set helpers ----------------------------------------------------------
 
-    -- Count the entries at the top level of a table, including the string-keyed ones the
-    -- length operator cannot see. spellreceived.lua uses it to report how many casters it is
-    -- currently tracking.
+    -- Count the entries at the top level of a table, including the string keys the length
+    -- operator cannot see. spellreceived.lua uses it to report how many casters it is
+    -- tracking.
     local function count_keys(tbl)
         local count = 0
         for _ in pairs(tbl) do
@@ -753,21 +948,12 @@ return function(E)
         return count
     end
 
-    -- Round to a given number of decimal places, or to a whole number when none is given.
-    -- A nil input returns nil rather than throwing. One caller: builders.lua, formatting a
-    -- target distance into a message.
-    function round(num, numDecimalPlaces)
-        if num ~= nil then
-            local mult = 10 ^ (numDecimalPlaces or 0)
-            return math.floor(num * mult + 0.5) / mult
-        end
-    end
-
     -- Party and target helpers --------------------------------------------------------------------
 
-    -- Is the named character in this player's party right now? Walks p0-p5 only, so an
-    -- alliance member outside the party answers false -- which is the answer the caller below
-    -- wants, because no tracked spell reaches past the party.
+    -- Whether the named character is in this player's party now. It walks p0 to p5 only, so
+    -- an alliance member outside the party answers false, which both callers want. No
+    -- tracked spell reaches past the party, and neither does a Corsair roll, which the
+    -- spell-received component's eleven tracker asks about.
     local function is_target_in_party(target_name, party_info)
         if not target_name then return false end
 
@@ -784,9 +970,9 @@ return function(E)
     end
 
     -- Turn one target name into the comma-separated list of party members the spell will
-    -- actually reach, so each receiver can recognize itself in the announce. Returns the name
-    -- unchanged when the target is outside the party, or when nobody is in range -- an
-    -- announce naming nobody would leave the real target undressed.
+    -- reach, so each receiver can find itself in the announce. Returns the name unchanged
+    -- when the target is outside the party or nobody is in range, because an announce
+    -- naming nobody would leave the real target undressed.
     local function resolve_aoe_target_name(target_mob, target_name)
         local party = get_party()
         if not (party and is_target_in_party(target_name, party)) then
@@ -796,9 +982,9 @@ return function(E)
         local count = 0
         for k in pairs(NEARBY_MEMBERS_BUFFER) do NEARBY_MEMBERS_BUFFER[k] = nil end
 
-        -- Every tracked area spell is party-scope, so only p0-p5 can receive one. get_party
-        -- also returns the a10-a25 alliance entries, and walking them would name characters
-        -- the spell cannot touch.
+        -- Every tracked area spell reaches the party only, so only p0 to p5 can receive one.
+        -- get_party also returns the alliance entries a10 to a25, and walking them would
+        -- name characters the spell cannot reach.
         for i = 0, 5 do
             local member = party['p' .. i]
             if member and member.name then
@@ -831,14 +1017,15 @@ return function(E)
     end
 
     -- Tell the other characters a tracked action is on its way, and arm the completion this
-    -- one now owes them. The caller has already decided the action is tracked and whether it
-    -- spreads; the name expansion, the send and the trace of exactly what went out live here.
+    -- character now owes them. The caller has already decided that the action is tracked and
+    -- whether it spreads. The name expansion, the send and the debug trace of what went out
+    -- happen here.
     --
-    -- Called from two phases on purpose: hooks.lua at pretarget, the earliest point a target
-    -- is known, and builders.lua at precast for whatever did not announce there -- the precast
-    -- site asks outgoing_cast_busy first, so it never repeats an announce already sent. The
-    -- deadline is os.clock because only this file reads it; the timestamp in the message is
-    -- get_time because the receivers do.
+    -- Two phases call it. hooks.lua calls it at pretarget, the earliest point a target is
+    -- known, and builders.lua at precast for an action that did not announce there. The
+    -- precast site asks outgoing_cast_busy first, so it never repeats an announce already
+    -- sent. The deadline uses os.clock because only this file reads it. The timestamp in the
+    -- message uses get_time because the receivers read it.
     local function announce_tracked_cast(kind, phase, spell, target_name, aoe)
         E.outgoing_cast_active = true
         outgoing_cast_deadline = os.clock() + settings.delay
@@ -851,8 +1038,8 @@ return function(E)
 
         if aoe then
             if settings.debug then debug('AoE ' .. noun .. ' cast detected. Calculating targets.') end
-            -- The mob table is fetched only on this branch: a single-target announce carries
-            -- the name it was given and needs no position at all.
+            -- The mob table is fetched only on this branch. A single-target announce carries
+            -- the name it was given and needs no position.
             local target_mob = get_mob_by_id(spell.target.id)
             if target_mob then target_name = resolve_aoe_target_name(target_mob, target_name) end
         end
@@ -866,21 +1053,20 @@ return function(E)
     -- Recast helpers ------------------------------------------------------------------------------
 
     -- How many Scholar stratagem charges are in hand, and how many seconds until the next one
-    -- returns. hooks.lua refuses a Scholar art at zero and names the wait.
+    -- returns. hooks.lua refuses a stratagem at zero charges and names the wait.
     --
-    -- THE SECOND VALUE IS NIL IN TWO DIFFERENT CASES -- a full pool, and a character with no
-    -- stratagems at all -- so a caller must test it rather than format it. Those two cases
-    -- deserve different messages, and only the caller can tell them apart, by the first value.
+    -- The second value is nil in two different cases: a full pool, and a character with no
+    -- stratagems at all. A caller must test it before formatting it, and can tell the two
+    -- cases apart by the first value.
     local function get_current_stratagem_count()
-        -- Ability 231 is the stratagem charge pool. ABSENT IS NOT ZERO: the recast table omits
-        -- abilities this character cannot use, so a missing key means no stratagems at all,
-        -- while a zero means the pool is full.
+        -- Recast id 231 is the stratagem charge pool. A missing key is not a zero. The recast
+        -- table omits abilities this character cannot use, so a missing key means no
+        -- stratagems at all, while a zero means the pool is full.
         local charge_cooldown = windower.ffxi.get_ability_recasts()[231]
         if charge_cooldown == nil then return 0 end
 
         -- Pool size and regen period by Scholar level, main or sub. Every bracket multiplies
-        -- out to the same 240 second pool -- 1x240, 2x120, 3x80, 4x60, 5x48 -- which is what
-        -- makes the whole ladder one rule rather than five.
+        -- out to the same 240 second pool: 1 x 240, 2 x 120, 3 x 80, 4 x 60 and 5 x 48.
         local max_charges = 1
         local charge_regen_time = 240
 
@@ -908,10 +1094,10 @@ return function(E)
             charge_regen_time = 240
         end
 
-        -- The one exception to that rule. At 550 job points a main Scholar regains a charge
-        -- every 33 seconds, so its pool is 5 x 33 = 165 seconds, not 240. Job point traits
-        -- belong to the MAIN job, so a /SCH sub never earns this however much its main has
-        -- spent -- which is why this test names main_job rather than sch_level.
+        -- The one exception. With 550 job points spent, a main Scholar regains a charge
+        -- every 33 seconds, so its pool is 5 x 33 = 165 seconds, not 240. Job point bonuses
+        -- belong to the main job, so a Scholar sub job never earns this, which is why the
+        -- test reads main_job rather than sch_level.
         if player.main_job == 'SCH' and player.main_job_level >= 99 then
             local jp = player.job_points and player.job_points.sch
             if jp and (jp.jp_spent or 0) >= 550 then
@@ -932,24 +1118,24 @@ return function(E)
         local current_charges = math.floor((full_recharge_window - charge_cooldown) / charge_regen_time)
 
         -- Charges come back one regen period apart, so the remainder past the last whole
-        -- period IS the wait for the next one. One modulo on values already in hand, with no
-        -- second read of the recast table.
+        -- period is the wait for the next one.
         return math.max(0, current_charges), charge_cooldown % charge_regen_time
     end
 
     -- Carried gear --------------------------------------------------------------------------------
 
-    -- The nine bags gear can be equipped from, keyed by item name the way GearSwap presents
-    -- them. The bags gear cannot be equipped from -- safe, storage, satchel, sack, case -- are
-    -- not listed, so an item sitting in one answers no to both questions below.
+    -- The bags gear can be equipped from. GearSwap presents each as a table of the player's
+    -- items keyed by item name. The safe, storage, satchel, sack and case are not listed, so
+    -- an item sitting in one answers no to both questions below.
     local CARRY_BAGS = {
         'inventory', 'wardrobe', 'wardrobe2', 'wardrobe3', 'wardrobe4',
         'wardrobe5', 'wardrobe6', 'wardrobe7', 'wardrobe8',
     }
 
-    -- Is this item carried at all? Stops at the first bag holding it, and returns nil rather
-    -- than false when none does. The gear builders ask before merging a conditional piece, so
-    -- a set naming an item this character is not carrying is skipped rather than merged.
+    -- Whether this item is carried in any bag gear can be equipped from. It stops at the
+    -- first bag holding the item, and returns nil rather than false when none does. The
+    -- builders ask it before equipping a piece the job file did not name, and the slot holds
+    -- and the enchanted item engine ask it before relying on an item.
     local function have_item(name)
         for i = 1, #CARRY_BAGS do
             local bag = player[CARRY_BAGS[i]]
@@ -957,12 +1143,20 @@ return function(E)
         end
     end
 
-    -- Why this item cannot be worn right now, phrased for the player, or nil when it can be.
-    -- Takes a resource row rather than a name, because job, level, race and slots all live
-    -- there. It mirrors the checks GearSwap would apply, so the engine can refuse with a
-    -- reason instead of sending an equip that quietly does nothing.
+    -- The main job's level as the drop test at line 199 of GearSwap's equip_processing.lua
+    -- reads it: the job's real level from player.jobs, never the synced one. main_job_level
+    -- is the fallback when that table is absent. Both wearability tests below read the level
+    -- here.
+    local function main_job_level()
+        return (player.jobs and player.jobs[player.main_job]) or player.main_job_level
+    end
+
+    -- Why this item cannot be worn now, phrased for the player, or nil when it can be. It
+    -- takes a resource row rather than a name, because job, level, race and slots all live
+    -- there. It mirrors GearSwap's four drop tests, so the engine can refuse with a reason
+    -- instead of sending an equip that quietly does nothing.
     local function unwearable_reason(row)
-        local job_level = (player.jobs and player.jobs[player.main_job]) or player.main_job_level
+        local job_level = main_job_level()
         if row.jobs and not row.jobs[player.main_job_id] then
             return row.en .. ' cannot be worn by this job.'
         elseif row.level and job_level and row.level > job_level then
@@ -975,9 +1169,9 @@ return function(E)
         end
     end
 
-    -- How many of the item are carried, summed across every bag -- so unlike have_item this
-    -- cannot stop at the first hit. builders.lua counts bullets with it, where a stack in one
-    -- wardrobe and a stack in another are still one supply.
+    -- How many of the item are carried, summed across every bag, so unlike have_item it
+    -- cannot stop at the first hit. builders.lua counts ammunition with it, where a stack in
+    -- one wardrobe and a stack in another are one supply.
     local function have_item_count(name)
         local total = 0
         for i = 1, #CARRY_BAGS do
@@ -988,15 +1182,221 @@ return function(E)
         return total
     end
 
+    -- Elemental bonus gear ------------------------------------------------------------------------
+    -- Which of the day, weather and distance pieces a cast should wear, computed from the
+    -- mechanics in section 8's tables. Each candidate's expected multiplier on the cast's
+    -- output is scored, and the best carried, wearable one is worn. builders.lua's
+    -- elemental_check computes the cast's inputs and calls elemental_choose. The functions
+    -- above elemental_choose are its arithmetic and its wearability test.
 
-    -- Everything above, handed to the eleven components that load after this one. Nothing here
-    -- is written again once construction ends -- the one mutable this file owns,
-    -- E.outgoing_cast_active, is declared in state.lua and set from the functions above.
+    -- The expected day-and-weather term of one cast, in percent, for one choice of which
+    -- procs are forced. sd and sw are the day's and the weather's sign for the spell's
+    -- element: 1 matching, -1 penalizing and 0 neither. wmag is the weather term for its
+    -- intensity, and irid is the main's Iridescence, which rides the weather proc and its
+    -- sign. force_day and force_wx say whether an obi forces those procs, penalties
+    -- included. A helix forces them itself. cape says whether Twilight Cape is worn. Its +5
+    -- arrives on any matching proc: certainly when one is forced, and otherwise with the
+    -- chance that not every matching event misses. ring says whether Zodiac Ring is worn,
+    -- and its +3 needs no proc. An unforced proc counts at its one-in-three chance.
+    --
+    -- The cap applies to the expected value rather than to each proc outcome. That can
+    -- overstate an unforced total by at most two points, and only for a candidate without
+    -- an obi, which an obi already beats by nineteen points.
+    local function elemental_dw(sd, sw, wmag, irid, force_day, force_wx, cape, ring)
+        local dw = sd * DAY_PCT * (force_day and 1 or PROC)
+            + sw * (wmag + irid) * (force_wx and 1 or PROC)
+        if ring then dw = dw + RING_PCT end
+        if cape then
+            if (force_day and sd == 1) or (force_wx and sw == 1) then
+                dw = dw + CAPE_PCT
+            else
+                local miss = 1
+                if sd == 1 then miss = miss * (1 - PROC) end
+                if sw == 1 then miss = miss * (1 - PROC) end
+                dw = dw + CAPE_PCT * (1 - miss)
+            end
+        end
+        if dw > CAP_PCT then dw = CAP_PCT end
+        return dw
+    end
+
+    -- A candidate's gain over the bare cast, in percent of output. Its day-and-weather term
+    -- and its affinity multiply, (100 + dw) x (100 + aff) / 100, and the result is measured
+    -- against 100 plus the bare cast's own term. It is negative only for an obi that forces
+    -- a penalty the cast would otherwise only risk.
+    local function elemental_gain(base, sd, sw, wmag, irid, force_day, force_wx, cape, aff)
+        return (100 + elemental_dw(sd, sw, wmag, irid, force_day, force_wx, cape, false))
+            * (100 + aff) / 100 - 100 - base
+    end
+
+    -- The best waist-and-cape pair still possible, from the seven scores: Hachirin, the
+    -- spell's own obi and the sash, each alone and with the cape, and the cape alone. A nil
+    -- score is a pair ruled out, either ineligible or holding a piece the bags refused.
+    -- Returns the waist, whether the cape is in the pair, and the pair's score. The waist is
+    -- 1 for Hachirin, 2 for the spell's obi, 3 for the sash, or nil for none. When nothing
+    -- beats the baseline it returns nil, false, 0.
+    --
+    -- The order decides ties. Hachirin comes before the spell's obi, because it is far more
+    -- likely to be carried, and the single obi wins outright whenever a penalty exists.
+    -- Either obi comes before the sash, for the magic accuracy a forced proc carries. Each
+    -- waist without the cape comes before the same waist with it, so a cape that adds
+    -- nothing at the cap is not swapped in. The cape alone wins a tie against any pair. A
+    -- pair can tie it only when its waist adds nothing, and then the cape alone is the same
+    -- gain with one swap fewer.
+    local function elemental_pick(sH, sHC, sS, sSC, sO, sOC, sNC)
+        local w, c, s = nil, false, 0
+        if sH and sH > s then w, c, s = 1, false, sH end
+        if sHC and sHC > s then w, c, s = 1, true, sHC end
+        if sS and sS > s then w, c, s = 2, false, sS end
+        if sSC and sSC > s then w, c, s = 2, true, sSC end
+        if sO and sO > s then w, c, s = 3, false, sO end
+        if sOC and sOC > s then w, c, s = 3, true, sOC end
+        if sNC and sNC > 0 and sNC >= s then w, c, s = nil, true, sNC end
+        return w, c, s
+    end
+
+    -- Whether the main job can wear this candidate, by the first two drop tests in GearSwap's
+    -- equip_processing.lua: the job mask and the job's level. A piece GearSwap would drop
+    -- never displaces the job file's own. Unlike unwearable_reason it builds no message,
+    -- since it runs on every elemental cast and weapon skill, and the cape fails the job
+    -- mask on most melee jobs.
+    local function candidate_wearable(name)
+        local row = CANDIDATE_ROW[name]
+        local job_level = main_job_level()
+        return row.jobs[player.main_job_id] ~= nil and not (job_level and row.level > job_level)
+    end
+
+    -- Wearable, and then carried: the bags are asked only for a piece the job could wear.
+    local function candidate_carried(name)
+        return candidate_wearable(name) and have_item(name) == true
+    end
+
+    -- Choose the elemental bonus pieces for one cast: the waist from the spell's own obi,
+    -- Hachirin-no-Obi and Orpheus's Sash, Twilight Cape together with it, and then Zodiac
+    -- Ring. Every candidate is scored as if carried. The pairs that beat the baseline are
+    -- then tried best first, and a pair is taken once each of its pieces is carried and
+    -- wearable. So the bags are asked at most once per piece, and never for a piece that
+    -- could not win. A piece the bags refuse rules out every pair holding it, and the walk
+    -- moves to the runner-up.
+    --
+    -- kind is 'magic', 'helix', 'cure' or 'cura'. A helix forces its own procs, so no obi
+    -- can add to it, and only the sash, the cape and the ring can. A cure takes no sash. A
+    -- single-target cure, 'cure', takes no cape either and keeps the job file's own back,
+    -- while Cura and Curaga, 'cura', take the cape.
+    --
+    -- eid is the spell's element id and dayi the day's. sd, sw, wmag and irid are as
+    -- elemental_dw takes them. sash is the sash's affinity in percent at the target's
+    -- distance, nil or 0 when the distance is unknown. An unresolved subtarget must never
+    -- throw here, since a throw ends the midcast hook. ring_ok says whether the spell's skill
+    -- admits the ring, and it is false for a held ring too. hold_waist and hold_back say the
+    -- slot holds a piece Bonus_Keep lists, so no candidate is scored for it. A held waist
+    -- leaves the cape scored alone, and a held back leaves no pair.
+    --
+    -- Returns the waist name or nil with its expected gain in percent, then the same two
+    -- values for the back and for the right ring.
+    local function elemental_choose(kind, eid, dayi, sd, sw, wmag, irid, sash, ring_ok,
+                                    hold_waist, hold_back)
+        local helix = kind == 'helix'
+        local cure = kind == 'cure' or kind == 'cura'
+        local single = (not helix and not hold_waist and (sd == 1 or sw == 1)) and SINGLE_OBI[eid] or nil
+        local hachirin = not helix and not hold_waist and (sd ~= 0 or sw ~= 0)
+        sash = sash or 0
+        local sash_ok = not cure and not hold_waist and sash >= SASH_MIN_PCT
+        -- The cape's wearability is settled here, before any pair is scored. On a job outside
+        -- its mask no pair holds it, so no waist is asked for a pair that could never
+        -- complete. The other candidates fit every job's mask, and each is tested when asked.
+        local cape_ok = not hold_back and kind ~= 'cure' and (sd == 1 or sw == 1) and candidate_wearable(CAPE)
+
+        -- The seven scores, nil where a pair is not eligible. The bare cast forces nothing,
+        -- or everything for a helix.
+        local base = elemental_dw(sd, sw, wmag, irid, helix, helix, false, false)
+        local sH, sHC, sS, sSC, sO, sOC, sNC
+        if hachirin then
+            sH = elemental_gain(base, sd, sw, wmag, irid, true, true, false, 0)
+            if cape_ok then sHC = elemental_gain(base, sd, sw, wmag, irid, true, true, true, 0) end
+        end
+        if single then
+            sS = elemental_gain(base, sd, sw, wmag, irid, sd == 1, sw == 1, false, 0)
+            if cape_ok then sSC = elemental_gain(base, sd, sw, wmag, irid, sd == 1, sw == 1, true, 0) end
+        end
+        if sash_ok then
+            sO = elemental_gain(base, sd, sw, wmag, irid, helix, helix, false, sash)
+            if cape_ok then sOC = elemental_gain(base, sd, sw, wmag, irid, helix, helix, true, sash) end
+        end
+        if cape_ok then sNC = elemental_gain(base, sd, sw, wmag, irid, helix, helix, true, 0) end
+
+        -- Pick the best pair, ask the bags for its pieces, and walk on after a refusal. Each
+        -- piece is asked once, and its own_ variable is nil until then. There are at most
+        -- five picks: four refusals and the empty pick after them.
+        local own_h, own_s, own_o, own_c
+        local w, c, s
+        while true do
+            w, c, s = elemental_pick(sH, sHC, sS, sSC, sO, sOC, sNC)
+            if not w and not c then break end
+            local have = true
+            if w == 1 then
+                if own_h == nil then own_h = candidate_carried(HACHIRIN) end
+                if not own_h then sH, sHC, have = nil, nil, false end
+            elseif w == 2 then
+                if own_s == nil then own_s = candidate_carried(single) end
+                if not own_s then sS, sSC, have = nil, nil, false end
+            elseif w == 3 then
+                if own_o == nil then own_o = candidate_carried(SASH) end
+                if not own_o then sO, sOC, have = nil, nil, false end
+            end
+            if have and c then
+                if own_c == nil then own_c = have_item(CAPE) == true end
+                if not own_c then sHC, sSC, sOC, sNC, have = nil, nil, nil, nil, false end
+            end
+            if have then break end
+        end
+
+        -- The waist's own gain is its score without the cape, and the cape's gain is what the
+        -- pair adds to that. The chosen waist decides what the ring's gain is measured
+        -- against. With no pair taken, the ring is measured against the bare cast, so a
+        -- carried ring is still worn on its day when no obi or cape is.
+        local waist, waist_gain, force_day, force_wx, aff = nil, 0, helix, helix, 0
+        if w == 1 then
+            waist, waist_gain, force_day, force_wx = HACHIRIN, sH, true, true
+        elseif w == 2 then
+            waist, waist_gain, force_day, force_wx = single, sS, sd == 1, sw == 1
+        elseif w == 3 then
+            waist, waist_gain, aff = SASH, sO, sash
+        end
+        local back, back_gain
+        if c then back, back_gain = CAPE, s - waist_gain end
+
+        -- The ring serves Elemental Magic on its matching day, never on Lightsday or
+        -- Darksday, and only where its +3 fits under the cap on top of what is already worn.
+        -- A helix qualifies, since its forced procs make no difference to a piece that needs
+        -- none. A cure never can, since a Light spell's matching day is Lightsday.
+        local ring, ring_gain
+        if ring_ok and sd == 1 and dayi ~= LIGHT_ID and dayi ~= DARK_ID then
+            ring_gain = (elemental_dw(sd, sw, wmag, irid, force_day, force_wx, c, true)
+                - elemental_dw(sd, sw, wmag, irid, force_day, force_wx, c, false)) * (100 + aff) / 100
+            if ring_gain > 0 and candidate_carried(RING) then
+                ring = RING
+            else
+                ring_gain = nil
+            end
+        end
+        return waist, waist and waist_gain or nil, back, back_gain, ring, ring_gain
+    end
+
+
+    -- The exports, for the components that load after this one. None of these fields is
+    -- reassigned after construction. The one mutable field this file writes,
+    -- E.outgoing_cast_active, is declared in state.lua and set by the functions above.
     E.config = config
     E.res = res
     E.extdata = extdata
     E.settings = settings
-    -- The silos this load reset, for the root's announce, and each silo's current version.
+    -- The path and reason of a settings file that would not load, or nil when the load was
+    -- clean. display.lua names both in the line it prints once the client has settled,
+    -- names the path in every refused save, and writes nothing while the record stands.
+    E.settings_refused = settings_refused
+    -- The silos this load reset, and each silo's current version, for display.lua's reset
+    -- announce.
     E.settings_reset = settings_reset
     E.settings_versions = SETTINGS_VERSIONS
     E.gs_status = gs_status
@@ -1026,6 +1426,20 @@ return function(E)
     E.skillchains = skillchains
     E.PRECAST_FINAL = PRECAST_FINAL
     E.CANON_SLOT = CANON_SLOT
+    -- The elemental tables builders.lua reads for its per-cast inputs, the three ids its
+    -- guards compare, and the sash's name, which its info line tests. NONE_ID marks the
+    -- element-less spell, LIGHT_ID gates Quick Draw, and ELEMENTAL_MAGIC_SKILL admits the
+    -- ring. The obi names, the candidate rows and the other constants stay private to the
+    -- chooser, their only reader.
+    E.ELEMENT_ID = ELEMENT_ID
+    E.BEATS = BEATS
+    E.SASH_PCT = SASH_PCT
+    E.IRIDESCENCE = IRIDESCENCE
+    E.WEATHER_PCT = WEATHER_PCT
+    E.LIGHT_ID = LIGHT_ID
+    E.NONE_ID = NONE_ID
+    E.ELEMENTAL_MAGIC_SKILL = ELEMENTAL_MAGIC_SKILL
+    E.SASH = SASH
     E.spell_info = spell_info
     E.ability_info = ability_info
     E.debug = debug
@@ -1033,13 +1447,15 @@ return function(E)
     E.finish_outgoing_cast = finish_outgoing_cast
     E.outgoing_cast_busy = outgoing_cast_busy
     E.count_keys = count_keys
+    E.is_target_in_party = is_target_in_party
     E.announce_tracked_cast = announce_tracked_cast
     E.get_current_stratagem_count = get_current_stratagem_count
     E.have_item = have_item
     E.unwearable_reason = unwearable_reason
     E.have_item_count = have_item_count
+    E.elemental_choose = elemental_choose
 
-    -- Version stamp, asserted by the root against the engine's own version constant. A stale
-    -- copy of this file shadowing the current one announces itself at load, not later.
-    return '2.0'
+    -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
+    -- stops the load with an error that names it.
+    return '2.1'
 end

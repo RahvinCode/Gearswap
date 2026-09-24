@@ -22,6 +22,7 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 
 | Version | Summary |
 |---|---|
+| [2.1](#21) | Buff sets worn while a buff is up, day and weather gear chosen by what it adds, weapons kept in hand through every weaponskill, your own mode keys, one settings file per character |
 | [2.0](#20) | Rahvin GearSwap: new name, new folder; four display styles and the slot rig; the weapon lock on F10; the disable and strip holds; the capacity cape and Dynamis neck locks; a much larger gear library |
 
 The releases below shipped under the suite's former name, **Mirdain Gearswap Enhanced by
@@ -38,6 +39,341 @@ Rahvin**; 2.0 above follows 1.7.3 directly.
 | [1.6.4](#164) | 196 blue magic spells classified; item-search bag list corrected |
 | [1.6.0 – 1.6.3](#160--163) | The initial enhancement work over Mirdain 1.5.x |
 | [1.5.12](#1512) | Mirdain's original |
+
+---
+
+## 2.1
+
+2.1 puts on gear for a buff with no code in your job file, chooses day, weather and distance
+gear by what each piece adds, and keeps your weapons in hand through every weaponskill. You
+can choose your own mode keys, and each character keeps its own settings file. Most job files
+written for 2.0 need no edits. The Notices below cover the ones that do.
+
+### Notices
+
+- **Each character has its own settings file.** The settings file holds your box positions,
+  display style, chat toggles and keys. It lives in
+  `Windower4/addons/GearSwap/data/<CharacterName>/settings.xml`, the same folder GearSwap
+  checks for that character's own job files. The first time each character loads 2.1, the
+  engine copies that character's settings from `data/settings.xml` into the new file, and
+  Windower confirms it once with `New file: data/<CharacterName>/settings.xml`. The engine
+  never writes to `data/settings.xml`. Edit the character's own file from now on, and only
+  with GearSwap unloaded (`//lua unload gearswap`), because every save rewrites the whole
+  file. To start a character over from defaults, delete its file. While `data/settings.xml`
+  is still there, the next load copies it again, so delete that one too once every character
+  has a file of its own.
+- **A weaponskill keeps your weapons in hand.** Swapping main or sub resets your TP, and so
+  does swapping a ranged weapon, so a weaponskill that swapped one would fail. Main, sub and
+  range stay exactly as they are for the whole weaponskill, whatever your weaponskill sets or
+  `sets.Idle` name. A Bard's instrument and a Geomancer's handbell still swap. With
+  `gs c warn` on, a set that names one of those slots is pointed out once a minute:
+
+  ```
+  [Savage Blade] sets.Idle names main, sub; a weaponskill keeps the weapons in hand.  Silencing warnings for 60s.
+  ```
+
+  Take the slot out of the set it names, since weapons belong in `sets.Weapons`. Under the
+  weapon lock the slots stay put without the line.
+- **A weaponskill mode set names only what the mode changes.** In any offense mode but `TP`,
+  a weaponskill wears `sets.WS`, then the set named for the weaponskill, then the mode's set,
+  such as `sets.WS.ACC`. The mode's set goes on last, so one built from the whole base set,
+  `sets.WS.ACC = set_combine(sets.WS, { ... })`, puts every base piece back over your named
+  weaponskill's gear. To check your own file, look for a mode set written as
+  `set_combine(sets.WS, ...)` or `set_combine(sets.WS.RA, ...)`. To fix it, keep only the
+  pieces the mode changes: `sets.WS.ACC = { ... }`. A weaponskill's own mode set, such as
+  `sets.WS['Savage Blade'].ACC`, takes the place of `sets.WS.ACC` for that weaponskill.
+- **A table named after a buff is a buff set.** Inside `sets.OffenseMode`, `sets.Idle`,
+  `sets.WS`, `sets.Midcast`, `sets.Helix`, `sets.Storms`, a Geomancy spell's own set,
+  `sets.Geomancy.Indi`, `sets.Geomancy.Geo`, `sets.Diffusion`, `sets.Ready` and the sets the
+  engine wears from them, a table whose name is a buff's name is worn automatically while that
+  buff is on you. New and Changed Features lists exactly where. If your own
+  file keeps a table such as `sets.Idle.Refresh` for some other purpose, rename it, or it goes
+  on every time Refresh does. Spell sets inside `sets.Midcast`, such as
+  `sets.Midcast.Refresh`, stay spell sets. With `gs c warn` on, a name inside a mode set such
+  as `sets.OffenseMode.TP` that is neither a gear slot nor a buff is pointed out as your file
+  loads:
+
+  ```
+  sets.OffenseMode.TP.Footwrk is not a buff name
+  ```
+
+- **`sets.Weapons['Light Bonus']` is worn exactly as you wrote it.** On a Cure, Cura or
+  Curaga cast on Lightsday or in Light weather, a Light Bonus set with gear in it goes on
+  whole, whether or not you carry Chatoyant Staff. Its own main and sub go on too, unless the
+  weapon lock holds them. If you leave the set empty, the engine puts Chatoyant Staff in main
+  when you carry one. If you declared this set, check what it names.
+- **Five commands save as they change.** `gs c display`, `gs c debug`, `gs c warn`,
+  `gs c info` and `gs c gearreporting` write your choice to the settings file, as
+  `gs c displaymode` and `gs c displaystyle` do. A channel you turn off for one fight stays
+  off after a reload until you turn it back on.
+- **The engine handles four new commands and more arguments.** `gs c help`, `gs c keybind`,
+  `gs c displaypos` and `gs c displaycells` are engine commands, and `display`,
+  `displaymode`, `debug`, `warn`, `info` and `gearreporting` take `on` or `off`. If your job
+  file has its own `gs c` command by one of these names, rename yours. A mistyped argument to
+  any of these, or to `naked`, `weaponsonly`, `abysseaproc`, `capacity`, `aptitude`,
+  `mecisto`, `dynamisrp`, `jubilee`, `disable` or `enable`, is answered by the engine and
+  never reaches your job file. `gs c help` replies with the list of groups, and
+  `gs c keybind` with the modes or the keys it accepts. The rest reply with their usage line
+  while `gs c warn` is on.
+- **The engine supplies no `round` function.** A job file that calls `round` stops with a
+  Lua error naming it, `attempt to call global 'round' (a nil value)`, until it carries a
+  copy of its own.
+
+**If you copy a 2.1 sample file:**
+
+- **Three samples offer one more offense mode.** DRK and RDM add `MEVA`, and PUP adds `PDT`.
+  If you copy one of these samples, the offense mode key (F12 unless you changed it) and
+  `gs c offensemode` have one more stop in their cycle. Take the mode out of
+  `state.OffenseMode:options(...)` if you do not want it.
+- **Six sample files wear their buff gear through buff sets.** A job file you keep works
+  unchanged. If you copy one of these samples, its buff gear sits at the new names below and
+  needs no code of its own:
+
+  | Sample | In the 2.0 sample | In the 2.1 sample |
+  |---|---|---|
+  | MNK | `sets.Impetus` | `sets.OffenseMode.Impetus`, also worn on weaponskills as `sets.WS.Impetus` |
+  | MNK | `sets.Foot_Work` | `sets.OffenseMode.Footwork` |
+  | MNK | `sets.Boost` | `sets.OffenseMode.Boost`, also `sets.Idle.Boost` and `sets.WS.Boost` |
+  | PLD | `sets.Cover` | `sets.Idle.Cover` and `sets.OffenseMode.Cover` |
+  | PLD | `sets.Rampart` | `sets.Midcast.Rampart`, worn on every spell while Rampart is up, commented out and ready to fill |
+  | RDM | `sets.Saboteur` | `sets.Midcast.Enfeebling.Saboteur` |
+  | RUN | `sets.Embolden` | `sets.Midcast.Enhancing.Embolden` |
+  | SAM | `sets.Seigan` and `sets.ThirdEye` | `sets.OffenseMode.Seigan`, with `sets.OffenseMode.Seigan['Third Eye']` inside it, commented out and ready to fill |
+  | SCH | stratagem sets such as `sets.Immanence` and `sets.Rapture` | buff sets inside its midcast sets, with Klimaform left in the file's own code |
+
+  A Monk file that still declares `sets.Impetus`, `sets.Foot_Work` or `sets.Boost` also keeps
+  working, and the code it carries for them can go. The new RUN and SCH samples print no
+  `Embolden Set` or stratagem `... Set` line. The action line names each buff set a cast
+  wears instead.
+- **Every sample file ships empty `XIRoll` sets.** `sets.Idle.XIRoll` and
+  `sets.Idle.TP.XIRoll` (RDM has only the first) are ready for gear such as Roller's Ring
+  (see New and Changed Features). They start empty, so `gs c checksets` lists them among your
+  empty sets until you fill them or delete the lines.
+
+### New and Changed Features
+
+**Buff sets**
+
+- **Gear for a buff, with no code.** A buff set is a table named after a buff, placed inside
+  a set the engine already wears. While that buff is on you, the buff set goes on over the set
+  it sits in, and it comes off when the buff ends. Spell the buff's name as the game does, in
+  any capitalization:
+
+  ```lua
+  sets.OffenseMode.Impetus = { body = gear.bhikkuBodyPlusThree }             -- engaged, any offense mode
+  sets.OffenseMode.TP.Footwork = { feet = gear.anchoriteFeetPlusFour }       -- engaged, TP mode only
+  sets.WS['Victory Smite'].Footwork = { feet = gear.anchoriteFeetPlusFour }  -- one weaponskill
+  sets.Midcast.Enfeebling.Saboteur = { hands = gear.lethargyHandsPlusThree } -- enfeebling magic
+  ```
+
+- **Where buff sets work.** A buff set is worn only inside a set the engine wears for what
+  you are doing:
+
+  | When | Buff sets work inside |
+  |---|---|
+  | Engaged | `sets.OffenseMode`, and the set for your offense mode, such as `sets.OffenseMode.TP` |
+  | Idle | `sets.Idle`, the set for your offense mode, such as `sets.Idle.TP`, and `sets.Idle.Resting` |
+  | Weaponskills | `sets.WS` and `sets.WS.RA`, the set named for the weaponskill and its mode sets, and the mode sets other than `TP`, such as `sets.WS.ACC` and `sets.WS.RA.ACC` |
+  | Spells | `sets.Midcast`, and the set a spell wears under it, such as `sets.Midcast.Cure`, `sets.Midcast.Enfeebling` or `sets.Midcast.BlueMagic.Nuke` |
+  | Shots | `sets.Midcast.RA`, its mode sets other than `TP`, and `sets.Midcast.RA.TripleShot`, `.DoubleShot` and `.Barrage` |
+  | Job sets | `sets.Helix` with its `Dark` and `Light` sets, `sets.Storms`, a Geomancy spell's own set, `sets.Geomancy.Indi` with its `Entrust` set, `sets.Geomancy.Geo`, `sets.Diffusion` and `sets.Ready` |
+
+  A buff set anywhere else is never worn, and nothing says so. That includes `sets.Precast`,
+  `sets.JA`, `sets.Idle.Pet`, `sets.Idle.Sublimation`, `sets.Movement`, `sets.WS.TP`,
+  `sets.WS.RA.TP` and `sets.Midcast.RA.TP`, and `sets.Midcast.BlueMagic` and `sets.Geomancy`
+  themselves. `sets.Midcast.SIRD` takes none either, and with `gs c warn` on it says so as
+  your file loads. Treasure Hunter gear, your `Ammo` round and the weapon lock keep their
+  slots over a buff set.
+- **Buff sets nest.** `sets.OffenseMode.Impetus.Footwork` is worn while Impetus and Footwork
+  are both up. Nesting goes three buffs deep, and the deeper set wins a slot the two share.
+- **`XIRoll` sets.** A Corsair roll lands with a number from 1 to 11. A table named `XIRoll`,
+  placed anywhere a buff set can go, is worn while any Corsair roll on you stands at 11, for
+  gear such as Roller's Ring. After a reload or a job change it waits for the next roll or
+  Double-Up, or for another of your characters on the same computer, in your party, running
+  2.1 and holding that roll, to share the total.
+- **Every action line names the buff sets it wore**, with `gs c info` on, for example
+  `[Victory Smite] [sets.WS.Victory Smite][Used] + [sets.WS.Impetus][Used]`.
+  `gs c gearreporting` lists them too.
+- **`gs c checksets` names an empty set under every name you gave it.**
+
+**Day, weather and distance gear**
+
+- **Each piece is chosen by what it adds.** Some gear adds power to a spell whose element
+  matches the day or the weather, or to one cast at a close target. On a nuke, an elemental
+  ninjutsu, a blue magic nuke, a magical weaponskill, a helix, one of the six elemental Quick
+  Draw shots, or a Cure, Cura or Curaga, the engine weighs each such piece you carry and can
+  wear, then wears the best one for each slot. The pieces are Hachirin-no-Obi, the spell's own
+  elemental obi (Karin, Hyorin, Furin, Dorin, Rairin, Suirin, Korin or Anrin), Orpheus's Sash
+  within 10 yalms of the target, Twilight Cape and Zodiac Ring. A helix takes the sash, the
+  cape and the ring but never an obi. Zodiac Ring serves elemental magic on the day that
+  matches the spell's element, and never on Lightsday or Darksday. Cures take no sash, and a
+  single-target Cure keeps your own back piece.
+- **One line names what it wore and what each piece adds**, with `gs c info` on:
+
+  ```
+  [Fire VI] waist: Hachirin-no-Obi (+6.7%, day), back: Twilight Cape (+5.0%, day), right_ring: Zodiac Ring (+3.0%, day)
+  ```
+
+- **Zodiac Ring goes in your right ring.** Add `Elemental_Bonus_Ring_Slot = "left_ring"` to
+  your job file to use the left. Every sample file declares the line.
+- **A piece you list in `Bonus_Keep` stays put.** Oneiros Rope is listed already, so a spell
+  set that names it in its waist keeps it. Add your own with
+  `Bonus_Keep['Item Name'] = true`, spelled exactly as the game spells it.
+- **Gale Axe and Uriel Blade** take the day, weather and distance gear as magical
+  weaponskills.
+- **Nine new gear library entries**: `gear.karinObi`, `gear.hyorinObi`, `gear.furinObi`,
+  `gear.dorinObi`, `gear.rairinObi`, `gear.suirinObi`, `gear.korinObi`, `gear.anrinObi` and
+  `gear.twilightCape`.
+
+**Weapons**
+
+- **Geomancers get a third weapon lock value, `Geomancy`.** The weapon lock keeps the weapons
+  your weapon mode names in hand. `Geomancy` works like `Locked`, except that a Geomancy spell
+  wears the main and sub its own set names for the cast, and your weapon set comes back
+  afterward. Choose it with `gs c weaponlock Geomancy`, or cycle to it with F10.
+
+**Keys and help**
+
+- **Choose your own mode keys.** `gs c keybind <mode> <key>` moves one mode to another key.
+  A key is F1 to F12, alone or with one of Ctrl, Alt or Shift, typed as `^f5`, `ctrl+f5` or
+  `Ctrl F5`. `gs c keybind <mode> none` takes a mode off its key,
+  `gs c keybind <mode> default` puts it back on its usual key, and `gs c keybind default`
+  resets all eight. The modes are `offensemode`, `weaponmode`, `weaponlock`,
+  `treasurehunter`, `jobmode`, `jobmode2`, `hoxne` and `spellreceived`.
+- **Your keys are checked and saved.** A key another mode already uses is refused, and the
+  answer names that mode. Binding a key replaces any other Windower bind on it. Your keys are
+  saved for each character, and the engine leaves a key set to `none` alone, so a Windower
+  bind of your own on it survives job changes.
+- **The key list at load is two lines**, and `gs c keybind` shows it again:
+
+  ```
+  Keys: [F12] Stance  [F9] Weapon Mode  [F10] Weapon Lock  [F11] TH Mode
+  Keys: [Ctrl+F10] Hoxne Ampulla  [Ctrl+F9] Spell Received (Multibox)
+  ```
+
+  When your file names its job modes, their keys lead the second line. If that line would pass
+  100 characters, as long job-mode names can make it, the job-mode keys take a line of their
+  own, making three.
+- **`gs c help`** lists every command by group, with each mode's current key.
+  `gs c help <group>` explains the commands in one group: `modes`, `display`, `holds`,
+  `locks`, `items`, `utility` or `diagnostics`.
+
+**Display and multiboxing**
+
+- **Commands you can send to every character at once.** Sent through Windower's Send addon,
+  each of these leaves every character in the same state, whatever state it was in.
+  `gs c displaypos <x> <y>` places the status box and `gs c displaypos debug <x> <y>` the
+  debug box. With no numbers, `gs c displaypos` reports where both boxes are.
+  `gs c displaycells <n>` sets a minimum width, in character cells, for the value column of
+  the status box. `display`, `displaymode`, `debug`, `warn`, `info` and `gearreporting` take
+  `on` or `off`. Each of these saves.
+- **The rig shows three more holders in colors of their own.** The rig is the LATTICE
+  style's grid of your sixteen gear slots, each cell colored by whatever is holding that
+  slot. Sleep gear, the item a spell requires, and gear worn for a spell another of your
+  characters is casting on you each have their own color.
+- **At the character select screen,** a display, chat-channel or key-binding command changes
+  nothing, and with `gs c warn` on it says so in the chat log.
+
+**Sample files**
+
+- **Every sample file** declares `Elemental_Bonus_Ring_Slot` and its `XIRoll` sets.
+- **The SMN sample's `sets.Idle`** names no weapon, and its Garland of Bliss, Shattersoul and
+  Cataclysm use a new `sets.WS.MAB` that names none.
+- **The BRD, BST, COR, DRG, DRK, MNK, PUP, RDM, RNG, SAM and WAR samples** name only what each
+  weaponskill mode changes, so a named weaponskill keeps its own gear in every mode. WAR's
+  `sets.WS.CRIT` holds only its nine critical-hit pieces.
+- **The MNK sample** also wears Boost on weaponskills, for chaining a Boost into a
+  weaponskill between auto-attacks. Its SB and CRIT modes are built on its TP set, so their
+  gear changes.
+- **The RDM and SAM samples' `sets.WS.RA` names the arrow**, so a ranged weaponskill fires it
+  in every offense mode.
+- **The RUN sample's Embolden set** also covers Phalanx, Stoneskin, Aquaveil, Foil, Regen and
+  Refresh, and **the RDM sample's Saboteur set** also covers Diaga and Dispelga.
+- **The BLM sample's `sets.JA`** lists Black Mage's own abilities, plus the few a Geomancer or
+  Red Mage subjob reaches.
+- **Buff sets ready to fill.** These samples carry buff sets written out and commented out.
+  Remove the comment marks and add your gear:
+
+  | Sample | Buff sets |
+  |---|---|
+  | BLM | Mana Wall |
+  | BLU | Chain Affinity, Burst Affinity, Efflux |
+  | BST | Killer Instinct |
+  | DNC | Climactic Flourish, Striking Flourish, Saber Dance |
+  | DRK | Souleater, Dark Seal, Nether Void |
+  | NIN | Migawari, Futae |
+  | RDM | Composure |
+  | RUN | Pflug |
+  | SAM | Meikyo Shisui, Sekkanoki, Sengikori |
+  | SCH | Penury |
+  | SMN | Avatar's Favor |
+  | THF | Trick Attack, Sneak Attack |
+  | WAR | Restraint, Retaliation |
+  | WHM | Afflatus Solace, and Divine Caress under each status-removal spell's own set |
+
+- **The WHM and GEO samples** explain the Light Bonus set and the Geomancy lock beside the
+  sets they affect.
+
+### Optimizations
+
+- **A buff gained or lost skips the gear swap when everything it calls for is already on.**
+- **In Treasure Hunter's `Tag` and `SATA` modes, gear is rebuilt once, when a monster is
+  first tagged.** Later swings against it trigger no rebuild.
+- **Loading a job file leaves an up-to-date settings file untouched**, and a dragged box is
+  saved once, a second after it comes to rest.
+- **The message another of your characters sends when its spell finishes costs less to
+  read.**
+
+### Bug Fixes
+
+- **Both boxes leave the screen when you log out**, panel and all, and come back as you left
+  them at the next login.
+- **A box dropped while zoning keeps its place**, and so does one dropped just before a job
+  change.
+- **One character's save never overwrites another's.** A settings file that cannot be read
+  is left untouched. The character runs on the default settings, chat names the file and the
+  reason, and nothing is saved until you fix or delete the file and reload GearSwap.
+- **`on` and `off` work in any capitalization** for `gs c naked`, `weaponsonly`,
+  `abysseaproc`, `capacity`, `aptitude`, `mecisto`, `dynamisrp` and `jubilee`.
+- **A buff that lands in the seconds after your own spell puts its gear on right away.**
+- **Under the weapon lock, the locked weapons stay in hand.** A pet, Sublimation or movement
+  set that names main or sub leaves them in place.
+- **After your pet acts, the set you go back to keeps the gear your job file adds to it.**
+- **A pet action dressed by your job file's `pet_midcast_custom` says so.** When
+  `sets.Pet_Midcast` is empty and your pet code supplies the gear, as the SMN sample's blood
+  pacts do, the action line reads
+  `[Rock Buster] [sets.Pet_Midcast][Empty] + [pet_midcast_custom][Used]`, and the gear report
+  names the same hook.
+- **A spell whose precast set names an ammo gets its handbell or instrument back for the
+  midcast.**
+- **Meteor and other spells with no element take no day or weather gear.**
+- **An elemental ninjutsu takes the day, weather and distance gear whether or not it has a set
+  of its own**, such as `sets.Midcast['Katon: San']`.
+- **The rig and the status box's hold row keep up with every hold.** An item use, Sleep
+  gear, a spell's required item, gear worn for another character's spell and the weapon lock
+  recolor their slots at once, and a lock such as `gs c capacity` that switches itself off
+  clears its mark from the hold row.
+- **Reloading GearSwap while asleep frees the slots your Sleep gear was holding.**
+- **Every sample keeps each earring and ring on one side** through idle, engaged,
+  weaponskills, spells and abilities, so each set's earrings and rings go on as written. Three
+  cases still move a piece to the other side: MNK's Lehko's Ring and PLD's Telos Earring when
+  you switch mode while engaged, and BLU's Hashishin Earring +1 in SB mode when you own only
+  one.
+- **The GEO sample's Dispelga and dark magic accuracy sets wear its enfeebling set**, through
+  `sets.Midcast.Enfeebling.MACC`, which is ready for accuracy gear.
+- **The COR sample's Triple Shot volleys keep the offense mode's rings, earring, cape, belt
+  and bullet**, and its CRIT, PDL and SB shots fire the bullets named for those modes.
+- **The RDM and SAM samples keep your melee and idle ammo in ACC mode**, and wear the arrow
+  for bow shots, RDM's through the whole shot.
+- **The SAM sample's `sets.Subtle_Blow` wears both rings**, and its engaged modes and
+  weaponskills keep each earring and ring on the same side.
+- **The DRK sample's Great Sword weapon mode wears Caladbolg.**
+- **The SMN sample's Rock Buster, Mountain Buster, Crescent Fang and Spinning Dive wear its TP
+  pact set**, with Enticer's Pants.
+- **The PLD sample counts Metallic Body and Nat. Meditation as blue-skill spells**, and its
+  Rampart line posts to the party.
+- **The BLU sample's `gs c jobmode` with a value**, such as `gs c jobmode AoE`, switches the
+  spell set and macros, as cycling does.
 
 ---
 
@@ -64,8 +400,9 @@ one of them already.
   The refreshed samples carry the new lines already.
 - **Your `settings.xml` loads, and nothing has to be deleted.** The first time each character
   loads 2.0, the display settings return to their defaults — the style and the view, whether
-  the status box is shown, and each box's font, size, colors and background — along with the
-  HALO style's colors; the box positions you dragged are kept. One line per group says so:
+  the status box is shown, each box's font, size, colors and background, the LATTICE panel and
+  rig settings, and the value-column floor — along with the HALO style's colors; the box
+  positions you dragged are kept. One line per group says so:
 
   ```
   Display settings reset to defaults (version 2); box positions kept
