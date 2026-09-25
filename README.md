@@ -43,7 +43,7 @@ It began as a fork of Mirdain-Include, and Mirdain is credited for the original 
 
 # Key Features
 
-A map of what the suite does; each line links to the section that explains it.
+A map of what the suite does. Each line links to the section that explains it.
 
 ## Gear
 
