@@ -19,13 +19,14 @@
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
 --   Section 13 - Enchanted item engine. Slot constants and the slot chooser, the item
---   index, the two timing reads and the throttled cooldown warning, the use state machine
---   and its tick, and the lock modes that wear an item and hold its slot until turned off.
+--   index, the timing read and the throttled cooldown warning, the use state machine and
+--   its tick, and the lock modes that wear an item and hold its slot until turned off.
 --
 -- An item use equips an item, waits out its equip delay, sends the /item and gives the slot
 -- back. A lock mode equips an item and keeps the slot. The two share their guards, the slot
 -- chooser and the refusal wording, because they fail in the same ways: the item is not
--- carried, the character cannot wear it, or a layer that outranks them holds the slot.
+-- carried, or the character cannot wear it. A lock mode also refuses a slot another layer
+-- holds, where an item use takes the slot over.
 --
 -- E.ench_active holds the one use in progress, or nil, so two uses can never overlap.
 -- Nothing survives a reload. A use in flight simply ends, and the root's load-time release
@@ -41,14 +42,15 @@
 --          enchantment_tick. The rest go to commands, builders and th. This file also
 --          initializes E.ench_active and assigns E.ench_held_slot, which the equip component
 --          declares with slot ownership. Commands, equip, display, hoxne and lifecycle use
---          those two fields.
+--          those two fields. A lock mode that takes a slot writes the equip component's
+--          lock registry, locked and E.locked_n.
 -- GLOBALS  use_enchantment, called by gs c use and its shortcut commands, and
 --          enchantment_completed, called by the action handler when an item use finishes or
 --          is interrupted.
 -- LOADS    After the equip component and before the Hoxne component, which imports from it.
---          equip_set_command (the root) and display_box_update (display) are globals from
---          files that load later. They resolve when called, so neither may be bound in the
---          import block.
+--          equip_set_command from the root and display_box_update from the display
+--          component are globals from files that load later. They resolve when called, so
+--          neither may be bound in the import block.
 
 -- requires: rahvings/state, rahvings/core, rahvings/equip
 return function(E)
@@ -218,7 +220,7 @@ return function(E)
     end
 
     -- Report an item as on cooldown, at most once per item until the recast it reported has
-    -- run out.
+    -- run out. wait is the recast in seconds.
     --
     -- The throttle is for the Hoxne tick, which asks every few seconds for as long as the
     -- recast runs. A caller answering the player sets always, which prints on notice
@@ -251,15 +253,17 @@ return function(E)
 
     -- End the use: forget it, give the slot back, repaint the status box and queue a
     -- rebuild. release_slot hands the slot to the next layer in line, so a hold or lock mode
-    -- waiting under the use gets its item back, and an unclaimed slot is enabled. The
-    -- repaint follows the release, so the rig shows the slot's next holder. quiet skips the
-    -- repaint, for a caller that repaints once itself after further releases.
+    -- waiting under the use gets its item back, and an unclaimed slot is enabled. The use is
+    -- the one layer that may put a piece on a disable hold's slot, so it passes put_back for
+    -- the hold's record to go back on. The repaint follows the release, so the rig shows the
+    -- slot's next holder.
+    -- quiet skips the repaint, for a caller that repaints once itself after further releases.
     local function finish_enchantment(quiet)
         local st = E.ench_active
         E.ench_active = nil
         E.ench_held_slot = nil
         if not st then return end
-        release_slot(st.slot)
+        release_slot(st.slot, true)
         if not quiet then display_box_update() end
         equip_set_command()
     end
@@ -482,16 +486,17 @@ return function(E)
         jubilee = 27593, -- Jubilee Ring
     }
 
-    -- The three command words of the capacity point lock, and the name it goes by before a
-    -- cape is chosen. All three run the same chooser. 'mecisto' is another name for the
-    -- mode, not an instruction to wear a Mecisto.
+    -- The command words of the capacity point lock, and the name it goes by before a cape is
+    -- chosen. Every word runs the same chooser. 'mecisto' is another name for the mode, not
+    -- an instruction to wear a Mecisto.
     local CAPACITY_KEYS                          = { capacity = true, aptitude = true,
                                                      mecisto = true }
     local CAPACITY_MODE_NAME                     = 'Capacity point cape'
 
-    -- The capes the capacity point lock can wear. The two Aptitude Mantles carry their bonus
-    -- as item text, which extdata cannot read, so their value is stated here. The Mecisto
-    -- carries a real augment, read from each copy, and its row is the one with no value.
+    -- The capes the capacity point lock can wear, each value its capacity point bonus in
+    -- percent. The two Aptitude Mantles carry their bonus as item text, which extdata cannot
+    -- read, so their value is stated here. The Mecisto carries a real augment, read from each
+    -- copy, and its row is the one with no value.
     local CAPACITY_CAPES = {
         { id = 27604, value = 30 }, -- Aptitude Mantle +1
         { id = 27603, value = 25 }, -- Aptitude Mantle
@@ -657,7 +662,7 @@ return function(E)
 
     -- Wear an item and hold its slot against everything the job file would put there.
     -- Returns whether it took the slot. The guards mirror use_enchantment's, with one more:
-    -- a lock mode never takes a slot from a layer above it.
+    -- a lock mode never takes a slot another layer claims.
     local function lock_slot(row, augments)
         local name = row.en
         if not have_item(name) then
@@ -680,10 +685,10 @@ return function(E)
             return false
         end
 
-        -- A lock mode is the lowest layer, so it waits rather than take a claimed slot.
-        -- pick_slot falls through to the first slot the item fits, which suits an item use.
-        -- Here the same fall-through would seize a slot that an item use, the Hoxne hold or
-        -- received gear is still wearing, so the claim is tested again.
+        -- A lock mode refuses a slot any other layer claims, rather than take it. pick_slot
+        -- falls through to the first slot the item fits, which suits an item use. Here the
+        -- same fall-through could seize a slot that another layer, such as an item use, the
+        -- Hoxne hold or received gear, is still wearing, so the claim is tested again.
         local claim = slot_claim(slot)
         if claim and claim ~= 'lock' then
             report_refused(name, { [slot] = claim }, notice)
@@ -703,13 +708,15 @@ return function(E)
     end
 
     -- Reclaim a held slot that something took without telling the engine. choose_set calls
-    -- this on every build.
+    -- this on every idle and engaged build.
     --
-    -- An in-game /equipset, a level-sync unequip and a console enable all bypass GearSwap
-    -- and fire no event the engine can hear. So this compares what is worn with what is
+    -- An in-game /equipset, a level-sync unequip and a job file's own enable() call all
+    -- bypass the engine and fire no event it can hear. So this compares what is worn with what is
     -- held. The weapon lock, the disable hold and the strip hold are swept first, then the
-    -- lock modes. A lock mode's slot is reclaimed only while the lock still owns it, since a
-    -- higher layer gives the slot back itself.
+    -- lock modes. The disable hold keeps whatever the slot now wears, puts back only what an
+    -- item use's hand-back still owes it, and ends where GearSwap's own enable opened the
+    -- slot. A lock mode's slot is reclaimed only while the lock still owns it, since a higher
+    -- layer gives the slot back itself.
     local function verify_locked_slots()
         verify_weapon_lock()
         verify_disabled_slots()
@@ -723,7 +730,7 @@ return function(E)
     end
 
     -- Turn a lock mode on, off, or to the opposite of its state. Backs the capacity point
-    -- lock's three words, the Dynamis Divergence neck lock, and gs c jubilee.
+    -- lock's words, the Dynamis Divergence neck lock, and gs c jubilee.
     --
     -- Jubilee set on while already on re-asserts the ring rather than reporting it as on,
     -- so gs c jubilee on doubles as the repair when something took the slot behind the
@@ -822,5 +829,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

@@ -22,14 +22,14 @@
 --   JSE capes .............. by job, then by what the cape is augmented for
 --   AF, Relic, Empyrean .... the tiers reached for most, then the full catalog
 --   Current-era sets ....... the armor families, then Non-Set Pieces by slot
---   Referenced items ....... entries minted from the items the job files name
+--   Referenced items ....... entries made for the items the job files name
 --   Escha and Geas Fete .... the Nolan augment paths, one entry per path, armor then weapons
 --   Trial of the Magians ... every stage of every trial weapon, one entry per name
 --
 -- PRIORITY GearSwap equips a set highest priority first. Ordering by HP means maximum HP
---          rises before anything can lower it, so a swap never clamps current HP to a lower
---          maximum on the way through. That is why a job file names items from this library
---          rather than inline.
+--          rises before anything can lower it, so a swap never cuts current HP down to a
+--          lower maximum partway through. That is why a job file names items from this
+--          library rather than inline.
 --
 -- The builder an entry uses documents what its number means:
 --
@@ -51,9 +51,10 @@
 --          Divainy-Gimainy or a dark matter piece carries its list verbatim, because no two
 --          players' are the same. An item with fixed augment paths, such as the Nolan sets,
 --          gets one entry per path at that path's maximum, named for the path. GearSwap
---          equips a Rare item whatever augments it carries, so a Rare item such as a Limbus
---          Superior piece is a bare name. The Trial of the Magians weapons are bare names too,
---          because their augments differ by stage and by path.
+--          equips a Rare item whatever augments it carries, since a character holds one copy
+--          at most, so a Rare item such as a Limbus Superior piece is a bare name. The Trial
+--          of the Magians weapons are bare names too, because their augments differ by stage
+--          and by path.
 --
 -- NAMES    A name must match the game exactly. GearSwap compares it with the item's name and
 --          its log name, ignoring case. A name that matches neither equips nothing and
@@ -70,7 +71,7 @@
 -- EXPORTS  gear and the three builders, all globals. Each job file includes this file itself.
 --          The engine never includes it and no engine file reads gear, so the library reaches
 --          the game only through the sets a job file builds from it. A job file may also call
---          the builders itself, to mint an entry this library does not carry.
+--          the builders itself, to make an entry this library does not carry.
 
 gear = {}
 
@@ -500,7 +501,8 @@ gear.ebersFeetPlusTwo = hp_gear("Ebers Duckbills +2", 61)    --DT 10, Auspice +1
 gear.ebersFeetPlusThree = hp_gear("Ebers Duckbills +3", 71)  --DT 11, Auspice +19, Enhancing Magic 35
 
 --[==[ The full AF, Relic and Empyrean catalog: every variant the client resources carry,
-     whether or not anything asks for it, so a job file can name one without minting it.
+     whether or not anything asks for it, so a job file can name one without making its
+     own entry.
      Priorities are base HP throughout, since these pieces have no player-chosen augments.
      A line has its original era, with tiers up to +2, and its Reforged era, with tiers up
      to +4. GEO and RUN have the Reforged era only. ]==] --
@@ -2228,6 +2230,10 @@ gear.beckonerFeetPlusOne = hp_gear("Beck. Pigaches +1", 9)     --Haste 3, MDB 6
 gear.beckonerFeetPlusTwo = hp_gear("Beck. Pigaches +2", 29)    --Haste 3, Macc 50, MDB 9, Racc 50, Acc 50
 gear.beckonerFeetPlusThree = hp_gear("Beck. Pigaches +3", 39)  --Haste 3, Macc 60, MDB 10, Racc 60
 
+--SMN hands for one avatar
+gear.asteriaMittsPlusOne = hp_gear("Asteria Mitts +1", 18) --Carbuncle: halves perpetuation cost, Lv.+1
+gear.lamassuMittsPlusOne = hp_gear("Lamassu Mitts +1", 18) --Cait Sith: Lv.+1, Summoning magic Skill 22
+
 --BLU Artifact (75-era)
 gear.magusHead = mp_gear("Magus Keffiyeh", 20)            --INT 3, MND 3
 gear.magusHeadPlusOne = mp_gear("Magus Keffiyeh +1", 25)  --INT 5, MND 5
@@ -2997,16 +3003,16 @@ gear.ayanmoLegsPlusTwo = hp_gear("Aya. Cosciales +2", 45)  --DT 5, FC 6, Acc 45,
 gear.ayanmoFeetPlusTwo = hp_gear("Aya. Gambieras +2", 11)  --DT 3, Crit 6, Acc 42, Macc 42, DEX 37
 
 --Baayami (Superior 3; SMN)
-gear.baayamiHead = hp_gear("Baayami Hat", 34)               --Haste 6, MDB 5, Summoning 26, Avatar: Regain 3
-gear.baayamiHeadPlusOne = hp_gear("Baayami Hat +1", 49)     --Haste 6, MDB 6, Summoning magic Skill 31
-gear.baayamiBody = hp_gear("Baayami Robe", 68)              --Haste 3, FC 11, MDB 8, SMN SIRD 100, Summoning 32
-gear.baayamiBodyPlusOne = hp_gear("Baayami Robe +1", 83)    --FC 12, Haste 3, MDB 9, Summoning magic Skill 37
-gear.baayamiHands = hp_gear("Baayami Cuffs", 6)             --Haste 3, MDB 4, Summoning 28, BP Delay -6, Avatar: Regen 5
-gear.baayamiHandsPlusOne = hp_gear("Baayami Cuffs +1", 21)  --Haste 3, MDB 5, Summoning magic Skill 33
-gear.baayamiLegs = hp_gear("Baayami Slops", 61)             --Haste 5, MDB 7, Summoning magic Skill 30
-gear.baayamiLegsPlusOne = hp_gear("Baayami Slops +1", 76)   --Haste 5, MDB 8, Summoning 35, BP Delay -8, Avatar: Regen 7
-gear.baayamiFeet = hp_gear("Baayami Sabots", 15)            --Haste 3, Refresh 2, MDB 5, Summoning 24, Avatar: Regen 4
-gear.baayamiFeetPlusOne = hp_gear("Baaya. Sabots +1", 30)   --Refresh 3, Haste 3, MDB 6, Summoning magic Skill 29
+gear.baayamiHead = hp_gear("Baayami Hat", 34)              --Haste 6, MDB 5, Summoning 26, Avatar: Regain 3
+gear.baayamiHeadPlusOne = hp_gear("Baayami Hat +1", 49)    --Haste 6, MDB 6, Summoning magic Skill 31
+gear.baayamiBody = hp_gear("Baayami Robe", 68)             --Haste 3, FC 11, MDB 8, SMN SIRD 100, Summoning 32
+gear.baayamiBodyPlusOne = hp_gear("Baayami Robe +1", 83)   --FC 12, Haste 3, MDB 9, Summoning magic Skill 37
+gear.baayamiHands = hp_gear("Baayami Cuffs", 6)            --Haste 3, MDB 4, Summoning 28, BP Delay -6, Avatar: Regen 5
+gear.baayamiHandsPlusOne = hp_gear("Baayami Cuffs +1", 21) --Haste 3, MDB 5, Summoning magic Skill 33
+gear.baayamiLegs = hp_gear("Baayami Slops", 61)            --Haste 5, MDB 7, Summoning magic Skill 30
+gear.baayamiLegsPlusOne = hp_gear("Baayami Slops +1", 76)  --Haste 5, MDB 8, Summoning 35, BP Delay -8, Avatar: Regen 7
+gear.baayamiFeet = hp_gear("Baayami Sabots", 15)           --Haste 3, Refresh 2, MDB 5, Summoning 24, Avatar: Regen 4
+gear.baayamiFeetPlusOne = hp_gear("Baaya. Sabots +1", 30)  --Refresh 3, Haste 3, MDB 6, Summoning magic Skill 29
 
 --Bravery (Limbus, Superior 4; BLM SMN SCH GEO)
 gear.braveryHead = hp_gear("Bravery Petasos", 74) --DT 2, Haste 6, FC 4, Enmity -4, MAB 40, MDmg 20, MDB 7, Avatar: Enmity +6
@@ -3061,16 +3067,16 @@ gear.dutyLegs = hp_gear("Duty Flanchard", 130)  --DT 6, Haste 6, DA 6, MDB 8, SB
 gear.dutyFeet = hp_gear("Duty Sollerets", 96)   --DT 4, Haste 3, DA 4, MDB 8, SB 4, Pet: Lv +1
 
 --Ea (Superior 3; BLM RDM GEO)
-gear.eaHead = hp_gear("Ea Hat", 34)                      --Haste 6, MAB 33, MDB 5, Magic Burst II 6, Magic Burst 6
-gear.eaHeadPlusOne = hp_gear("Ea Hat +1", 54)            --Haste 6, MAB 38, Macc 50, MBD 7, MDB 6
-gear.eaBody = hp_gear("Ea Houppelande", 68)              --Haste 3, MAB 39, MDB 8, Magic Burst II 8, Magic Burst 8
-gear.eaBodyPlusOne = hp_gear("Ea Houppe. +1", 88)        --Haste 3, MAB 44, Macc 52, MBD 9, MDB 9
-gear.eaHands = hp_gear("Ea Cuffs", 6)                    --Haste 3, MAB 30, MDB 4, Magic Burst II 5, Magic Burst 5
-gear.eaHandsPlusOne = hp_gear("Ea Cuffs +1", 26)         --Haste 3, MAB 35, MDB 5, Magic Burst II 6, Magic Burst 6
-gear.eaLegs = hp_gear("Ea Slops", 61)                    --Haste 5, MAB 36, MDB 7, Magic Burst II 7, Magic Burst 7
-gear.eaLegsPlusOne = hp_gear("Ea Slops +1", 81)          --Haste 5, MAB 41, MDB 8, Magic Burst II 8, Magic Burst 8
-gear.eaFeet = hp_gear("Ea Pigaches", 15)                 --Haste 3, MAB 27, MDB 5, Magic Burst II 4, Magic Burst 4
-gear.eaFeetPlusOne = hp_gear("Ea Pigaches +1", 35)       --Haste 3, MAB 32, MDB 6, Magic Burst II 5, Magic Burst 5
+gear.eaHead = hp_gear("Ea Hat", 34)                --Haste 6, MAB 33, MDB 5, Magic Burst II 6, Magic Burst 6
+gear.eaHeadPlusOne = hp_gear("Ea Hat +1", 54)      --Haste 6, MAB 38, Macc 50, MBD 7, MDB 6
+gear.eaBody = hp_gear("Ea Houppelande", 68)        --Haste 3, MAB 39, MDB 8, Magic Burst II 8, Magic Burst 8
+gear.eaBodyPlusOne = hp_gear("Ea Houppe. +1", 88)  --Haste 3, MAB 44, Macc 52, MBD 9, MDB 9
+gear.eaHands = hp_gear("Ea Cuffs", 6)              --Haste 3, MAB 30, MDB 4, Magic Burst II 5, Magic Burst 5
+gear.eaHandsPlusOne = hp_gear("Ea Cuffs +1", 26)   --Haste 3, MAB 35, MDB 5, Magic Burst II 6, Magic Burst 6
+gear.eaLegs = hp_gear("Ea Slops", 61)              --Haste 5, MAB 36, MDB 7, Magic Burst II 7, Magic Burst 7
+gear.eaLegsPlusOne = hp_gear("Ea Slops +1", 81)    --Haste 5, MAB 41, MDB 8, Magic Burst II 8, Magic Burst 8
+gear.eaFeet = hp_gear("Ea Pigaches", 15)           --Haste 3, MAB 27, MDB 5, Magic Burst II 4, Magic Burst 4
+gear.eaFeetPlusOne = hp_gear("Ea Pigaches +1", 35) --Haste 3, MAB 32, MDB 6, Magic Burst II 5, Magic Burst 5
 
 --Enif
 gear.enifLegs = hp_gear("Enif Cosciales", 40) --FC 8, Haste 5
@@ -3172,16 +3178,16 @@ gear.kaykausFeetPathB = hp_gear("Kaykaus Boots", 11,
     { augments = { 'MP+60', '"Cure" spellcasting time -5%', 'Enmity-5', } })                        --Cure FC 5, Cure Pot 10, Enmity -5, Enhancing Magic 20
 
 --Kendatsuba (Superior 3; MNK SAM NIN)
-gear.kendatsubaHead = hp_gear("Ken. Jinpachi", 68)               --Haste 6, Crit 3, TA 3, MDB 5, SB 5
-gear.kendatsubaHeadPlusOne = hp_gear("Ken. Jinpachi +1", 88)     --TA 4, Haste 6, MDB 6, Racc 45, Acc 50
-gear.kendatsubaBody = hp_gear("Ken. Samue", 102)                 --Haste 4, Crit 7, TA 5, MDB 8, SB 9
-gear.kendatsubaBodyPlusOne = hp_gear("Ken. Samue +1", 122)       --TA 6, Haste 4, MDB 9, Racc 47, Acc 52
-gear.kendatsubaHands = hp_gear("Ken. Tekko", 41)                 --Haste 4, Crit 3, TA 3, MDB 4, SB 5
-gear.kendatsubaHandsPlusOne = hp_gear("Ken. Tekko +1", 61)       --TA 4, Haste 4, MDB 5, Racc 44, Acc 49
-gear.kendatsubaLegs = hp_gear("Ken. Hakama", 95)                 --Haste 9, Crit 5, TA 4, MDB 7, SB 7
-gear.kendatsubaLegsPlusOne = hp_gear("Ken. Hakama +1", 115)      --TA 5, Haste 9, MDB 8, Racc 46, Acc 51
-gear.kendatsubaFeet = hp_gear("Ken. Sune-Ate", 50)               --Haste 3, Crit 3, TA 3, MDB 5, SB 5
-gear.kendatsubaFeetPlusOne = hp_gear("Ken. Sune-Ate +1", 70)     --TA 4, SB 8, Crit 5
+gear.kendatsubaHead = hp_gear("Ken. Jinpachi", 68)           --Haste 6, Crit 3, TA 3, MDB 5, SB 5
+gear.kendatsubaHeadPlusOne = hp_gear("Ken. Jinpachi +1", 88) --TA 4, Haste 6, MDB 6, Racc 45, Acc 50
+gear.kendatsubaBody = hp_gear("Ken. Samue", 102)             --Haste 4, Crit 7, TA 5, MDB 8, SB 9
+gear.kendatsubaBodyPlusOne = hp_gear("Ken. Samue +1", 122)   --TA 6, Haste 4, MDB 9, Racc 47, Acc 52
+gear.kendatsubaHands = hp_gear("Ken. Tekko", 41)             --Haste 4, Crit 3, TA 3, MDB 4, SB 5
+gear.kendatsubaHandsPlusOne = hp_gear("Ken. Tekko +1", 61)   --TA 4, Haste 4, MDB 5, Racc 44, Acc 49
+gear.kendatsubaLegs = hp_gear("Ken. Hakama", 95)             --Haste 9, Crit 5, TA 4, MDB 7, SB 7
+gear.kendatsubaLegsPlusOne = hp_gear("Ken. Hakama +1", 115)  --TA 5, Haste 9, MDB 8, Racc 46, Acc 51
+gear.kendatsubaFeet = hp_gear("Ken. Sune-Ate", 50)           --Haste 3, Crit 3, TA 3, MDB 5, SB 5
+gear.kendatsubaFeetPlusOne = hp_gear("Ken. Sune-Ate +1", 70) --TA 4, SB 8, Crit 5
 
 --Magnificent (Limbus, Superior 4; MNK THF BST PUP DNC)
 gear.magnificentHead = hp_gear("Magnif. Crown", 114)   --DT 4, Haste 6, DA 4, MDB 4, SB 4, Pet: Crit 7
@@ -3212,16 +3218,16 @@ gear.mercyLegs = hp_gear("Mercy Haidate", 97)   --DT 5, Haste 5, Crit 5, PDL 5, 
 gear.mercyFeet = hp_gear("Mercy Sune-Ate", 63)  --DT 3, Haste 3, Crit 3, PDL 3, MDB 4, Wyvern: Lv +1
 
 --Mousai (Superior 3; BRD)
-gear.mousaiHead = hp_gear("Mousai Turban", 102)             --Haste 6, MDB 6, Etude 1
-gear.mousaiHeadPlusOne = hp_gear("Mousai Turban +1", 122)   --Haste 6, MDB 7
-gear.mousaiBody = hp_gear("Mousai Manteel", 171)            --Haste 3, MDB 8, Threnody 1
-gear.mousaiBodyPlusOne = hp_gear("Mou. Manteel +1", 191)    --Haste 3, Macc 52, MDB 9
-gear.mousaiHands = hp_gear("Mousai Gages", 68)              --Haste 3, MDB 4, Carol 1
-gear.mousaiHandsPlusOne = hp_gear("Mousai Gages +1", 88)    --Haste 3, MDB 5
-gear.mousaiLegs = hp_gear("Mousai Seraweels", 136)          --Haste 5, MDB 8, Minne 1
-gear.mousaiLegsPlusOne = hp_gear("Mou. Seraweels +1", 156)  --Minne 2
-gear.mousaiFeet = hp_gear("Mousai Crackows", 79)            --Haste 3, MDB 6, Mambo 1
-gear.mousaiFeetPlusOne = hp_gear("Mou. Crackows +1", 99)    --Haste 3, MDB 7, Mambo 2
+gear.mousaiHead = hp_gear("Mousai Turban", 102)            --Haste 6, MDB 6, Etude 1
+gear.mousaiHeadPlusOne = hp_gear("Mousai Turban +1", 122)  --Haste 6, MDB 7
+gear.mousaiBody = hp_gear("Mousai Manteel", 171)           --Haste 3, MDB 8, Threnody 1
+gear.mousaiBodyPlusOne = hp_gear("Mou. Manteel +1", 191)   --Haste 3, Macc 52, MDB 9
+gear.mousaiHands = hp_gear("Mousai Gages", 68)             --Haste 3, MDB 4, Carol 1
+gear.mousaiHandsPlusOne = hp_gear("Mousai Gages +1", 88)   --Haste 3, MDB 5
+gear.mousaiLegs = hp_gear("Mousai Seraweels", 136)         --Haste 5, MDB 8, Minne 1
+gear.mousaiLegsPlusOne = hp_gear("Mou. Seraweels +1", 156) --Minne 2
+gear.mousaiFeet = hp_gear("Mousai Crackows", 79)           --Haste 3, MDB 6, Mambo 1
+gear.mousaiFeetPlusOne = hp_gear("Mou. Crackows +1", 99)   --Haste 3, MDB 7, Mambo 2
 
 --Mpaca
 gear.mpacaHead = hp_gear("Mpaca's Cap", 61)     --PDT 7, TA 3, Crit 4, TP Bonus 200
@@ -3248,16 +3254,16 @@ gear.odysseanFCFeet = hp_gear("Odyssean Greaves", 20, {
     augments = { '"Blood Boon"+2', '"Fast Cast"+5', 'Phalanx +2', 'Accuracy+18 Attack+18' }, }) --FC 10, SIRD 20, Cure Pot 7, Phalanx Rec 2
 
 --Oshosi (Superior 3; RNG COR)
-gear.oshosiHead = hp_gear("Oshosi Mask", 57)                  --MDB 6, DS Dmg 20, TS Dmg 10, DS 5, TS 4
-gear.oshosiHeadPlusOne = hp_gear("Oshosi Mask +1", 77)     --Macc 50, MDB 7, Racc 45
-gear.oshosiBody = hp_gear("Oshosi Vest", 91)               --STP 7, MDB 8, Snapshot 12, DS 7, TS 6
-gear.oshosiBodyPlusOne = hp_gear("Oshosi Vest +1", 111)    --STP 10, Snapshot 14, Macc 52, MDB 9, Racc 47
-gear.oshosiHands = hp_gear("Oshosi Gloves", 29)            --MDB 4, Snapshot 8, SB 10, DS 4, TS 3
-gear.oshosiHandsPlusOne = hp_gear("Oshosi Gloves +1", 49)  --Snapshot 10, Macc 49, MDB 5, Racc 44, SB 15
-gear.oshosiLegs = hp_gear("Oshosi Trousers", 84)           --Racc 36, Snapshot 10, True Shot 4, DS 6, TS 5
-gear.oshosiLegsPlusOne = hp_gear("Osh. Trousers +1", 104)  --Snapshot 12, Macc 51, MDB 9, Racc 46
-gear.oshosiFeet = hp_gear("Oshosi Leggings", 38)           --Crit 8, Enmity -10, MDB 6, DS 3, TS 2
-gear.oshosiFeetPlusOne = hp_gear("Osh. Leggings +1", 58)   --Macc 48, MDB 7, Racc 43, Enmity -15
+gear.oshosiHead = hp_gear("Oshosi Mask", 57)              --MDB 6, DS Dmg 20, TS Dmg 10, DS 5, TS 4
+gear.oshosiHeadPlusOne = hp_gear("Oshosi Mask +1", 77)    --Macc 50, MDB 7, Racc 45
+gear.oshosiBody = hp_gear("Oshosi Vest", 91)              --STP 7, MDB 8, Snapshot 12, DS 7, TS 6
+gear.oshosiBodyPlusOne = hp_gear("Oshosi Vest +1", 111)   --STP 10, Snapshot 14, Macc 52, MDB 9, Racc 47
+gear.oshosiHands = hp_gear("Oshosi Gloves", 29)           --MDB 4, Snapshot 8, SB 10, DS 4, TS 3
+gear.oshosiHandsPlusOne = hp_gear("Oshosi Gloves +1", 49) --Snapshot 10, Macc 49, MDB 5, Racc 44, SB 15
+gear.oshosiLegs = hp_gear("Oshosi Trousers", 84)          --Racc 36, Snapshot 10, True Shot 4, DS 6, TS 5
+gear.oshosiLegsPlusOne = hp_gear("Osh. Trousers +1", 104) --Snapshot 12, Macc 51, MDB 9, Racc 46
+gear.oshosiFeet = hp_gear("Oshosi Leggings", 38)          --Crit 8, Enmity -10, MDB 6, DS 3, TS 2
+gear.oshosiFeetPlusOne = hp_gear("Osh. Leggings +1", 58)  --Macc 48, MDB 7, Racc 43, Enmity -15
 
 --Perfection (Limbus, Superior 4; WAR BRD NIN)
 gear.perfectionHead = hp_gear("Perfection Masque", 102) --DT 5, Haste 6, STP 5, Crit 5, MDB 6
@@ -3293,16 +3299,16 @@ gear.raeticHands = hp_gear("Raetic Bangles", 60)           --Haste 7, MDB 4, MP-
 gear.raeticHandsPlusOne = hp_gear("Raetic Bangles +1", 70) --Haste 7, MDB 5, Acc/Racc/Macc 55, MP-fed damage absorption
 
 --Ratri (Superior 3; DRK)
-gear.ratriHead = hp_gear("Ratri Sallet", 410)                  --Haste 7, WSD 6, Scythe Skill 44, DT +7, Regain 4
-gear.ratriHeadPlusOne = hp_gear("Ratri Sallet +1", 510)     --WSD 8, Haste 7, Macc 45, Scythe Skill 54
-gear.ratriBody = hp_gear("Ratri Plate", 433)                --Haste 3, WSD 8, DT-to-TP 8, Scythe Skill 46, DT +13
-gear.ratriBodyPlusOne = hp_gear("Ratri Plate +1", 533)      --WSD 10, Haste 3, Macc 47, Scythe Skill 56
-gear.ratriHands = hp_gear("Ratri Gadlings", 399)            --Haste 4, Enmity -7, WSD 6, Scythe Skill 43, DT +9
-gear.ratriHandsPlusOne = hp_gear("Rat. Gadlings +1", 499)   --WSD 8, Haste 4, Macc 44, Enmity -10, Scythe Skill 53
-gear.ratriLegs = hp_gear("Ratri Cuisses", 421)              --Haste 5, STP 7, WSD 7, Scythe Skill 45, DT +11
-gear.ratriLegsPlusOne = hp_gear("Ratri Cuisses +1", 521)    --STP 10, WSD 9, Haste 5, Macc 46, Scythe Skill 55
-gear.ratriFeet = hp_gear("Ratri Sollerets", 387)            --Haste 3, WSD 6, Scythe Skill 42, DT +5, Dark Dur 20
-gear.ratriFeetPlusOne = hp_gear("Rat. Sollerets +1", 487)   --WSD 8, Haste 3, Macc 43, Scythe Skill 52
+gear.ratriHead = hp_gear("Ratri Sallet", 410)             --Haste 7, WSD 6, Scythe Skill 44, DT +7, Regain 4
+gear.ratriHeadPlusOne = hp_gear("Ratri Sallet +1", 510)   --WSD 8, Haste 7, Macc 45, Scythe Skill 54
+gear.ratriBody = hp_gear("Ratri Plate", 433)              --Haste 3, WSD 8, DT-to-TP 8, Scythe Skill 46, DT +13
+gear.ratriBodyPlusOne = hp_gear("Ratri Plate +1", 533)    --WSD 10, Haste 3, Macc 47, Scythe Skill 56
+gear.ratriHands = hp_gear("Ratri Gadlings", 399)          --Haste 4, Enmity -7, WSD 6, Scythe Skill 43, DT +9
+gear.ratriHandsPlusOne = hp_gear("Rat. Gadlings +1", 499) --WSD 8, Haste 4, Macc 44, Enmity -10, Scythe Skill 53
+gear.ratriLegs = hp_gear("Ratri Cuisses", 421)            --Haste 5, STP 7, WSD 7, Scythe Skill 45, DT +11
+gear.ratriLegsPlusOne = hp_gear("Ratri Cuisses +1", 521)  --STP 10, WSD 9, Haste 5, Macc 46, Scythe Skill 55
+gear.ratriFeet = hp_gear("Ratri Sollerets", 387)          --Haste 3, WSD 6, Scythe Skill 42, DT +5, Dark Dur 20
+gear.ratriFeetPlusOne = hp_gear("Rat. Sollerets +1", 487) --WSD 8, Haste 3, Macc 43, Scythe Skill 52
 
 --Rawhide
 gear.rawhideFeet = hp_gear("Rawhide Boots", 13) --Waltz 8%
@@ -3432,33 +3438,49 @@ gear.volteLegs = hp_gear("Volte Brais", 54) --FC 8, Refresh 1
 -- weapons.
 
 --Weapons
-gear.aegis = hp_gear("Aegis", 0)                                             --MDT II 50
-gear.ammurapi = hp_gear("Ammurapi Shield", 22)                               --Macc 38, MAB 38, Enhancing Dur 10%
-gear.blurredHarp = hp_gear("Blurred Harp +1", 0)                             --All Songs 2, Ballad 2, Lullaby 2, 1 Additional Song
-gear.blurredKnife = rank_gear("Blurred Knife +1", 100)                       --OAT
-gear.blurredShield = hp_gear("Blurred Shield +1", 0)                         --WSD 7, Fencer 1
-gear.bunzi = rank_gear("Bunzi's Rod", 100)                                   --Cure Pot 30, Macc 40, MAB 35
-gear.chango = rank_gear("Chango", 100)                                       --STP 10, TP Bonus 500
-gear.compensator = hp_gear("Compensator", 0)                                 --Phantom Roll Dur 20, TS 20, Snapshot 10
-gear.daurdabla = hp_gear("Daurdabla", 0)                                     --2 Additional Songs, Singing 20, String 20, Song Duration+
-gear.daybreak = rank_gear("Daybreak", 100)                                   --Cure Pot 30%, Refresh 1, Dispelga, MND 30
-gear.debahocho = rank_gear("Debahocho", 100)                                 --1Dmg Katana, Main Hand
-gear.diamondAspis = hp_gear("Diamond Aspis", 0)                              --Self Ability Dur +25%
-gear.dullahanAxe = rank_gear("Dullahan Axe", 100)                            --1Dmg Axe, Main Hand
-gear.dunna = rank_gear("Dunna", 2)                                           --FC 3, Handbell 18, Geomancy 5, Luopan DT 5
-gear.duplus = hp_gear("Duplus Grip", 0)                                      --DA 3
-gear.enki = hp_gear("Enki Strap", 0)                                         --INT/MND 10, Macc 10, Meva 10
-gear.extinction = rank_gear("Extinction", 100)                               --1Dmg Wep, either hand; tied with Nihility so main always equips first
-gear.fomalhaut = hp_gear("Fomalhaut", 0)                                     --TP Bonus 500, Last Stand, STP 10
-gear.fourthStaff = rank_gear("Fourth Staff", 100)                            --1Dmg Staff, Retrace 24 Hours
-gear.gada = rank_gear("Gada", 100)                                           --Cure Pot 18, Healing/Enhancing/Enfeebling 18
-gear.yagrush = rank_gear("Yagrush", 100)                                     --No HP; ranked above Ammurapi Shield (22) so the main equips first
-gear.genbu = hp_gear("Genbu's Shield", 0)                                    --PDT 10, Eva 10, Fire Res -10, Earth Res +10
-gear.gjallarhorn = hp_gear("Gjallarhorn", 0)                                 --Songs +4, CHR 10, Singing/Wind Instrument 25
-gear.gleti = rank_gear("Gleti's Knife", 100)                                 --DEX/AGI 15, TA 6, Crit 5
-gear.godhands = rank_gear("Godhands", 100)                                   --STP 10, TP Bonus 500
-gear.hoe = rank_gear("Hoe", 100)                                             --1Dmg Scythe, 999 Delay
-gear.impatiens = hp_gear("Impatiens", 0)                                     --QC 2, SIRD 10
+gear.aegis = hp_gear("Aegis", 0)                         --MDT II 50
+gear.alternator = hp_gear("Alternator", 0)               --Automaton lv 113, Su 0, Melee
+gear.ammurapi = hp_gear("Ammurapi Shield", 22)           --Macc 38, MAB 38, Enhancing Dur 10%
+gear.animator = hp_gear("Animator", 0)                   --Automaton lv 1, Melee
+gear.animatorPlusOne = hp_gear("Animator +1", 0)         --Automaton lv 71, Melee
+gear.animatorP = hp_gear("Animator P", 0)                --Automaton Lv 119, Automaton All Attributes 15, Melee
+gear.animatorPII = hp_gear("Animator P II", 0)           --Automaton Lv 119, Automaton All Attributes 15, Ranged
+gear.animatorPPlusOne = hp_gear("Animator P +1", 0)      --Automaton Lv 119, Automaton All Attributes 20, Melee
+gear.animatorPIIPlusOne = hp_gear("Animator P II +1", 0) --Automaton Lv 119, Automaton All Attributes 20, Ranged
+gear.animatorZ = hp_gear("Animator Z", 0)                --Automaton lv 119, Su 1, Melee
+gear.blurredHarp = hp_gear("Blurred Harp +1", 0)         --All Songs 2, Ballad 2, Lullaby 2, 1 Additional Song
+gear.blurredKnife = rank_gear("Blurred Knife +1", 100)   --OAT
+gear.blurredShield = hp_gear("Blurred Shield +1", 0)     --WSD 7, Fencer 1
+gear.bunzi = rank_gear("Bunzi's Rod", 100)               --Cure Pot 30, Macc 40, MAB 35
+gear.chango = rank_gear("Chango", 100)                   --STP 10, TP Bonus 500
+gear.compensator = hp_gear("Compensator", 0)             --Phantom Roll Dur 20, TS 20, Snapshot 10
+gear.daurdabla = hp_gear("Daurdabla", 0)                 --2 Additional Songs, Singing 20, String 20, Song Duration+
+gear.daybreak = rank_gear("Daybreak", 100)               --Cure Pot 30%, Refresh 1, Dispelga, MND 30
+gear.debahocho = rank_gear("Debahocho", 100)             --1Dmg Katana, Main Hand
+gear.deluxeAnimator = hp_gear("Deluxe Animator", 0)      --Automaton lvl 87, Melee
+gear.diamondAspis = hp_gear("Diamond Aspis", 0)          --Self Ability Dur +25%
+gear.divinator = hp_gear("Divinator", 0)                 --Automaton lv 119, Su 0, Melee
+gear.divinatorII = hp_gear("Divinator II", 0)            --Automaton lv 119, Su 0, Ranged
+gear.dullahanAxe = rank_gear("Dullahan Axe", 100)        --1Dmg Axe, Main Hand
+gear.dunna = rank_gear("Dunna", 2)                       --FC 3, Handbell 18, Geomancy 5, Luopan DT 5
+gear.duplus = hp_gear("Duplus Grip", 0)                  --DA 3
+gear.eminentAnimator = hp_gear("Em. Animator", 0)        --Automaton lv 115, Su 0, Melee
+gear.eminentAnimatorII = hp_gear("E. Animator II", 0)    --Automaton lv 115, Su 0, Ranged
+gear.enki = hp_gear("Enki Strap", 0)                     --INT/MND 10, Macc 10, Meva 10
+gear.extinction = rank_gear("Extinction", 100)           --1Dmg Wep, either hand; tied with Nihility so main always equips first
+gear.fomalhaut = hp_gear("Fomalhaut", 0)                 --TP Bonus 500, Last Stand, STP 10
+gear.forefrontAnimator = hp_gear("F. Animator", 0)       --Automaton lv 106, Su 0, Melee
+gear.fourthStaff = rank_gear("Fourth Staff", 100)        --1Dmg Staff, Retrace 24 Hours
+gear.gada = rank_gear("Gada", 100)                       --Cure Pot 18, Healing/Enhancing/Enfeebling 18
+gear.genbu = hp_gear("Genbu's Shield", 0)                --PDT 10, Eva 10, Fire Res -10, Earth Res +10
+gear.gjallarhorn = hp_gear("Gjallarhorn", 0)             --Songs +4, CHR 10, Singing/Wind Instrument 25
+gear.gleti = rank_gear("Gleti's Knife", 100)             --DEX/AGI 15, TA 6, Crit 5
+gear.godhands = rank_gear("Godhands", 100)               --STP 10, TP Bonus 500
+gear.hoe = rank_gear("Hoe", 100)                         --1Dmg Scythe, 999 Delay
+gear.impatiens = hp_gear("Impatiens", 0)                 --QC 2, SIRD 10
+gear.magneto = hp_gear("Magneto", 0)                     --Automaton lv 117, Su 0, Melee
+gear.turboAnimator = hp_gear("Turbo Animator", 0)        --Automaton lv 40, Melee
+gear.yagrush = rank_gear("Yagrush", 100)                 --No HP; ranked above Ammurapi Shield (22) so the main equips first
 
 --Ambuscade
 gear.ajjaKnife = rank_gear("Ajja Knife", 100)                                --Macc 20, Acc 20, Dagger Skill 223
@@ -3516,6 +3538,7 @@ gear.linosMelee = hp_gear("Linos", 0, {
 gear.linosWSD = hp_gear("Linos", 0, {
     augments = { 'Attack+17', 'Weapon skill damage +3%', 'STR+6 DEX+6' }, }) --Attack+17, Weapon skill damage +3%, STR+6 DEX+6
 gear.loxoticPlusOne = rank_gear("Loxotic Mace +1", 100)                      --WSD 10
+gear.maficCudgel = rank_gear("Mafic Cudgel", 100)                            --PDT 10, Acc 27, Enmity 6, Club Skill 228
 gear.malignancePole = rank_gear("Malignance Pole", 100)                      --DT 20
 gear.marsyas = hp_gear("Marsyas", 0)                                         --Honor March, Song Dur 50%
 gear.maxentius = rank_gear("Maxentius", 100)                                 --Black Halo +50%
@@ -3526,6 +3549,7 @@ gear.mpacaStaff = rank_gear("Mpaca's Staff", 100)                            --F
 gear.musa = rank_gear("Musa", 100)                                           --FC 9-10, Regen 24-25, Cure 24-25
 gear.naegling = rank_gear("Naegling", 100)
 gear.nusku = hp_gear("Nusku Shield", 22)                                     --Racc 20, Ratt 20, STP 3
+gear.oatixur = rank_gear("Oatixur", 100)                                     --Att 26, PDT 3, Hand-to-Hand Skill 228
 gear.ophidian = rank_gear("Ophidian Sword", 100)                             --1Dmg Great Sword
 gear.priwen = hp_gear("Priwen", 80)                                          --HP 30 base + Oboro augment HP+50, DT 6, Phalanx Rec 2, Reprisal+
 gear.qutrubKnife = rank_gear("Qutrub Knife", 100)                            --1Dmg Dagger
@@ -3541,30 +3565,30 @@ gear.utu = hp_gear("Utu Grip", 70)                                           --W
 gear.zaDhaChopper = rank_gear("Za'Dha Chopper", 100)                         --1Dmg Great Axe
 
 --Aeonic
-gear.heishiShorinken = rank_gear("Heishi Shorinken", 100)                    --STP 10, MDmg 186, Katana Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
-gear.khatvanga = rank_gear("Khatvanga", 100)                                 --Occult Acumen 30, TP Bonus 500, MDmg 279, Staff Skill 269, Parrying Skill 269
-gear.lionheart = rank_gear("Lionheart", 100)                                 --STP 10, MDmg 186, Great Sword Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
-gear.sequence = rank_gear("Sequence", 100)                                   --STP 10, MDmg 186, Sword Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
-gear.tishtrya = rank_gear("Tishtrya", 100)                                   --STP 10, MDmg 217, Club Skill 269, Parrying Skill 269, Magic Accuracy Skill 255
-gear.triEdge = rank_gear("Tri-edge", 100)                                    --STP 10, MDmg 155, Axe Skill 269, Parrying Skill 269, Magic Accuracy Skill 228
+gear.heishiShorinken = rank_gear("Heishi Shorinken", 100)           --STP 10, MDmg 186, Katana Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
+gear.khatvanga = rank_gear("Khatvanga", 100)                        --Occult Acumen 30, TP Bonus 500, MDmg 279, Staff Skill 269, Parrying Skill 269
+gear.lionheart = rank_gear("Lionheart", 100)                        --STP 10, MDmg 186, Great Sword Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
+gear.sequence = rank_gear("Sequence", 100)                          --STP 10, MDmg 186, Sword Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
+gear.tishtrya = rank_gear("Tishtrya", 100)                          --STP 10, MDmg 217, Club Skill 269, Parrying Skill 269, Magic Accuracy Skill 255
+gear.triEdge = rank_gear("Tri-edge", 100)                           --STP 10, MDmg 155, Axe Skill 269, Parrying Skill 269, Magic Accuracy Skill 228
 
-gear.rostam1 = rank_gear("Rostam", 100, { bag = "wardrobe" })                --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam2 = rank_gear("Rostam", 100, { bag = "wardrobe2" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam3 = rank_gear("Rostam", 100, { bag = "wardrobe3" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam4 = rank_gear("Rostam", 100, { bag = "wardrobe4" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam5 = rank_gear("Rostam", 100, { bag = "wardrobe5" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam6 = rank_gear("Rostam", 100, { bag = "wardrobe6" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam7 = rank_gear("Rostam", 100, { bag = "wardrobe7" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
-gear.rostam8 = rank_gear("Rostam", 100, { bag = "wardrobe8" })               --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam1 = rank_gear("Rostam", 100, { bag = "wardrobe" })       --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam2 = rank_gear("Rostam", 100, { bag = "wardrobe2" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam3 = rank_gear("Rostam", 100, { bag = "wardrobe3" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam4 = rank_gear("Rostam", 100, { bag = "wardrobe4" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam5 = rank_gear("Rostam", 100, { bag = "wardrobe5" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam6 = rank_gear("Rostam", 100, { bag = "wardrobe6" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam7 = rank_gear("Rostam", 100, { bag = "wardrobe7" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
+gear.rostam8 = rank_gear("Rostam", 100, { bag = "wardrobe8" })      --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
 
-gear.crocea1 = rank_gear("Crocea Mors", 100, { bag = "wardrobe" })           --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea2 = rank_gear("Crocea Mors", 100, { bag = "wardrobe2" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea3 = rank_gear("Crocea Mors", 100, { bag = "wardrobe3" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea4 = rank_gear("Crocea Mors", 100, { bag = "wardrobe4" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea5 = rank_gear("Crocea Mors", 100, { bag = "wardrobe5" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea6 = rank_gear("Crocea Mors", 100, { bag = "wardrobe6" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea7 = rank_gear("Crocea Mors", 100, { bag = "wardrobe7" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
-gear.crocea8 = rank_gear("Crocea Mors", 100, { bag = "wardrobe8" })          --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea1 = rank_gear("Crocea Mors", 100, { bag = "wardrobe" })  --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea2 = rank_gear("Crocea Mors", 100, { bag = "wardrobe2" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea3 = rank_gear("Crocea Mors", 100, { bag = "wardrobe3" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea4 = rank_gear("Crocea Mors", 100, { bag = "wardrobe4" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea5 = rank_gear("Crocea Mors", 100, { bag = "wardrobe5" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea6 = rank_gear("Crocea Mors", 100, { bag = "wardrobe6" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea7 = rank_gear("Crocea Mors", 100, { bag = "wardrobe7" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
+gear.crocea8 = rank_gear("Crocea Mors", 100, { bag = "wardrobe8" }) --FC 20, HP 130, MP 70, DMG 180, Macc 255
 
 -- Superior 4 and 5 weapons, grips and shields, tiered as bg-wiki's Superior Equipment
 -- category lists them, since the item resources carry the tier on armor only. Main hand and
@@ -3744,11 +3768,132 @@ gear.soulcleaver = rank_gear("Soulcleaver", 100)   --Lunge 10, MAB 20, MDmg 150,
 gear.umbraStrap = hp_gear("Umbra Strap", 20)       --DT 1, MP 20, Acc 3
 
 --Ammo
-gear.coiste = hp_gear("Coiste Bodhar", 0)              --DA 3, STP 3
-gear.hydrocera = mp_gear("Hydrocera", 20)              --MND 3, Macc 6, MP 20
-gear.sapience = hp_gear("Sapience Orb", 0)             --FC 2, Enmity 2
-gear.srodaTathlum = hp_gear("Sroda Tathlum", 0)        --Magic Crit II 10, Macc -10, Meva -10
-gear.staunchPlusOne = hp_gear("Staunch Tathlum +1", 0) --DT 3, SIRD 11
+gear.astralPot = hp_gear("Astral Pot", 0)                  --Enchantment: Enhances avatar magical attack
+gear.automatonOil = hp_gear("Automaton Oil", 0)            --Automaton Repair Ammo
+gear.automatonOilPlusOne = hp_gear("Automat. Oil +1", 0)   --Automaton Repair Ammo
+gear.automatonOilPlusTwo = hp_gear("Automat. Oil +2", 0)   --Automaton Repair Ammo
+gear.automatonOilPlusThree = hp_gear("Automat. Oil +3", 0) --Automaton Repair Ammo
+-- The oil's key in 2.1, kept so a job file written for 2.1 still finds the oil.
+gear.canOfAutomatonOilPlusThree = gear.automatonOilPlusThree
+gear.coiste = hp_gear("Coiste Bodhar", 0)                  --DA 3, STP 3
+gear.demonryCore = hp_gear("Demonry Core", 0)              --DEX 4, Pet: Acc 4
+gear.esperStone = hp_gear("Esper Stone", 0)                --Enmity -2, Avatar: MAB 1
+gear.esperStonePlusOne = hp_gear("Esper Stone +1", 0)      --Enmity -5, Blood Boon 3, Elemental Siphon 20, Pet: MAB 6
+gear.hydrocera = mp_gear("Hydrocera", 20)                  --MND 3, Macc 6, MP 20
+gear.petFoodAlpha = hp_gear("Pet Food Alpha", 0)           --Reward Ammo
+gear.petFoodBeta = hp_gear("Pet Food Beta", 0)             --Reward Ammo
+gear.petFoodGamma = hp_gear("Pet Fd. Gamma", 0)            --Reward Ammo
+gear.petFoodDelta = hp_gear("Pet Food Delta", 0)           --Reward Ammo
+gear.petFoodEpsilon = hp_gear("Pet Fd. Epsilon", 0)        --Reward Ammo
+gear.petFoodZeta = hp_gear("Pet Food Zeta", 0)             --Reward Ammo
+gear.petFoodEta = hp_gear("Pet Food Eta", 0)               --Reward Ammo
+gear.petFoodTheta = hp_gear("Pet Food Theta", 0)           --Reward Ammo
+gear.petPoultice = hp_gear("Pet Poultice", 0)              --Pet Regen Ammo
+gear.petRoborant = hp_gear("Pet Roborant", 0)              --Pet Erase Ammo
+gear.sapience = hp_gear("Sapience Orb", 0)                 --FC 2, Enmity 2
+gear.srodaTathlum = hp_gear("Sroda Tathlum", 0)            --Magic Crit II 10, Macc -10, Meva -10
+gear.staunchPlusOne = hp_gear("Staunch Tathlum +1", 0)     --DT 3, SIRD 11
+gear.voluspaTathlum = hp_gear("Voluspa Tathlum", 0)        --STR 5, DEX 5, CHR 5, Acc 10, Att 10, Pet: Acc 15, Racc 15, Macc 15
+
+--Jugs
+gear.handfulOfCrumblySoil = hp_gear("Crumbly Soil", 0)             --Calls Brainy Waluis, lv 99
+gear.handfulOfWindyGreens = hp_gear("Windy Greens", 0)             --Calls Swooping Zhivago, lv 99
+gear.jugOfAgedHumus = hp_gear("Aged Humus", 0)                     --Calls Sweet Caroline, lv 99
+gear.jugOfAiryBroth = hp_gear("Airy Broth", 0)                     --Calls Amiable Roche, lv 99
+gear.jugOfAlchemistsWater = hp_gear("Alchemist Water", 0)          --Calls Homunculus, lv 23
+gear.jugOfAnticaBroth = hp_gear("Antica Broth", 0)                 --Calls an antlion familiar, lv 38
+gear.jugOfAuroralBroth = hp_gear("Auroral Broth", 0)               --Calls Turbid Toloi, lv 75
+gear.jugOfBlackwaterBroth = hp_gear("Blackwater Broth", 0)         --Calls Headbreaker Ken, lv 99
+gear.jugOfBloodBroth = hp_gear("Blood Broth", 0)                   --Calls a diremite familiar, lv 43
+gear.jugOfBrinyBroth = hp_gear("Briny Broth", 0)                   --Calls Dapper Mac, lv 76
+gear.jugOfBubblingCarrionBroth = hp_gear("Bub. Carrion Broth", 0)  --Calls Audacious Anna, lv 85
+gear.jugOfBubblyBroth = hp_gear("Bubbly Broth", 0)                 --Calls Bouncing Bertha, lv 99
+gear.jugOfBugBroth = hp_gear("Bug Broth", 0)                       --Calls a mayfly familiar, lv 33
+gear.jugOfBugRiddenBroth = hp_gear("Bug-Ridden Broth", 0)          --Calls Alluring Honey, lv 99
+gear.jugOfBurningCarrionBroth = hp_gear("Bur. Carrion Broth", 0)   --Calls Gorefang Hobs, lv 93
+gear.jugOfCarrionBroth = hp_gear("Carrion Broth", 0)               --Calls a lizard familiar, lv 33
+gear.jugOfCarrotBroth = hp_gear("Carrot Broth", 0)                 --Calls a hare familiar, lv 23
+gear.jugOfChirpingGrasshopperBroth = hp_gear("C. Grass. Broth", 0) --Calls Presto Julio, lv 83
+gear.jugOfClearBloodBroth = hp_gear("C. Blood Broth", 0)           --Calls Lifedrinker Lars, lv 63
+gear.jugOfCloudyWheatBroth = hp_gear("Cl. Wheat Broth", 0)         --Calls Gooey Gerard, lv 95
+gear.jugOfColdCarrionBroth = hp_gear("C. Carrion Broth", 0)        --Calls Coldblood Como, lv 53
+gear.jugOfCracklingBroth = hp_gear("Crackling Broth", 0)           --Calls Anklebiter Jedd, lv 99
+gear.jugOfCreepyBroth = hp_gear("Creepy Broth", 0)                 --Calls Cursed Annabelle, lv 99
+gear.jugOfCunningBrainBroth = hp_gear("Cng. Brain Broth", 0)       --Calls Crafty Clyvonne, lv 76
+gear.jugOfCurdledPlasmaBroth = hp_gear("C. Plasma Broth", 0)       --Calls Fatso Fargann, lv 81
+gear.jugOfDancingHerbalBroth = hp_gear("D. Herbal Broth", 0)       --Calls Nursery Nazuna, lv 76
+gear.jugOfDecayingBroth = hp_gear("Decaying Broth", 0)             --Calls a slime familiar, lv 99
+gear.jugOfDeepbedSoil = hp_gear("Deepbed Soil", 0)                 --Calls Discreet Louise, lv 79
+gear.jugOfDeepwaterBroth = hp_gear("Deepwater Broth", 0)           --Calls Submerged Iyo, lv 99
+gear.jugOfDireBroth = hp_gear("Dire Broth", 0)                     --Calls Generous Arthur, lv 99
+gear.jugOfElectrifiedBroth = hp_gear("Electrified Broth", 0)       --Calls Redolent Candi, lv 99
+gear.jugOfFamousCarrotBroth = hp_gear("F. Carrot Broth", 0)        --Calls Keeneared Steffi, lv 43
+gear.jugOfFeculentBroth = hp_gear("Feculent Broth", 0)             --Calls Daring Roland, lv 99
+gear.jugOfFermentedBroth = hp_gear("Ferm. Broth", 0)               --Calls Aged Angus, lv 99
+gear.jugOfFishBroth = hp_gear("Fish Broth", 0)                     --Calls a crab familiar, lv 23
+gear.jugOfFishOilBroth = hp_gear("Fish Oil Broth", 0)              --Calls Courier Carrie, lv 23
+gear.jugOfFizzyBroth = hp_gear("Fizzy Broth", 0)                   --Calls Caring Kiyomaro, lv 99
+gear.jugOfFragrantAnticaBroth = hp_gear("F. Antica Broth", 0)      --Calls Chopsuey Chucky, lv 63
+gear.jugOfFrizzanteBroth = hp_gear("Frizzante Broth", 0)           --Calls a lynx familiar, lv 99
+gear.jugOfFuriousBroth = hp_gear("Furious Broth", 0)               --Calls Suspicious Alice, lv 99
+gear.jugOfGassySap = hp_gear("Gassy Sap", 0)                       --Calls Energized Sefina, lv 99
+gear.jugOfGlazedBroth = hp_gear("Glazed Broth", 0)                 --Calls Choral Leera, lv 99
+gear.jugOfGoblinBugBroth = hp_gear("Gob. Bug Broth", 0)            --Calls Mailbuster Cetas, lv 85
+gear.jugOfGrasshopperBroth = hp_gear("Grass. Broth", 0)            --Calls a flytrap familiar, lv 28
+gear.jugOfHeavenlyBroth = hp_gear("Heavenly Broth", 0)             --Calls Left-Handed Yoko, lv 99
+gear.jugOfHerbalBroth = hp_gear("Herbal Broth", 0)                 --Calls a sheep familiar, lv 23
+gear.jugOfHumus = hp_gear("Humus", 0)                              --Calls Flowerpot Bill, lv 28
+gear.jugOfInsipidBroth = hp_gear("Insipid Broth", 0)               --Calls Surging Storm, lv 99
+gear.jugOfLivelyMoleBroth = hp_gear("L. Mole Broth", 0)            --Calls Ambusher Allie, lv 58
+gear.jugOfLividBroth = hp_gear("Livid Broth", 0)                   --Calls Warlike Patrick, lv 99
+gear.jugOfLuckyBroth = hp_gear("Lucky Broth", 0)                   --Calls Faithful Falcorr, lv 86
+gear.jugOfLuckyCarrotBroth = hp_gear("L. Carrot Broth", 0)         --Calls Lucky Lulush, lv 76
+gear.jugOfLyricalBroth = hp_gear("Lyrical Broth", 0)               --Calls Rhyming Shizuna, lv 99
+gear.jugOfMeatBroth = hp_gear("Meat Broth", 0)                     --Calls a tiger familiar, lv 28
+gear.jugOfMeatyBroth = hp_gear("Meaty Broth", 0)                   --Calls Blackbeard Randy, lv 99
+gear.jugOfMellowBirdBroth = hp_gear("Mlw. Bird Broth", 0)          --Calls Swift Sieghard, lv 86
+gear.jugOfMoleBroth = hp_gear("Mole Broth", 0)                     --Calls an eft familiar, lv 33
+gear.jugOfMuddyBroth = hp_gear("Muddy Broth", 0)                   --Calls Threestar Lynn, lv 99
+gear.jugOfNoisyGrasshopperBroth = hp_gear("N. Grass. Broth", 0)    --Calls Voracious Audrey, lv 53
+gear.jugOfPaleSap = hp_gear("Pale Sap", 0)                         --Calls Hurler Percival, lv 99
+gear.jugOfPoisonousBroth = hp_gear("Poisonous Broth", 0)           --Calls an acuex familiar, lv 99
+gear.jugOfPristineSap = hp_gear("Pristine Sap", 0)                 --Calls a weevil familiar, lv 99
+gear.jugOfPungentBroth = hp_gear("Pungent Broth", 0)               --Calls Jovial Edwin, lv 99
+gear.jugOfPutrescentBroth = hp_gear("Putrescent Broth", 0)         --Calls Sultry Patrice, lv 99
+gear.jugOfQuadavBugBroth = hp_gear("Qdv. Bug Broth", 0)            --Calls Shellbuster Orob, lv 53
+gear.jugOfRancidBroth = hp_gear("Rancid Broth", 0)                 --Calls a porter crab familiar, lv 99
+gear.jugOfRapidBroth = hp_gear("Rapid Broth", 0)                   --Calls Fleet Reinhard, lv 99
+gear.jugOfRazorBrainBroth = hp_gear("Rzr. Brain Broth", 0)         --Calls Bloodclaw Shasra, lv 90
+gear.jugOfRichHumus = hp_gear("Rich Humus", 0)                     --Calls Flowerpot Ben, lv 51
+gear.jugOfSalineBroth = hp_gear("Saline Broth", 0)                 --Calls Sharpwit Hermes, lv 99
+gear.jugOfSalubriousBroth = hp_gear("Salubrious Broth", 0)         --Calls Attentive Ibuki, lv 99
+gear.jugOfSavageMoleBroth = hp_gear("Svg. Mole Broth", 0)          --Calls Bugeyed Broncha, lv 90
+gear.jugOfScarletSap = hp_gear("Scarlet Sap", 0)                   --Calls Panzer Galahad, lv 63
+gear.jugOfSeedbedSoil = hp_gear("Seedbed Soil", 0)                 --Calls a funguar familiar, lv 33
+gear.jugOfShadowyBroth = hp_gear("Shadowy Broth", 0)               --Calls Crude Raphie, lv 96
+gear.jugOfShimmeringBroth = hp_gear("Shimmering Broth", 0)         --Calls Sunburst Malfik, lv 99
+gear.jugOfSingingHerbalBroth = hp_gear("S. Herbal Broth", 0)       --Calls Lullaby Melodia, lv 43
+gear.jugOfSpicyBroth = hp_gear("Spicy Broth", 0)                   --Calls Scissorleg Xerin, lv 99
+gear.jugOfSpumanteBroth = hp_gear("Spumante Broth", 0)             --Calls Vivacious Gaston, lv 99
+gear.jugOfSugaryBroth = hp_gear("Sugary Broth", 0)                 --Calls a colibri familiar, lv 99
+gear.jugOfSunWater = hp_gear("Sun Water", 0)                       --Calls Amigo Sabotender, lv 75
+gear.jugOfSwirlingBroth = hp_gear("Swirling Broth", 0)             --Calls Droopy Dortwin, lv 99
+gear.jugOfTantalizingBroth = hp_gear("Tant. Broth", 0)             --Calls Vivacious Vickie, lv 99
+gear.jugOfTranslucentBroth = hp_gear("Trans. Broth", 0)            --Calls Herald Henry, lv 99
+gear.jugOfTreeSap = hp_gear("Tree Sap", 0)                         --Calls a beetle familiar, lv 38
+gear.jugOfTrulyPristineSap = hp_gear("T. Pristine Sap", 0)         --Calls Stalwart Angelina, lv 99
+gear.jugOfTurpidBroth = hp_gear("Turpid Broth", 0)                 --Calls a hippogryph familiar, lv 99
+gear.jugOfVenomousBroth = hp_gear("Venomous Broth", 0)             --Calls Fluffy Bredo, lv 99
+gear.jugOfVermihumus = hp_gear("Vermihumus", 0)                    --Calls Flowerpot Merle, lv 76
+gear.jugOfViscousBroth = hp_gear("Vis. Broth", 0)                  --Calls Pondering Peter, lv 99
+gear.jugOfWarmMeatBroth = hp_gear("W. Meat Broth", 0)              --Calls Saber Siravarde, lv 51
+gear.jugOfWetlandsBroth = hp_gear("Wetlands Broth", 0)             --Calls a mosquito familiar, lv 99
+gear.jugOfWispyBroth = hp_gear("Wispy Broth", 0)                   --Calls Brave Hero Glenn, lv 99
+gear.jugOfWoolGrease = hp_gear("Wool Grease", 0)                   --Calls Dipper Yuly, lv 76
+gear.jugOfWormyBroth = hp_gear("Wormy Broth", 0)                   --Calls Slippery Silas, lv 23
+gear.jugOfZestfulSap = hp_gear("Zestful Sap", 0)                   --Calls a yellow beetle familiar, lv 99
+gear.slimyWebbing = hp_gear("Slimy Webbing", 0)                    --Calls Gussy Hachirobe, lv 99
+gear.stickyWebbing = hp_gear("Sticky Webbing", 0)                  --Calls a spider familiar, lv 99
 
 --Neck
 gear.adoulinRefuge = hp_gear("Adoulin's Refuge", 0)           --Reives: Auto-Reraise
@@ -3777,6 +3922,7 @@ gear.eschan = hp_gear("Eschan Stone", 20)                     --Macc 7, MAB 7
 gear.etoileGorgetPlusTwo = hp_gear("Etoile Gorget +2", 0)     --Macc 25, Acc 25, Waltz 10
 gear.fotiaNeck = hp_gear("Fotia Gorget", 0)                   --Latent WSD 10
 gear.hoxneNeck = hp_gear("Hoxne Ampulla", 0)                  --Enchantment 100% DT costs 1000gil per hit
+gear.inqBeadNecklace = hp_gear("Inq. Bead Necklace", 55)      --MDB 8
 gear.iskur = hp_gear("Iskur Gorget", 30)                      --STP 8, Racc 30, Ratt 30
 gear.knightsBeadPlusTwo = hp_gear("Kgt. Beads +2", 60)        --Augment HP+60, VIT/MND 15, DT 7, Enmity 10
 gear.loricatePlusOne = hp_gear("Loricate Torque +1", 0)       --DT 6, SIRD 5
@@ -3796,6 +3942,7 @@ gear.regalNeck = hp_gear("Regal Necklace", 0)                 --Phantom Roll 7, 
 gear.reti = hp_gear("Reti Pendant", 0)                        --String Instrument 9, Handbell 5, Conserve MP 4, CHR 7
 gear.sanctity = hp_gear("Sanctity Necklace", 35)              --Macc 10, MAB 10, Regen 2
 gear.scoutGorgetPlusTwo = hp_gear("Scout's Gorget +2", 0)     --Racc 25, Macc 25, Snapshot 4, AGI 13-25, STP 4-10, PDL 5-10
+gear.shulmanuCollar = hp_gear("Shulmanu Collar", 0)           --DA 3, Acc 20, Att 20, Pet Acc/Att 20, Pet DA 5
 gear.srodaNecklace = hp_gear("Sroda Necklace", 0)             --Ailment Resist Magic 20, Enhancing Dur -50
 gear.vim = hp_gear("Vim Torque", 0)                           --Refresh 1-2, Latent Regain 15
 gear.vimPlusOne = hp_gear("Vim Torque +1", 0)                 --Refresh 1-3, Latent Regain 20
@@ -3985,82 +4132,82 @@ gear.wicceEarring = hp_gear("Wicce Earring", 0)                --MAB 7, MDmg 7
 gear.wicceEarringPlusTwo = hp_gear("Wicce Earring +2", 0)      --MAB 9, MDmg 9
 
 --Ring
-gear.adoulinRing = hp_gear("Adoulin Ring", 50)                --Acc 5, Att 15, Racc 5, Ratt 15, Macc 5, MAB 7, MP 50
-gear.adoulinRingPlusOne = hp_gear("Adoulin Ring +1", 55)      --Acc 8, Att 20, Racc 8, Ratt 20, Macc 8, MAB 8, MP 55
-gear.apate = hp_gear("Apate Ring", 0)                         --STP 3, SB 5, STR/DEX/AGI 6
-gear.arvina = hp_gear("Arvina Ringlet", 0)                    --AGI 4, Marksmanship 3
-gear.ayanmoRing = hp_gear("Ayanmo Ring", 0)                   --DT 3, Acc 6, Macc 6
-gear.balrahnRing = hp_gear("Balrahn's Ring", 0)               --Macc 4, Assault: INT/MND/CHR 4, Refresh
-gear.barataria = hp_gear("Barataria Ring", 0)                 --Phantom Roll 5
-gear.crepuscularRing = hp_gear("Crepuscular Ring", 0)         --Macc 10, RAcc 10, Snapshot 3, STP 6
-gear.defending = hp_gear("Defending Ring", 0)                 --DT 10
-gear.dingir = hp_gear("Dingir Ring", 0)                       --AGI 10, Ratt 25, MAB 10, Recycle 10
-gear.ducalGuardRing = hp_gear("Dcl.Grd. Ring", 0)             --Enchantment: Ducal Recall, 5 charges
-gear.ephramadRing = hp_gear("Ephramad's Ring", 0)             --PDL 10, STR/DEX/AGI 10, Acc 20, Att 20, Racc 20, Ratt 20
-gear.epimanondas = hp_gear("Epaminondas's Ring", 0)           --WSD 5
-gear.eponas = hp_gear("Epona's Ring", 0)                      --DA 3, TA 3
-gear.evanescence = hp_gear("Evanescence Ring", 0)             --Dark Magic 10, SIRD 5, Drain/Aspir 10
-gear.excelsisRing = hp_gear("Excelsis Ring", 0)               --Att 8, Drain/Aspir+
-gear.fenrir = mp_gear("Fenrir Ring", 50)                      --Dark +15, MAB 2
-gear.fickblixRing = hp_gear("Fickblix's Ring", 0)             --DA 10, SB 10, Pet Acc/Racc/Macc 20, Pet Dmg 10
-gear.flammaRing = hp_gear("Flamma Ring", 0)                   --Acc 6, Macc 6, STP 5
-gear.fortifiedRing = mp_gear("Fortified Ring", 50)            --MDT 5, Enemy Crit -7, MP 50
-gear.gelatinous = hp_gear("Gelatinous Ring", 35)              --Unity Ranking HP+10~35 at top rank; PDT 6, MDT +2
-gear.gelatinousPlusOne = hp_gear("Gelatinous Ring +1", 135)   --Unity Ranking HP+10~35 at top rank, plus rank-15 augment HP+100; PDT 7, MDT +1
-gear.freke = hp_gear("Freke Ring", 0)                         --Int 10, MAB 8, SIRD 10
-gear.gereRing = hp_gear("Gere Ring", 0)                       --TA 5, STR 10
-gear.griffonRing = hp_gear("Griffon Ring", 25)                --Reduces enemy crit rate
-gear.gurebuRing = hp_gear("Gurebu's Ring", 0)                 --MND 10, MEva 20, All Status Res 20, Regen 2, Refresh 2
-gear.havertonRing = hp_gear("Haverton Ring", 0)               --Racc 20, Ninjutsu Skill 10, Snapshot 6, DW 5
-gear.havertonRingPlusOne = hp_gear("Haverton Ring +1", 0)     --Racc 23, Ninjutsu Skill 11, Snapshot 7, DW 6
-gear.hetairoi = hp_gear("Hetairoi Ring", 0)              --TA 2, TA Dmg 5, Crit 1
-gear.ilabrat = hp_gear("Ilabrat Ring", 60)                    --STP 5, AGI 10 , DEX 10, Att 25
-gear.jhakriRing = hp_gear("Jhakri Ring", 0)                   --MAB 3, MB 2, Macc 6
-gear.jubileeRing = hp_gear("Jubilee Ring", 0)                 --Skill Up +100%, EXP + 50%
-gear.inyangaRing = hp_gear("Inyanga Ring", 0)                 --MDT 2, Macc 6, Meva 12, Set Refresh
-gear.jalzahnRing = hp_gear("Jalzahn's Ring", 0)               --Racc 6, Ratt 6, Assault: AGI 6, Snapshot+
-gear.jannistonRing = mp_gear("Janniston Ring", 40)            --Enmity -7, Cure Pot II 5, MP 40
-gear.jannistonRingPlusOne = mp_gear("Jann. Ring +1", 44)      --Enmity -8, Cure Pot II 6, MP 44
-gear.karieyh = hp_gear("Karieyh Ring", 0)                     --WSD 5, Regain 5
-gear.kishar = hp_gear("Kishar Ring", 0)                       --FC 4, Macc 5, Enfeebling Dur 10
-gear.ligeiaRing = hp_gear("Ligeia Ring", 0)                   --Resist Silence 7, Resist Slow 7, Silenced: Refresh 1
-gear.luzaf = hp_gear("Luzaf's Ring", 0)                       --Phantom Roll Range 16
-gear.medadaRing = hp_gear("Medada's Ring", 0)                 --INT 10, Macc 20, MAB 10, FC 10
-gear.moonlightRing = hp_gear("Moonlight Ring", 110)           --DT 5, STP 5, Acc 8, Att 8
-gear.murky = mp_gear("Murky Ring", 30)                        --DT 10, SIRD 3
-gear.metamorphPlusOne = hp_gear("Metamor. Ring +1", -60)      --Converts 60 HP to MP, INT/MND/CHR 6
-gear.nesanicaRing = hp_gear("Nesanica Ring", 0)               --Resist Sleep 5, Sleeping: Regen 1, Regain 10
-gear.niqmaddu = hp_gear("Niqmaddu Ring", 0)              --QA 3, SB II 5, STR/DEX/VIT 10
-gear.orvailRing = hp_gear("Orvail Ring", 0)                   --Synthesis: Success 1, HQ 1, Material Loss 1, Skill Gain 5
-gear.orvailRingPlusOne = hp_gear("Orvail Ring +1", 0)         --Synthesis: Success 2, HQ 1, Material Loss 2, Skill Gain 6
-gear.overbearing = hp_gear("Overbearing Ring", 45)            --HP Swap
-gear.petrov = hp_gear("Petrov Ring", 0)                       --DA 1, STP 5, Enmity 4
-gear.praan = hp_gear("Praan Ring", 60)                        --HP 60, MP 20 (HP/MP Swap Ring)
-gear.prolix = mp_gear("Prolix Ring", 20)                      --FC 2
-gear.rageliseRing = hp_gear("Ragelise's Ring", 0)             --DT 10, VIT 10, Cure Rec 10
-gear.rajas = hp_gear("Rajas Ring", 0)                         --STP 5, SB 5
-gear.renayeRing = hp_gear("Renaye Ring", 0)                   --Singing/Blue/Geomancy Skill 10, Refresh 1
-gear.renayeRingPlusOne = hp_gear("Renaye Ring +1", 0)         --Singing/Blue/Geomancy Skill 11, Refresh 2
-gear.sattvaRing = hp_gear("Sattva Ring", 15)                  --VIT 2-5, AGI 2-5, Enmity 3
-gear.shneddickRingPlusOne = hp_gear("Shneddick Ring +1", 0)   --Movement 18%, Resist Petrify/Bind/Gravity 17
-gear.sroda = hp_gear("Sroda Ring", 0)                         --PDL +3, STR +15, DEX -20
-gear.svelt = hp_gear("Svelt. Gouriz +1", 0)                   --AGI 10
-gear.stikiniRingPlusOne = hp_gear("Stikini Ring +1", 0)       --Refresh 1
-gear.suleviasRing = hp_gear("Sulevia's Ring", 0)              --DT 3
-gear.tamasRing = mp_gear("Tamas Ring", 15)                    --INT 2-5, MND 2-5, Enmity -3, MP 15-30
-gear.tavnazianRing = hp_gear("Tavnazian Ring", 0)             --Enchantment: Teleport (Tavnazian Safehold)
-gear.thurandautRing = hp_gear("Thurandaut Ring", 0)           --Pet Acc/Racc 20, Pet Att/Ratt 20, Pet Haste 3, Pet DT 3
-gear.thurandautRingPlusOne = hp_gear("Thur. Ring +1", 0)      --Pet Acc/Racc 22, Pet Att/Ratt 23, Pet Haste 4, Pet DT 4
-gear.ulthalamRing = hp_gear("Ulthalam's Ring", 0)             --Acc 4, Att 4, Assault: STR/DEX 4, Regen
-gear.vengeful = hp_gear("Vengeful Ring", 20)                  --HP swap for FC
-gear.vertigo = hp_gear("Vertigo Ring", 0)                     --PDT 2, Macc 5, INT 5, MND 5
-gear.vocaneRing = hp_gear("Vocane Ring", 0)                   --DT 7, Cure Rec 5, Knockback 2
-gear.vocaneRingPlusOne = hp_gear("Vocane Ring +1", 0)         --DT 8, Cure Rec 6, Knockback 2
-gear.weatherspoon = hp_gear("Weather. Ring", 0)               --FC 5, QM 3, Light MAB 10, Macc 10
-gear.weatherspoonRingPlusOne = hp_gear("Weather. Ring +1", 0) --Macc 13, FC 6, Quick Magic 4, Light MAB 11
-gear.woltarisRing = hp_gear("Woltaris Ring", 0)               --Sublimation 1, Regen 1, Refresh 1
-gear.woltarisRingPlusOne = hp_gear("Woltaris Ring +1", 0)     --Sublimation 2, Regen 2, Refresh 2
-gear.zodiacRing = mp_gear("Zodiac Ring", 25)                  --Day-based Elemental Magic+, MP 25
+gear.adoulinRing = hp_gear("Adoulin Ring", 50)                                  --Acc 5, Att 15, Racc 5, Ratt 15, Macc 5, MAB 7, MP 50
+gear.adoulinRingPlusOne = hp_gear("Adoulin Ring +1", 55)                        --Acc 8, Att 20, Racc 8, Ratt 20, Macc 8, MAB 8, MP 55
+gear.apate = hp_gear("Apate Ring", 0)                                           --STP 3, SB 5, STR/DEX/AGI 6
+gear.arvina = hp_gear("Arvina Ringlet", 0)                                      --AGI 4, Marksmanship 3
+gear.ayanmoRing = hp_gear("Ayanmo Ring", 0)                                     --DT 3, Acc 6, Macc 6
+gear.balrahnRing = hp_gear("Balrahn's Ring", 0)                                 --Macc 4, Assault: INT/MND/CHR 4, Refresh
+gear.barataria = hp_gear("Barataria Ring", 0)                                   --Phantom Roll 5
+gear.crepuscularRing = hp_gear("Crepuscular Ring", 0)                           --Macc 10, RAcc 10, Snapshot 3, STP 6
+gear.defending = hp_gear("Defending Ring", 0)                                   --DT 10
+gear.dingir = hp_gear("Dingir Ring", 0)                                         --AGI 10, Ratt 25, MAB 10, Recycle 10
+gear.ducalGuardRing = hp_gear("Dcl.Grd. Ring", 0)                               --Enchantment: Ducal Recall, 5 charges
+gear.ephramadRing = hp_gear("Ephramad's Ring", 0)                               --PDL 10, STR/DEX/AGI 10, Acc 20, Att 20, Racc 20, Ratt 20
+gear.epimanondas = hp_gear("Epaminondas's Ring", 0)                             --WSD 5
+gear.eponas = hp_gear("Epona's Ring", 0)                                        --DA 3, TA 3
+gear.evanescence = hp_gear("Evanescence Ring", 0)                               --Dark Magic 10, SIRD 5, Drain/Aspir 10
+gear.excelsisRing = hp_gear("Excelsis Ring", 0)                                 --Att 8, Drain/Aspir+
+gear.fenrir = mp_gear("Fenrir Ring", 50)                                        --Dark +15, MAB 2
+gear.fickblixRing = hp_gear("Fickblix's Ring", 0)                               --DA 10, SB 10, Pet Acc/Racc/Macc 20, Pet Dmg 10
+gear.flammaRing = hp_gear("Flamma Ring", 0)                                     --Acc 6, Macc 6, STP 5
+gear.fortifiedRing = mp_gear("Fortified Ring", 50)                              --MDT 5, Enemy Crit -7, MP 50
+gear.gelatinous = hp_gear("Gelatinous Ring", 35)                                --Unity Ranking HP+10~35 at top rank; PDT 6, MDT +2
+gear.gelatinousPlusOne = hp_gear("Gelatinous Ring +1", 135)                     --Unity Ranking HP+10~35 at top rank, plus rank-15 augment HP+100; PDT 7, MDT +1
+gear.freke = hp_gear("Freke Ring", 0)                                           --Int 10, MAB 8, SIRD 10
+gear.gereRing = hp_gear("Gere Ring", 0)                                         --TA 5, STR 10
+gear.griffonRing = hp_gear("Griffon Ring", 25)                                  --Reduces enemy crit rate
+gear.gurebuRing = hp_gear("Gurebu's Ring", 0)                                   --MND 10, MEva 20, All Status Res 20, Regen 2, Refresh 2
+gear.havertonRing = hp_gear("Haverton Ring", 0)                                 --Racc 20, Ninjutsu Skill 10, Snapshot 6, DW 5
+gear.havertonRingPlusOne = hp_gear("Haverton Ring +1", 0)                       --Racc 23, Ninjutsu Skill 11, Snapshot 7, DW 6
+gear.hetairoi = hp_gear("Hetairoi Ring", 0)                                     --TA 2, TA Dmg 5, Crit 1
+gear.ilabrat = hp_gear("Ilabrat Ring", 60)                                      --STP 5, AGI 10 , DEX 10, Att 25
+gear.jhakriRing = hp_gear("Jhakri Ring", 0)                                     --MAB 3, MB 2, Macc 6
+gear.jubileeRing = hp_gear("Jubilee Ring", 0)                                   --Skill Up +100%, EXP + 50%
+gear.inyangaRing = hp_gear("Inyanga Ring", 0)                                   --MDT 2, Macc 6, Meva 12, Set Refresh
+gear.jalzahnRing = hp_gear("Jalzahn's Ring", 0)                                 --Racc 6, Ratt 6, Assault: AGI 6, Snapshot+
+gear.jannistonRing = mp_gear("Janniston Ring", 40)                              --Enmity -7, Cure Pot II 5, MP 40
+gear.jannistonRingPlusOne = mp_gear("Jann. Ring +1", 44)                        --Enmity -8, Cure Pot II 6, MP 44
+gear.karieyh = hp_gear("Karieyh Ring", 0)                                       --WSD 5, Regain 5
+gear.kishar = hp_gear("Kishar Ring", 0)                                         --FC 4, Macc 5, Enfeebling Dur 10
+gear.ligeiaRing = hp_gear("Ligeia Ring", 0)                                     --Resist Silence 7, Resist Slow 7, Silenced: Refresh 1
+gear.luzaf = hp_gear("Luzaf's Ring", 0)                                         --Phantom Roll Range 16
+gear.medadaRing = hp_gear("Medada's Ring", 0)                                   --INT 10, Macc 20, MAB 10, FC 10
+gear.moonlightRing = hp_gear("Moonlight Ring", 110)                             --DT 5, STP 5, Acc 8, Att 8
+gear.murky = mp_gear("Murky Ring", 30)                                          --DT 10, SIRD 3
+gear.metamorphPlusOne = hp_gear("Metamor. Ring +1", -60)                        --Converts 60 HP to MP, INT/MND/CHR 6
+gear.nesanicaRing = hp_gear("Nesanica Ring", 0)                                 --Resist Sleep 5, Sleeping: Regen 1, Regain 10
+gear.niqmaddu = hp_gear("Niqmaddu Ring", 0)                                     --QA 3, SB II 5, STR/DEX/VIT 10
+gear.orvailRing = hp_gear("Orvail Ring", 0)                                     --Synthesis: Success 1, HQ 1, Material Loss 1, Skill Gain 5
+gear.orvailRingPlusOne = hp_gear("Orvail Ring +1", 0)                           --Synthesis: Success 2, HQ 1, Material Loss 2, Skill Gain 6
+gear.overbearing = hp_gear("Overbearing Ring", 45)                              --HP Swap
+gear.petrov = hp_gear("Petrov Ring", 0)                                         --DA 1, STP 5, Enmity 4
+gear.praan = hp_gear("Praan Ring", 60)                                          --HP 60, MP 20 (HP/MP Swap Ring)
+gear.prolix = mp_gear("Prolix Ring", 20)                                        --FC 2
+gear.rageliseRing = hp_gear("Ragelise's Ring", 0)                               --DT 10, VIT 10, Cure Rec 10
+gear.rajas = hp_gear("Rajas Ring", 0)                                           --STP 5, SB 5
+gear.renayeRing = hp_gear("Renaye Ring", 0)                                     --Singing/Blue/Geomancy Skill 10, Refresh 1
+gear.renayeRingPlusOne = hp_gear("Renaye Ring +1", 0)                           --Singing/Blue/Geomancy Skill 11, Refresh 2
+gear.sattvaRing = hp_gear("Sattva Ring", 15)                                    --VIT 2-5, AGI 2-5, Enmity 3
+gear.shneddickRingPlusOne = hp_gear("Shneddick Ring +1", 0)                     --Movement 18%, Resist Petrify/Bind/Gravity 17
+gear.sroda = hp_gear("Sroda Ring", 0)                                           --PDL +3, STR +15, DEX -20
+gear.svelt = hp_gear("Svelt. Gouriz +1", 0)                                     --AGI 10
+gear.stikiniRingPlusOne = hp_gear("Stikini Ring +1", 0)                         --Refresh 1
+gear.suleviasRing = hp_gear("Sulevia's Ring", 0)                                --DT 3
+gear.tamasRing = mp_gear("Tamas Ring", 15)                                      --INT 2-5, MND 2-5, Enmity -3, MP 15-30
+gear.tavnazianRing = hp_gear("Tavnazian Ring", 0)                               --Enchantment: Teleport (Tavnazian Safehold)
+gear.thurandautRing = hp_gear("Thurandaut Ring", 0)                             --Pet Acc/Racc 20, Pet Att/Ratt 20, Pet Haste 3, Pet DT 3
+gear.thurandautRingPlusOne = hp_gear("Thur. Ring +1", 0)                        --Pet Acc/Racc 22, Pet Att/Ratt 23, Pet Haste 4, Pet DT 4
+gear.ulthalamRing = hp_gear("Ulthalam's Ring", 0)                               --Acc 4, Att 4, Assault: STR/DEX 4, Regen
+gear.vengeful = hp_gear("Vengeful Ring", 20)                                    --HP swap for FC
+gear.vertigo = hp_gear("Vertigo Ring", 0)                                       --PDT 2, Macc 5, INT 5, MND 5
+gear.vocaneRing = hp_gear("Vocane Ring", 0)                                     --DT 7, Cure Rec 5, Knockback 2
+gear.vocaneRingPlusOne = hp_gear("Vocane Ring +1", 0)                           --DT 8, Cure Rec 6, Knockback 2
+gear.weatherspoon = hp_gear("Weather. Ring", 0)                                 --FC 5, QM 3, Light MAB 10, Macc 10
+gear.weatherspoonRingPlusOne = hp_gear("Weather. Ring +1", 0)                   --Macc 13, FC 6, Quick Magic 4, Light MAB 11
+gear.woltarisRing = hp_gear("Woltaris Ring", 0)                                 --Sublimation 1, Regen 1, Refresh 1
+gear.woltarisRingPlusOne = hp_gear("Woltaris Ring +1", 0)                       --Sublimation 2, Regen 2, Refresh 2
+gear.zodiacRing = mp_gear("Zodiac Ring", 25)                                    --Day-based Elemental Magic+, MP 25
 
 gear.stikiniRingPlusOne1 = hp_gear("Stikini Ring +1", 0, { bag = "wardrobe" })  --Refresh 1, Macc 11
 gear.stikiniRingPlusOne2 = hp_gear("Stikini Ring +1", 0, { bag = "wardrobe2" }) --Refresh 1, Macc 11
@@ -4128,8 +4275,10 @@ gear.eshmun8 = hp_gear("Eshmun's Ring", 0, { bag = "wardrobe8" })
 --Back
 gear.aesirMantle = hp_gear("Aesir Mantle", 0)          --Att 8, DA 1, Darksday DA 2
 gear.aptitude = hp_gear("Aptitude Mantle", 0)          --CP 25
+gear.aptitudePlusOne = hp_gear("Aptitude Mantle +1")   --CP 30
 gear.colossusMantle = hp_gear("Colossus's Mantle", 20) --MDT 2, Lightsday MDT 3, MP 20
 gear.navarchMantle = hp_gear("Navarch's Mantle", 0)    --Snapshot
+gear.penetratingCape = hp_gear("Penetrating Cape", 0)  --Att 20, STP 4, Haste 2, Pet Att/Ratt 20
 gear.sokolski = hp_gear("Sokolski Mantle", 70)         --HP Swap
 gear.twilightCape = hp_gear("Twilight Cape", 25)       --Day/Weather Elemental Magic+, MP 25
 
@@ -4141,38 +4290,40 @@ gear.hoxneRing = hp_gear("Hoxne Ring", -150)          --TH 2, TH +5%
 gear.perfectEgg = hp_gear("Per. Lucky Egg", 0)        --TH 1
 gear.volteHead = hp_gear("Volte Cap", 57)             --TH 1
 
---[==[ Items the job files ask for by name, minted from those references rather than chosen.
+--[==[ Items the job files ask for by name, entered because a job file names them rather
+     than picked for the library.
      An inline augment list is carried across verbatim, a bag choice is kept so the set
      still asks for that copy, and a variant of an item already priced above takes that
-     price. An item a job file names that the library lacks gets its entry here. ]==] --
+     price. An item a job file names that the library lacks gets its entry here. ]==]                                                                         --
 
-gear.abyssalBeadNecklacePlusTwo = hp_gear("Abyssal Beads +2", 0)           --Macc 15, Acc 15, Att 40
+gear.abyssalBeadNecklacePlusTwo = hp_gear("Abyssal Beads +2", 0)                                                                                              --Macc 15, Acc 15, Att 40
 gear.acroBreechesRapidShot = hp_gear("Acro Breeches", 50, {
-    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                   --STP 4, Haste 5, MDB 3, Acc 10
+    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                                                                                                      --STP 4, Haste 5, MDB 3, Acc 10
 gear.acroGauntletsRapidShot = hp_gear("Acro Gauntlets", 57, {
-    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                   --STP 4, Haste 4, MDB 1, Att 7
+    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                                                                                                      --STP 4, Haste 4, MDB 1, Att 7
 gear.acroHelmRapidShot = hp_gear("Acro Helm", 38, {
-    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                   --STP 3, Haste 7, MDB 2, Att 15
+    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                                                                                                      --STP 3, Haste 7, MDB 2, Att 15
 gear.acroLeggingsRapidShot = hp_gear("Acro Leggings", 15, {
-    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                   --DA 2, Haste 3, MDB 2, Acc 7
+    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                                                                                                      --DA 2, Haste 3, MDB 2, Acc 7
 gear.acroSurcoatRapidShot = hp_gear("Acro Surcoat", 61, {
-    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                   --DA 2, Haste 3, MDB 4, Acc 10, Att 10
-gear.acuityBeltPlusOne = mp_gear("Acuity Belt +1", 35)                     --INT 6, INT 3
-gear.adamantiteArmor = hp_gear("Adamantite Armor", 182)                    --Macc 40, MDB 20, Acc 40
+    augments = { '"Rapid Shot"+5', '"Snapshot"+5', }, })                                                                                                      --DA 2, Haste 3, MDB 4, Acc 10, Att 10
+gear.acuityBeltPlusOne = mp_gear("Acuity Belt +1", 35)                                                                                                        --INT 6, INT 3
+gear.adamantiteArmor = hp_gear("Adamantite Armor", 182)                                                                                                       --Macc 40, MDB 20, Acc 40
 gear.adhemarFeetPlusOnePathD = hp_gear("Adhe. Gamashes +1", 76, {
-    augments = { 'HP+65', '"Store TP"+7', '"Snapshot"+10', }, })           --Haste 4, MAB 35, MDB 5, Ratt 34, Att 34
+    augments = { 'HP+65', '"Store TP"+7', '"Snapshot"+10', }, })                                                                                              --Haste 4, MAB 35, MDB 5, Ratt 34, Att 34
 gear.adhemarLegsPlusOnePathD = hp_gear("Adhemar Kecks +1", 41, {
-    augments = { 'AGI+12', '"Rapid Shot"+13', 'Enmity-6', }, })            --STP 8, Snapshot 10, Haste 6, MDB 5, Racc 34
-gear.aeneas = rank_gear("Aeneas", 100)                                     --STP 10, MDmg 155, Dagger Skill 269, Parrying Skill 269, Magic Accuracy Skill 228
-gear.ahosiLeggings = hp_gear("Ahosi Leggings", 18)                         --Haste 4, MDB 5, Acc 35, Enmity 7
-gear.alberStrap = hp_gear("Alber Strap", 0)                                --PDT 2, DA 2, MAB 7, Enmity 5
+    augments = { 'AGI+12', '"Rapid Shot"+13', 'Enmity-6', }, })                                                                                               --STP 8, Snapshot 10, Haste 6, MDB 5, Racc 34
+gear.aeneas = rank_gear("Aeneas", 100)                                                                                                                        --STP 10, MDmg 155, Dagger Skill 269, Parrying Skill 269, Magic Accuracy Skill 228
+gear.ahosiLeggings = hp_gear("Ahosi Leggings", 18)                                                                                                            --Haste 4, MDB 5, Acc 35, Enmity 7
+gear.alberStrap = hp_gear("Alber Strap", 0)                                                                                                                   --PDT 2, DA 2, MAB 7, Enmity 5
 gear.almace = rank_gear("Almace", 100)
-gear.amalricCoifPlusOne = hp_gear("Amalric Coif +1", 27)                   --FC 11, Haste 6, Macc 36, MDB 6
+gear.amalricCoifPlusOne = hp_gear("Amalric Coif +1", 27)                                                                                                      --FC 11, Haste 6, Macc 36, MDB 6
 gear.andoaaEarring = mp_gear("Andoaa Earring", 30)                                                                                                            --Enhancing magic Skill 5, Summoning magic Skill 5
 gear.angon = hp_gear("Angon", 0)
 gear.anguta = rank_gear("Anguta", 100)                                                                                                                        --STP 10, MDmg 186, Scythe Skill 269, Parrying Skill 269, Magic Accuracy Skill 242
 gear.annihilator = hp_gear("Annihilator", 0)                                                                                                                  --Racc 35, Ratt 25
 gear.apeileRingPlusOne = hp_gear("Apeile Ring +1", 0)                                                                                                         --Enmity 5
+gear.arasySachet = hp_gear("Arasy Sachet", 0)                                                                                                                 --Avatar lv 119
 gear.archonRing = hp_gear("Archon Ring", 0)                                                                                                                   --MAB 5, Macc 5
 gear.bstSTP = hp_gear("Artio's Mantle", 0, {
     augments = { 'Pet: Acc.+20 Pet: R.Acc.+20 Pet: Atk.+20 Pet: R.Atk.+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Store TP"+10', 'Damage taken-5%', }, }) --STP 10, DT 5, Acc 20, Acc 10
@@ -4182,7 +4333,6 @@ gear.asclepius = rank_gear("Asclepius", 100)                                    
 gear.asheraHarness = hp_gear("Ashera Harness", 182)                                                                                                           --STP 10, Haste 4, MDB 5, Racc 45, Acc 45
 gear.askSash = hp_gear("Ask Sash", 0)                                                                                                                         --WSD 5
 gear.assiduityPants = hp_gear("Assiduity Pants", 43)                                                                                                          --Refresh 1, Haste 5, MDB 6, Enmity -5
-gear.canOfAutomatonOilPlusThree = hp_gear("Automat. Oil +3", 0)
 gear.baetylPendant = hp_gear("Baetyl Pendant", 0)                                                                                                             --FC 4, MAB 13
 gear.balderEarringPlusOne = hp_gear("Balder Earring +1", 0)                                                                                                   --STP 3, Att 10
 gear.beckonerEarringPlusOne = hp_gear("Beck. Earring +1", 0)                                                                                                  --Refresh 2
@@ -4206,7 +4356,6 @@ gear.cathPalugCrown = hp_gear("C. Palug Crown", 45)                             
 gear.cathPalugEarring = hp_gear("C. Palug Earring", 0)                                                                                                        --Refresh 1, Macc 7, Racc 7, Summoning magic Skill 5
 gear.cathPalugHammer = rank_gear("C. Palug Hammer", 100)                                                                                                      --FC 7, DA 7, MAB 18, Macc 35, MDmg 232
 gear.cathPalugRing = hp_gear("C. Palug Ring", 40)                                                                                                             --DA 5, Macc 12, Racc 12
-gear.jugOfCurdledPlasmaBroth = hp_gear("C. Plasma Broth", 0)
 gear.caliburnus = rank_gear("Caliburnus", 100)                                                                                                                --DT 10, Refresh 4, Macc 35, MDmg 263, Acc 35
 gear.corSTP = hp_gear("Camulus's Mantle", 0, {
     augments = { 'AGI+20', 'Rng.Acc.+20 Rng.Atk.+20', 'Rng.Acc.+10', '"Store TP"+10', 'Phys. dmg. taken-10%', }, })                                           --STP 10, PDT 10
@@ -4228,6 +4377,7 @@ gear.clerisyStrapPlusOne = hp_gear("Clerisy Strap +1", 0)                       
 gear.clothariusTorque = hp_gear("Clotharius Torque", 0)                                                                                                       --TA 1, Racc 8, Acc 8, SB 4, Enmity -4
 gear.clericTorquePlusTwo = mp_gear("Clr. Torque +2", 50)                                                                                                      --Cure Pot 10
 gear.combatantTorque = hp_gear("Combatant's Torque", 0)                                                                                                       --STP 4
+gear.convocaller = hp_gear("Convocaller", 0)                                                                                                                  --Avatar lv 106
 gear.corneliaRing = hp_gear("Cornelia's Ring", 0)                                                                                                             --WSD 10, Acc 10
 gear.creedBaudrier = hp_gear("Creed Baudrier", 40)                                                                                                            --MDB 4, Enmity 5
 gear.crematioEarring = hp_gear("Crematio Earring", 0)                                                                                                         --MAB 6, MDmg 6, Staff Skill 5
@@ -4240,10 +4390,10 @@ gear.crypticEarring = hp_gear("Cryptic Earring", 40)                            
 gear.culminus = hp_gear("Culminus", 57)                                                                                                                       --SIRD 10, MAB 20, MDmg 75, Shield Skill 107
 gear.dagonBreastplate = hp_gear("Dagon Breast.", 136)                                                                                                         --TA 5, Haste 1, MDB 5, Acc 45, Att 45
 gear.danzoSuneAte = hp_gear("Danzo Sune-Ate", 0)                                                                                                              --Enmity -2
+gear.dashavataraSachet = hp_gear("Dashavatara Sachet", 0)                                                                                                     --Avatar lv 113
 gear.dashingSubligar = hp_gear("Dashing Subligar", 47)                                                                                                        --Haste 6, MDB 5
 gear.deathPenalty = hp_gear("Death Penalty", 0)                                                                                                               --Quick Draw+
 gear.demersalDegenPlusOne = rank_gear("Demers. Degen +1", 100)                                                                                                --FC 1, Sword Skill 242, Parrying Skill 242, Magic Accuracy Skill 188
-gear.jugOfDireBroth = hp_gear("Dire Broth", 0)
 gear.dojikiriYasutsuna = rank_gear("Dojikiri Yasutsuna", 100)                                                                                                 --STP 10, MDmg 155, Great Katana Skill 269, Parrying Skill 269, Magic Accuracy Skill 228
 gear.dolichenus = rank_gear("Dolichenus", 100)                                                                                                                --MAB 16, Macc 40, MDmg 217, Acc 40, Att 30
 gear.duban = hp_gear("Duban", 0)                                                                                                                              --Shield Skill 123
@@ -4254,11 +4404,13 @@ gear.ebersEarringPlusOneMacc = hp_gear("Ebers Earring +1", 0, {
     augments = { 'System: 1 ID: 1676 Val: 0', 'Accuracy+14', 'Mag. Acc.+14', 'Damage taken-5%', }, })                                                         --Enmity -8, Healing magic Skill 11
 gear.eihwazRing = hp_gear("Eihwaz Ring", 70)                                                                                                                  --Enmity 5
 gear.elanStrapPlusOne = hp_gear("Elan Strap +1", 0)                                                                                                           --MAB 7
+gear.eminentSachet = hp_gear("Eminent Sachet", 0)                                                                                                             --Avatar Lv 115 BP Recast II 3
 gear.emetHarnessPlusOne = hp_gear("Emet Harness +1", 61)                                                                                                      --Haste 4, MDB 5, Acc 10, Enmity 10
 gear.enchanterEarringPlusOne = hp_gear("Enchntr. Earring +1", 0)                                                                                              --FC 2, Macc 6
 gear.enervatingEarring = hp_gear("Enervating Earring", 0)                                                                                                     --STP 4, Racc 7, Ratt 7, Enmity -3
 gear.enticerPants = hp_gear("Enticer's Pants", 38)                                                                                                            --Haste 5, MDB 6
 gear.epeolatry = rank_gear("Epeolatry", 100)                                                                                                                  --Enmity 18, Great Sword Skill 242, Parrying Skill 242, Magic Accuracy Skill 215
+gear.epitaph = hp_gear("Epitaph", 0)                                                                                                                          --Avatar lv 119, BP Ability delay II 5, BP Damage 16
 gear.etanaRing = hp_gear("Etana Ring", 60)                                                                                                                    --Macc 7, Acc 7
 gear.etherealEarring = hp_gear("Ethereal Earring", 15)                                                                                                        --Att 5
 gear.etoileGorgetPlusOne = hp_gear("Etoile Gorget +1", 0)                                                                                                     --Macc 20, Acc 20
@@ -4270,28 +4422,29 @@ gear.ferineEarring = hp_gear("Ferine Earring", 0)                               
 gear.flammaManopolasPlusTwo = hp_gear("Flam. Manopolas +2", 60)                               --STP 6, Haste 4, Macc 43, MDB 2, Acc 43
 gear.flumeBeltPlusOne = hp_gear("Flume Belt +1", 0)                                           --VIT 4
 gear.gadaNuke = rank_gear("Gada", 100, {
-    augments = { 'Indi. eff. dur. +11', 'Mag. Acc.+2', '"Mag.Atk.Bns."+13', }, }) --Cure Pot 18, MAB 16, Macc 20, MDmg 124, Club Skill 242
-gear.gastraphetes = hp_gear("Gastraphetes", 0)                                    --Snapshot+
-gear.gendewithaGagesPlusOne = hp_gear("Gende. Gages +1", 30)                      --FC 7, Haste 1, Macc 15, MDB 3
-gear.gendewithaGaloshesPlusOne = hp_gear("Gende. Galosh. +1", 26)                 --Haste 4, MAB 8, MDB 5
+    augments = { 'Indi. eff. dur. +11', 'Mag. Acc.+2', '"Mag.Atk.Bns."+13', }, })             --Cure Pot 18, MAB 16, Macc 20, MDmg 124, Club Skill 242
+gear.gastraphetes = hp_gear("Gastraphetes", 0)                                                --Snapshot+
+gear.gendewithaGagesPlusOne = hp_gear("Gende. Gages +1", 30)                                  --FC 7, Haste 1, Macc 15, MDB 3
+gear.gendewithaGaloshesPlusOne = hp_gear("Gende. Galosh. +1", 26)                             --Haste 4, MAB 8, MDB 5
 gear.gendewithaGaloshesPlusOneBCureFC = hp_gear("Gende. Galosh. +1", 26, {
-    augments = { 'Phys. dmg. taken -3%', '"Cure" spellcasting time -5%', }, })    --Haste 4, MAB 8, MDB 5
-gear.genmeiShield = hp_gear("Genmei Shield", 0)                                   --Acc 15, Att 15, Shield Skill 112
-gear.ghastlyTathlumPlusOne = mp_gear("Ghastly Tathlum +1", 35)                    --MDmg 11
-gear.ginsen = hp_gear("Ginsen", 0)                                                --STP 3, Acc 5, Att 10
-gear.gokotai = rank_gear("Gokotai", 100)                                          --MAB 16, Macc 40, MDmg 217, Racc 40, Acc 40
-gear.grunfeldRope = hp_gear("Grunfeld Rope", 0)                                   --DA 2, Acc 10, Att 20
+    augments = { 'Phys. dmg. taken -3%', '"Cure" spellcasting time -5%', }, })                --Haste 4, MAB 8, MDB 5
+gear.genmeiShield = hp_gear("Genmei Shield", 0)                                               --Acc 15, Att 15, Shield Skill 112
+gear.ghastlyTathlumPlusOne = mp_gear("Ghastly Tathlum +1", 35)                                --MDmg 11
+gear.ginsen = hp_gear("Ginsen", 0)                                                            --STP 3, Acc 5, Att 10
+gear.gokotai = rank_gear("Gokotai", 100)                                                      --MAB 16, Macc 40, MDmg 217, Racc 40, Acc 40
+gear.grunfeldRope = hp_gear("Grunfeld Rope", 0)                                               --DA 2, Acc 10, Att 20
 gear.hachirinNoObi = hp_gear("Hachirin-no-Obi", 0)
-gear.haomaRing = hp_gear("Haoma's Ring", 0)                                       --Healing magic Skill 8
-gear.happoShurikenPlusOne = hp_gear("Happo Shuriken +1", 0)                       --Crit 2, Racc 11, Acc 6, Att 6, Throwing Skill 228
-gear.hashishinEarringPlusOne = hp_gear("Hashi. Earring +1", 0)                    --Sword Skill 11, Blue magic Skill 11
-gear.hastyPinionPlusOne = hp_gear("Hasty Pinion +1", 0)                           --Haste 2, Acc 10, Att 10
-gear.hattoriEarringPlusOne = hp_gear("Hattori Earring +1", 0)                     --Katana Skill 11, Throwing Skill 11
+gear.haomaRing = hp_gear("Haoma's Ring", 0)                                                   --Healing magic Skill 8
+gear.happoShurikenPlusOne = hp_gear("Happo Shuriken +1", 0)                                   --Crit 2, Racc 11, Acc 6, Att 6, Throwing Skill 228
+gear.hashishinEarringPlusOne = hp_gear("Hashi. Earring +1", 0)                                --Sword Skill 11, Blue magic Skill 11
+gear.hastyPinionPlusOne = hp_gear("Hasty Pinion +1", 0)                                       --Haste 2, Acc 10, Att 10
+gear.hattoriEarringPlusOne = hp_gear("Hattori Earring +1", 0)                                 --Katana Skill 11, Throwing Skill 11
 gear.heartyEarring = hp_gear("Hearty Earring", 0)
 gear.heraldGaiters = mp_gear("Herald's Gaiters", 12)
 gear.hermesSandals = hp_gear("Hermes' Sandals", 12)                                                             --Enmity 3
 gear.hesperiidae = hp_gear("Hesperiidae", 0)                                                                    --Macc 10, Racc 10, Acc 10, Enmity -3
 gear.homiliary = hp_gear("Homiliary", 0)                                                                        --Refresh 1
+gear.idaraaja = hp_gear("Idaraaja", 0)                                                                          --Avatar lv 117, BP Recast II 4
 gear.idris = rank_gear("Idris", 100)                                                                            --MAB 25, Macc 25, MDmg 155, Club Skill 242, Parrying Skill 242
 gear.ikengaAxe = rank_gear("Ikenga's Axe", 100)                                                                 --Crit 10, WSD 5, Macc 40, Acc 40, Att 30
 gear.incanterTorque = hp_gear("Incanter's Torque", 0)
@@ -4329,20 +4482,19 @@ gear.schNuke = hp_gear("Lugh's Cape", 0, {
     augments = { 'INT+20', 'Mag. Acc+20 /Mag. Dmg.+20', 'INT+10', '"Mag.Atk.Bns."+10', 'Damage taken-5%', }, }) --MAB 10, DT 5
 gear.luminarySash = mp_gear("Luminary Sash", 45)                                                                --Macc 10, ConMP 4
 gear.lycurgos = rank_gear("Lycurgos", 100)                                                                      --Macc 40, Acc 40, Att 30, Great Axe Skill 250, Parrying Skill 250
-gear.macheEarringPlusOne = hp_gear("Mache Earring +1", 0) --DA 2, Acc 10
-gear.magneticEarring = mp_gear("Magnetic Earring", 20)    --SIRD 8, ConMP 5
-gear.magoragaBeadNecklace = hp_gear("Magoraga Beads", 0)  --AGI 2
+gear.macheEarringPlusOne = hp_gear("Mache Earring +1", 0)                                                       --DA 2, Acc 10
+gear.magneticEarring = mp_gear("Magnetic Earring", 20)                                                          --SIRD 8, ConMP 5
+gear.magoragaBeadNecklace = hp_gear("Magoraga Beads", 0)                                                        --AGI 2
 gear.masamune = rank_gear("Masamune", 100)
-gear.jugOfMeatyBroth = hp_gear("Meaty Broth", 0)
-gear.mendicantEarring = mp_gear("Mendi. Earring", 30)                       --Cure Pot 5, Cure FC 5, ConMP 2
-gear.menelausRing = hp_gear("Menelaus's Ring", 0)                           --Cure Pot 5, Healing magic Skill 15
-gear.metamorphRing = hp_gear("Metamorph Ring", -50)                         --Macc 1, Converts 50 HP to MP
-gear.mizukageNoKubikazari = hp_gear("Mizu. Kubikazari", 0)                  --MAB 8, MBD 10
+gear.mendicantEarring = mp_gear("Mendi. Earring", 30)                                                           --Cure Pot 5, Cure FC 5, ConMP 2
+gear.menelausRing = hp_gear("Menelaus's Ring", 0)                                                               --Cure Pot 5, Healing magic Skill 15
+gear.metamorphRing = hp_gear("Metamorph Ring", -50)                                                             --Macc 1, Converts 50 HP to MP
+gear.mizukageNoKubikazari = hp_gear("Mizu. Kubikazari", 0)                                                      --MAB 8, MBD 10
 gear.moonlightCape = hp_gear("Moonlight Cape", 275)
-gear.moonlightRing2 = hp_gear("Moonlight Ring", 110, { bag = "wardrobe2" }) --STP 5, Acc 8, Att 8
-gear.moonlightRing1 = hp_gear("Moonlight Ring", 110, { bag = "wardrobe" })  --STP 5, Acc 8, Att 8
+gear.moonlightRing2 = hp_gear("Moonlight Ring", 110, { bag = "wardrobe2" })                                     --STP 5, Acc 8, Att 8
+gear.moonlightRing1 = hp_gear("Moonlight Ring", 110, { bag = "wardrobe" })                                      --STP 5, Acc 8, Att 8
 gear.moonshadeEarringAcc = hp_gear("Moonshade Earring", 0, {
-    augments = { 'Accuracy+4', 'TP Bonus +250', }, })                       --Acc 4
+    augments = { 'Accuracy+4', 'TP Bonus +250', }, })                                                           --Acc 4
 gear.moonshadeEarringBAtt = hp_gear("Moonshade Earring", 0, {
     augments = { 'Attack+4', 'TP Bonus +250', }, })
 gear.mpuGandring = rank_gear("Mpu Gandring", 100)                                                                       --Dagger Skill 252, Parrying Skill 252, Magic Accuracy Skill 252
@@ -4373,8 +4525,8 @@ gear.perimedeCape = hp_gear("Perimede Cape", 0)                                 
 gear.perunPlusOne = rank_gear("Perun +1", 100)                                                                          --STP 4, Racc 15, Ratt 15, Enmity -3, Axe Skill 242
 gear.petFoodThetaBiscuit = hp_gear("Pet Food Theta", 0)
 gear.platinumMoogleBelt = hp_gear("Plat. Mog. Belt", 10)
-gear.potentGrip = hp_gear("Potent Grip", 0)                                                                             --STR 5, DEX 5
-gear.psilomene = hp_gear("Psilomene", 15)                                                                               --Enmity -3
+gear.potentGrip = hp_gear("Potent Grip", 0) --STR 5, DEX 5
+gear.psilomene = hp_gear("Psilomene", 15)   --Enmity -3
 gear.purityRing = hp_gear("Purity Ring", 0)
 gear.pursuerFeetPathD = hp_gear("Pursuer's Gaiters", 13, {
     augments = { 'Rng.Acc.+10', '"Rapid Shot"+10', '"Recycle"+15', }, })                                                            --Haste 4, Macc 15, MDB 5, Racc 20, Enmity -7
@@ -4390,6 +4542,7 @@ gear.bluFCSird = hp_gear("Rosmerta's Cape", 0, {
     augments = { 'INT+20', 'Mag. Acc+20 /Mag. Dmg.+20', 'Mag. Acc.+10', '"Fast Cast"+10', 'Spell interruption rate down-10%', }, }) --FC 10, SIRD 10, Macc 10
 gear.bluWSDDt = hp_gear("Rosmerta's Cape", 0, {
     augments = { 'MND+20', 'Accuracy+20 Attack+20', 'MND+10', 'Weapon skill damage +10%', 'Damage taken-5%', }, })                  --WSD 10, DT 5, Acc 20
+gear.rostam = rank_gear("Rostam", 100)                                                                                              --Macc 50, MDmg 217, Racc 50, Acc 50, Dagger Skill 269
 gear.roundelEarring = hp_gear("Roundel Earring", 0)                                                                                 --Cure Pot 5
 gear.ruminationSash = hp_gear("Rumination Sash", 0)                                                                                 --SIRD 10, Macc 3, Enfeebling magic Skill 7
 gear.sacroBulwark = hp_gear("Sacro Bulwark", 0)                                                                                     --SIRD 7, Cure Pot 5, Shield Skill 112
@@ -4397,8 +4550,10 @@ gear.sacroCord = hp_gear("Sacro Cord", 0)                                       
 gear.sacroMantle = hp_gear("Sacro Mantle", 0)                                                                                       --WSD 6, Macc 20, Racc 20, Ratt 20, Acc 20
 gear.samuraiNodowaPlusTwo = hp_gear("Sam. Nodowa +2", 0)                                                                            --STP 7, Acc 30
 gear.sanareEarring = hp_gear("Sanare Earring", 0)                                                                                   --MDB 4, Club Skill 5
-gear.sancusSachetPlusOne = hp_gear("Sancus Sachet +1", 0)                                                                           --Macc 20, Racc 20, Acc 20
+gear.sancusSachet = hp_gear("Sancus Sachet", 0)                                                                                     --Avatar lv 119, BP Damage 10, BP Recast II 6, Macc 15, Racc 15, Acc 15
+gear.sancusSachetPlusOne = hp_gear("Sancus Sachet +1", 0)                                                                           --Avatar lv 119, BP Damage 15, BP Recast II 7, Macc 20, Racc 20, Acc 20
 gear.seethingBombletPlusOne = hp_gear("Seeth. Bomblet +1", 0)                                                                       --MAB 7, Acc 13, Att 13
+gear.seraphicaller = hp_gear("Seraphicaller", 0)                                                                                    -- Avatar lv 119, BP Recast II 5
 gear.mnkDADex = hp_gear("Segomo's Mantle", 0, {
     augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Dbl.Atk."+10', 'Magic dmg. taken-10%', }, })                   --DA 10, Acc 20, Acc 10
 gear.shadowRing = hp_gear("Shadow Ring", 0)                                                                                         --Occ. effect
@@ -4417,17 +4572,16 @@ gear.samSTPDt = hp_gear("Smertrios's Mantle", 0, {
     augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Store TP"+10', 'Damage taken-5%', }, })                        --STP 10, DT 5, Acc 20, Acc 10
 gear.soboroSukehiro = rank_gear("Soboro Sukehiro", 100)                                                                             --Occ. effect
 gear.solemnityCape = hp_gear("Solemnity Cape", 0)                                                                                   --Cure Pot 7, ConMP 5
-gear.jugOfSpicyBroth = hp_gear("Spicy Broth", 0)
 gear.taeonChapeauSnapshot = hp_gear("Taeon Chapeau", 36, {
-    augments = { '"Snapshot"+5', '"Snapshot"+5', }, })                                                               --Haste 8, MDB 2, Racc 10, Acc 10
+    augments = { '"Snapshot"+5', '"Snapshot"+5', }, })                                                                              --Haste 8, MDB 2, Racc 10, Acc 10
 gear.blmNuke = hp_gear("Taranus's Cape", 0, {
-    augments = { 'INT+20', 'Mag. Acc+20 /Mag. Dmg.+20', 'INT+10', '"Mag.Atk.Bns."+10', 'Phys. dmg. taken-10%', }, }) --MBD 5
+    augments = { 'INT+20', 'Mag. Acc+20 /Mag. Dmg.+20', 'INT+10', '"Mag.Atk.Bns."+10', 'Phys. dmg. taken-10%', }, })                --MBD 5
 gear.telchineChasubleRegen = hp_gear("Telchine Chas.", 54, {
-    augments = { '"Regen"+2', 'Enh. Mag. eff. dur. +10', }, })                                                       --Haste 3, MDB 6, Enhancing magic Skill 12
-gear.tellenBelt = hp_gear("Tellen Belt", 0)                                                                          --STP 4
-gear.tempusFugit = hp_gear("Tempus Fugit", 0)                                                                        --Haste 14
-gear.ternionDaggerPlusOne = rank_gear("Ternion Dagger +1", 100)                                                      --TA 4, Acc 27, SB 9, Dagger Skill 228, Parrying Skill 228
-gear.thereoidGreaves = hp_gear("Thereoid Greaves", 13)                                                               --Haste 4, MDB 5, Ratt 25, Att 25
+    augments = { '"Regen"+2', 'Enh. Mag. eff. dur. +10', }, })                                                                      --Haste 3, MDB 6, Enhancing magic Skill 12
+gear.tellenBelt = hp_gear("Tellen Belt", 0)                                                                                         --STP 4
+gear.tempusFugit = hp_gear("Tempus Fugit", 0)                                                                                       --Haste 14
+gear.ternionDaggerPlusOne = rank_gear("Ternion Dagger +1", 100)                                                                     --TA 4, Acc 27, SB 9, Dagger Skill 228, Parrying Skill 228
+gear.thereoidGreaves = hp_gear("Thereoid Greaves", 13)                                                                              --Haste 4, MDB 5, Ratt 25, Att 25
 gear.throwingTomahawk = hp_gear("Thr. Tomahawk", 0)
 gear.thfDA = hp_gear("Toutatis's Cape", 0, {
     augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Dbl.Atk."+10', 'Damage taken-5%', }, })           --DA 10, DT 5, Acc 20, Acc 10
@@ -4442,7 +4596,6 @@ gear.vadoseRod = rank_gear("Vadose Rod", 100)                                   
 gear.vanyaFeetPathA = hp_gear("Vanya Clogs", 13, {
     augments = { 'MP+50', '"Cure" potency +7%', 'Enmity-6', }, })                                                      --Cure Pot 5, Haste 3, MDB 5, Healing magic Skill 20
 gear.vararRingPlusOne = hp_gear("Varar Ring +1", 0)                                                                    --STP 6, Racc 10, Acc 10
-gear.jugOfVenomousBroth = hp_gear("Venomous Broth", 0)
 gear.verethragna = rank_gear("Verethragna", 100)                                                                       --STR 15
 gear.vitiationChapeauPlusFour = hp_gear("Viti. Chapeau +4", 91, {
     augments = { 'Enfeebling Magic duration', 'Magic Accuracy', }, })                                                  --Refresh 3, WSD 9, Haste 6, Macc 42, MDB 8
@@ -4522,6 +4675,10 @@ gear.herculeanBootsFC = hp_gear("Herculean Boots", 9, {
     augments = { '"Fast Cast"+6', }, })                                                                                                                                                   --TA 2, Haste 4, MAB 10, Macc 10, MDB 5
 gear.herculeanBootsCrit = hp_gear("Herculean Boots", 9, {
     augments = { 'AGI+6', 'Crit.hit rate+3', 'Quadruple Attack +2', 'Accuracy+6 Attack+6', }, })                                                                                          --TA 2, Haste 4, MAB 10, Macc 10, MDB 5
+gear.herculeanBootsAcc = hp_gear("Herculean Boots", 9, {
+    augments = { 'Attack+21', 'Accuracy+10', 'Accuracy+15 Attack+15', 'Mag. Acc.+11 "Mag.Atk.Bns."+11', }, })                                                                             --TA 2, Haste 4, MAB 10, Macc 10, MDB 5
+gear.herculeanGlovesAcc = hp_gear("Herculean Gloves", 20, {
+    augments = { 'Attack+9', '"Fast Cast"+1', 'Accuracy+15 Attack+15', 'Mag. Acc.+14 "Mag.Atk.Bns."+14', }, })                                                                            --TA 2, SB 5, Haste 5, PDT 2
 gear.herculeanHelmFC = hp_gear("Herculean Helm", 38, {
     augments = { '"Mag.Atk.Bns."+21', '"Fast Cast"+6', }, })                                                                                                                              --FC 7, Haste 8, MAB 10, MDB 3, Ratt 15
 gear.herculeanHelmNuke = hp_gear("Herculean Helm", 38, {
@@ -4653,11 +4810,15 @@ gear.vararRingPlusOne2 = hp_gear("Varar Ring +1", 0, { bag = "wardrobe2" })     
 gear.vararRingPlusOne1 = hp_gear("Varar Ring +1", 0, { bag = "wardrobe" })                                                                                                                --STP 6, Racc 10, Acc 10
 gear.pupDA = hp_gear("Visucius's Mantle", 0, {
     augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Dbl.Atk."+10', 'Damage taken-5%', }, })                                                                              --DA 10, DT 5, Acc 20, Acc 10
+gear.pupDexDA = hp_gear("Visucius's Mantle", 0, {
+    augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'DEX+1', '"Dbl.Atk."+10', 'Damage taken-5%', }, })                                                                                    --DA 10, DT 5, DEX 21, Acc 20, Att 20, Automaton Lv 1, third augment at DEX+1 until finished
+gear.pupSTP = hp_gear("Visucius's Mantle", 0, {
+    augments = { 'DEX+20', 'Accuracy+20 Attack+20', 'Accuracy+10', '"Store TP"+10', 'Damage taken-5%', }, })                                                                              --STP 10, DT 5, DEX 20, Acc 30, Att 20, Automaton Lv 1
 
 --[==[ The Escha and Geas Fete sets. Each piece has four fixed Nolan augment paths, and each
      path gets its own entry at that path's maximum rank rather than one averaged entry. An
      entry is named nameSlotPathX, or nameSlotPlusOnePathX for a +1 piece. A piece's four
-     entries may not all be in this section, since some are minted earlier under the same
+     entries may not all be in this section, since some appear earlier under the same
      naming. None of these pieces is Rare, so GearSwap equips only a copy whose augments
      match the entry. A set naming a path the carried copy does not have leaves the slot as
      it was, and GearSwap does not report it. ]==] --
@@ -4728,7 +4889,7 @@ gear.eschiteHandsPathB = hp_gear("Eschite Gauntlets", 29, {
 gear.eschiteHandsPathC = hp_gear("Eschite Gauntlets", 29, {
     augments = { 'Mag. Evasion+15', 'Spell interruption rate down +15%', 'Enmity+7' }, }) --Enmity 7
 gear.eschiteHandsPathD = hp_gear("Eschite Gauntlets", 29, {
-    augments = { 'Accuracy+20', '"Dbl.Atk."+4', 'Enmity+7' }, })                    --Enmity 7, Acc 20
+    augments = { 'Accuracy+20', '"Dbl.Atk."+4', 'Enmity+7' }, })                          --Enmity 7, Acc 20
 gear.eschiteLegsPathA = hp_gear("Eschite Cuisses", 132, {
     augments = { 'HP+80', 'Enmity+7', 'Phys. dmg. taken -4%' }, })                        --HP 80, PDT 4, Enmity 7
 gear.eschiteLegsPathB = hp_gear("Eschite Cuisses", 52, {
@@ -4754,7 +4915,7 @@ gear.nagaHeadPathB = hp_gear("Naga Somen", 136, {
 gear.nagaHeadPathC = hp_gear("Naga Somen", 86, {
     augments = { 'Pet: MP+80', '"Cure" potency +4%', '"Fast Cast"+3%' }, })        --MP 80, FC 3, Cure Pot 4
 gear.nagaHeadPathD = hp_gear("Naga Somen", 86, {
-    augments = { 'Accuracy+15', 'Rng.Acc.+25', 'Enmity-6' }, })                 --Enmity -6, Acc 15
+    augments = { 'Accuracy+15', 'Rng.Acc.+25', 'Enmity-6' }, })                    --Enmity -6, Acc 15
 gear.nagaBodyPathA = hp_gear("Naga Samue", 119, {
     augments = { 'STR+10', 'Accuracy+15', '"Subtle Blow"+7' }, })                  --Acc 15
 gear.nagaBodyPathB = hp_gear("Naga Samue", 169, {
@@ -4836,27 +4997,27 @@ gear.pursuerHeadPathA = hp_gear("Pursuer's Beret", 36, {
 gear.pursuerHeadPathB = hp_gear("Pursuer's Beret", 36, {
     augments = { 'DEX+7', 'AGI+10', '"Recycle"+15' }, })
 gear.pursuerHeadPathC = hp_gear("Pursuer's Beret", 86, {
-    augments = { 'HP+50', 'Accuracy+20', 'Attack+15' }, })             --HP 50, Acc 20
+    augments = { 'HP+50', 'Accuracy+20', 'Attack+15' }, })            --HP 50, Acc 20
 gear.pursuerHeadPathD = hp_gear("Pursuer's Beret", 36, {
-    augments = { 'Rng.Atk.+15', 'Enmity-6', '"Subtle Blow"+7' }, }) --Enmity -6
+    augments = { 'Rng.Atk.+15', 'Enmity-6', '"Subtle Blow"+7' }, })   --Enmity -6
 gear.pursuerBodyPathA = hp_gear("Pursuer's Doublet", 109, {
-    augments = { 'AGI+10', '"Rapid Shot"+10', '"Subtle Blow"+7' }, })  --Rapid Shot 10
+    augments = { 'AGI+10', '"Rapid Shot"+10', '"Subtle Blow"+7' }, }) --Rapid Shot 10
 gear.pursuerBodyPathB = hp_gear("Pursuer's Doublet", 109, {
     augments = { 'DEX+7', 'AGI+10', '"Recycle"+15' }, })
 gear.pursuerBodyPathC = hp_gear("Pursuer's Doublet", 159, {
-    augments = { 'HP+50', 'Accuracy+20', 'Attack+15' }, })              --HP 50, Acc 20
+    augments = { 'HP+50', 'Accuracy+20', 'Attack+15' }, })            --HP 50, Acc 20
 gear.pursuerBodyPathD = hp_gear("Pursuer's Doublet", 159, {
-    augments = { 'HP+50', 'Crit.hit rate +4%', '"Snapshot"+6' }, }) --HP 50, Snapshot 6
+    augments = { 'HP+50', 'Crit.hit rate +4%', '"Snapshot"+6' }, })   --HP 50, Snapshot 6
 gear.pursuerHandsPathA = hp_gear("Pursuer's Cuffs", 25, {
-    augments = { 'AGI+10', '"Rapid Shot"+10', '"Subtle Blow"+7' }, })   --Rapid Shot 10
+    augments = { 'AGI+10', '"Rapid Shot"+10', '"Subtle Blow"+7' }, }) --Rapid Shot 10
 gear.pursuerHandsPathB = hp_gear("Pursuer's Cuffs", 25, {
     augments = { 'DEX+7', 'AGI+10', '"Recycle"+15' }, })
 gear.pursuerHandsPathC = hp_gear("Pursuer's Cuffs", 75, {
-    augments = { 'HP+50', 'Accuracy+20', 'Attack+15' }, })               --HP 50, Acc 20
+    augments = { 'HP+50', 'Accuracy+20', 'Attack+15' }, })            --HP 50, Acc 20
 gear.pursuerHandsPathD = hp_gear("Pursuer's Cuffs", 25, {
     augments = { 'Rng.Atk.+15', 'STR+7', 'Phys. dmg. taken -4%' }, }) --PDT 4
 gear.pursuerLegsPathA = hp_gear("Pursuer's Pants", 47, {
-    augments = { 'AGI+10', '"Rapid Shot"+10', '"Subtle Blow"+7' }, })    --Rapid Shot 10
+    augments = { 'AGI+10', '"Rapid Shot"+10', '"Subtle Blow"+7' }, }) --Rapid Shot 10
 gear.pursuerLegsPathB = hp_gear("Pursuer's Pants", 47, {
     augments = { 'DEX+7', 'AGI+10', '"Recycle"+15' }, })
 gear.pursuerLegsPathC = hp_gear("Pursuer's Pants", 97, {
@@ -4876,13 +5037,13 @@ gear.rawhideHeadPathA = hp_gear("Rawhide Mask", 36, {
 gear.rawhideHeadPathB = hp_gear("Rawhide Mask", 86, {
     augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                       --HP 50, Acc 15
 gear.rawhideHeadPathC = hp_gear("Rawhide Mask", 36, {
-    augments = { 'Accuracy+15', 'Pet: Accuracy+15', 'Pet: "Dbl.Atk."+3' }, })    --Acc 15
+    augments = { 'Accuracy+15', 'Pet: Accuracy+15', 'Pet: "Dbl.Atk."+3' }, })     --Acc 15
 gear.rawhideHeadPathD = hp_gear("Rawhide Mask", 36, {
     augments = { 'Attack+15', 'Pet: Mag. Acc.+20', 'Pet: "Mag.Atk.Bns."+15' }, }) --MAB 15, Macc 20
 gear.rawhideBodyPathA = hp_gear("Rawhide Vest", 59, {
     augments = { 'DEX+10', 'STR+7', 'INT+7' }, })
 gear.rawhideBodyPathB = hp_gear("Rawhide Vest", 109, {
-    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                    --HP 50, Acc 15
+    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                   --HP 50, Acc 15
 gear.rawhideBodyPathC = hp_gear("Rawhide Vest", 59, {
     augments = { 'Accuracy+15', 'Pet: Accuracy+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.rawhideBodyPathD = hp_gear("Rawhide Vest", 109, {
@@ -4890,27 +5051,27 @@ gear.rawhideBodyPathD = hp_gear("Rawhide Vest", 109, {
 gear.rawhideHandsPathA = hp_gear("Rawhide Gloves", 25, {
     augments = { 'DEX+10', 'STR+7', 'INT+7' }, })
 gear.rawhideHandsPathB = hp_gear("Rawhide Gloves", 75, {
-    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                    --HP 50, Acc 15
+    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                   --HP 50, Acc 15
 gear.rawhideHandsPathC = hp_gear("Rawhide Gloves", 25, {
     augments = { 'Accuracy+15', 'Pet: Accuracy+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.rawhideHandsPathD = hp_gear("Rawhide Gloves", 25, {
-    augments = { 'Mag. Acc.+15', 'INT+7', 'MND+7' }, })                        --Macc 15
+    augments = { 'Mag. Acc.+15', 'INT+7', 'MND+7' }, })                       --Macc 15
 gear.rawhideLegsPathA = hp_gear("Rawhide Trousers", 47, {
     augments = { 'DEX+10', 'STR+7', 'INT+7' }, })
 gear.rawhideLegsPathB = hp_gear("Rawhide Trousers", 97, {
-    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                    --HP 50, Acc 15
+    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                   --HP 50, Acc 15
 gear.rawhideLegsPathC = hp_gear("Rawhide Trousers", 47, {
     augments = { 'Accuracy+15', 'Pet: Accuracy+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.rawhideLegsPathD = hp_gear("Rawhide Trousers", 47, {
-    augments = { 'MP+50', '"Fast Cast"+5%', 'Refresh+1' }, })                  --MP 50, FC 5
+    augments = { 'MP+50', '"Fast Cast"+5%', 'Refresh+1' }, })                 --MP 50, FC 5
 gear.rawhideFeetPathA = hp_gear("Rawhide Boots", 13, {
     augments = { 'DEX+10', 'STR+7', 'INT+7' }, })
 gear.rawhideFeetPathB = hp_gear("Rawhide Boots", 63, {
-    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                    --HP 50, Acc 15
+    augments = { 'HP+50', 'Accuracy+15', 'Evasion+20' }, })                   --HP 50, Acc 15
 gear.rawhideFeetPathC = hp_gear("Rawhide Boots", 13, {
     augments = { 'Accuracy+15', 'Pet: Accuracy+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.rawhideFeetPathD = hp_gear("Rawhide Boots", 13, {
-    augments = { 'STR+10', 'Attack+15', '"Store TP"+5' }, })                   --STP 5
+    augments = { 'STR+10', 'Attack+15', '"Store TP"+5' }, })                  --STP 5
 
 --Vanya Attire Set -- Nolan paths
 gear.vanyaHeadPathA = hp_gear("Vanya Hood", 36, {
@@ -4926,7 +5087,7 @@ gear.vanyaHandsPathC = hp_gear("Vanya Cuffs", 22, {
 gear.vanyaHandsPathD = hp_gear("Vanya Cuffs", 22, {
     augments = { 'CHR+10', 'String instrument skill +10', 'Mag. Acc.+20' }, }) --Macc 20
 gear.vanyaLegsPathA = hp_gear("Vanya Slops", 43, {
-    augments = { 'MP+50', '"Cure" potency +7%', 'Enmity-6' }, })   --MP 50, Cure Pot 7, Enmity -6
+    augments = { 'MP+50', '"Cure" potency +7%', 'Enmity-6' }, })               --MP 50, Cure Pot 7, Enmity -6
 gear.vanyaLegsPathC = hp_gear("Vanya Slops", 43, {
     augments = { 'MND+10', 'Spell interruption rate down +15%', '"Conserve MP"+6' }, })
 gear.vanyaLegsPathD = hp_gear("Vanya Slops", 93, {
@@ -5050,7 +5211,7 @@ gear.apogeeLegsPathB = hp_gear("Apogee Slacks", -100, {
 gear.apogeeLegsPathC = hp_gear("Apogee Slacks", -100, {
     augments = { 'Pet: Attack+20', 'Pet: "Mag.Atk.Bns."+20', 'Blood Pact Dmg.+7' }, })            --MAB 20, BP Dmg 7
 gear.apogeeLegsPathD = hp_gear("Apogee Slacks", -100, {
-    augments = { 'Pet: STR+15', 'Blood Pact Dmg.+13', 'Pet: "Dbl.Atk."+3' }, })                  --BP Dmg 13
+    augments = { 'Pet: STR+15', 'Blood Pact Dmg.+13', 'Pet: "Dbl.Atk."+3' }, })                   --BP Dmg 13
 gear.apogeeFeetPathA = hp_gear("Apogee Pumps", -80, {
     augments = { 'MP+60', 'Pet: "Mag.Atk.Bns."+30', 'Blood Pact Dmg.+7' }, })                     --MP 60, MAB 30, BP Dmg 7
 gear.apogeeFeetPathB = hp_gear("Apogee Pumps", -80, {
@@ -5064,11 +5225,11 @@ gear.apogeeFeetPathD = hp_gear("Apogee Pumps", -80, {
 gear.argosyHeadPathA = hp_gear("Argosy Celata", 50, {
     augments = { 'STR+10', 'DEX+10', 'Attack+15' }, })
 gear.argosyHeadPathB = hp_gear("Argosy Celata", 100, {
-    augments = { 'HP+50', 'Accuracy+10', 'Attack+15' }, })           --HP 50, Acc 10
+    augments = { 'HP+50', 'Accuracy+10', 'Attack+15' }, })       --HP 50, Acc 10
 gear.argosyHeadPathC = hp_gear("Argosy Celata", 100, {
-    augments = { 'HP+50', 'STR+12', 'Phys. dmg. taken -3%' }, })     --HP 50, PDT 3
+    augments = { 'HP+50', 'STR+12', 'Phys. dmg. taken -3%' }, }) --HP 50, PDT 3
 gear.argosyHeadPathD = hp_gear("Argosy Celata", 50, {
-    augments = { 'DEX+10', 'Accuracy+15', '"Dbl.Atk."+2' }, }) --Acc 15
+    augments = { 'DEX+10', 'Accuracy+15', '"Dbl.Atk."+2' }, })   --Acc 15
 gear.argosyBodyPathA = hp_gear("Argosy Hauberk", 68, {
     augments = { 'STR+10', 'DEX+10', 'Attack+15' }, })
 gear.argosyBodyPathB = hp_gear("Argosy Hauberk", 118, {
@@ -5096,91 +5257,91 @@ gear.argosyLegsPathD = hp_gear("Argosy Breeches", 57, {
 gear.argosyFeetPathA = hp_gear("Argosy Sollerets", 22, {
     augments = { 'STR+10', 'DEX+10', 'Attack+15' }, })
 gear.argosyFeetPathB = hp_gear("Argosy Sollerets", 72, {
-    augments = { 'HP+50', 'Accuracy+10', 'Attack+15' }, })           --HP 50, Acc 10
+    augments = { 'HP+50', 'Accuracy+10', 'Attack+15' }, })       --HP 50, Acc 10
 gear.argosyFeetPathC = hp_gear("Argosy Sollerets", 72, {
-    augments = { 'HP+50', 'STR+12', 'Phys. dmg. taken -3%' }, })     --HP 50, PDT 3
+    augments = { 'HP+50', 'STR+12', 'Phys. dmg. taken -3%' }, }) --HP 50, PDT 3
 gear.argosyFeetPathD = hp_gear("Argosy Sollerets", 82, {
-    augments = { 'HP+60', '"Dbl.Atk."+2', '"Store TP"+3' }, }) --HP 60, STP 3
+    augments = { 'HP+60', '"Dbl.Atk."+2', '"Store TP"+3' }, })   --HP 60, STP 3
 
 --Carmine Armor Set -- Nolan paths
 gear.carmineHeadPathA = hp_gear("Carmine Mask", 98, {
-    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                            --HP 60
+    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                        --HP 60
 gear.carmineHeadPathB = hp_gear("Carmine Mask", 38, {
-    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                      --Acc 10
+    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                  --Acc 10
 gear.carmineHeadPathC = hp_gear("Carmine Mask", 38, {
-    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                            --MP 60
+    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                        --MP 60
 gear.carmineHeadPathD = hp_gear("Carmine Mask", 38, {
-    augments = { 'Accuracy+15', 'Mag. Acc.+10', '"Fast Cast"+3%' }, })        --FC 3, Macc 10, Acc 15
+    augments = { 'Accuracy+15', 'Mag. Acc.+10', '"Fast Cast"+3%' }, })    --FC 3, Macc 10, Acc 15
 gear.carmineBodyPathA = hp_gear("Carm. Scale Mail", 151, {
-    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                            --HP 60
+    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                        --HP 60
 gear.carmineBodyPathB = hp_gear("Carm. Scale Mail", 91, {
-    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                      --Acc 10
+    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                  --Acc 10
 gear.carmineBodyPathC = hp_gear("Carm. Scale Mail", 91, {
-    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                            --MP 60
+    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                        --MP 60
 gear.carmineBodyPathD = hp_gear("Carm. Scale Mail", 91, {
-    augments = { 'Attack+15', '"Mag.Atk.Bns."+10', '"Dbl.Atk."+2' }, }) --MAB 10
+    augments = { 'Attack+15', '"Mag.Atk.Bns."+10', '"Dbl.Atk."+2' }, })   --MAB 10
 gear.carmineHandsPathA = hp_gear("Carmine Fin. Ga.", 87, {
-    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                            --HP 60
+    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                        --HP 60
 gear.carmineHandsPathB = hp_gear("Carmine Fin. Ga.", 27, {
-    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                      --Acc 10
+    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                  --Acc 10
 gear.carmineHandsPathC = hp_gear("Carmine Fin. Ga.", 27, {
-    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                            --MP 60
+    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                        --MP 60
 gear.carmineHandsPathD = hp_gear("Carmine Fin. Ga.", 27, {
-    augments = { 'Rng.Atk.+15', '"Mag.Atk.Bns."+10', '"Store TP"+5' }, })  --STP 5, MAB 10
+    augments = { 'Rng.Atk.+15', '"Mag.Atk.Bns."+10', '"Store TP"+5' }, }) --STP 5, MAB 10
 gear.carmineLegsPathA = hp_gear("Carmine Cuisses", 110, {
-    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                            --HP 60
+    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                        --HP 60
 gear.carmineLegsPathB = hp_gear("Carmine Cuisses", 50, {
-    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                      --Acc 10
+    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                  --Acc 10
 gear.carmineLegsPathC = hp_gear("Carmine Cuisses", 50, {
-    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                            --MP 60
+    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                        --MP 60
 gear.carmineLegsPathD = hp_gear("Carmine Cuisses", 50, {
-    augments = { 'Accuracy+15', 'Attack+10', '"Dual Wield"+5' }, })           --DW 5, Acc 15
+    augments = { 'Accuracy+15', 'Attack+10', '"Dual Wield"+5' }, })       --DW 5, Acc 15
 gear.carmineFeetPathA = hp_gear("Carmine Greaves", 75, {
-    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                            --HP 60
+    augments = { 'HP+60', 'STR+10', 'INT+10' }, })                        --HP 60
 gear.carmineFeetPathB = hp_gear("Carmine Greaves", 15, {
-    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                      --Acc 10
+    augments = { 'Accuracy+10', 'DEX+10', 'MND+15' }, })                  --Acc 10
 gear.carmineFeetPathC = hp_gear("Carmine Greaves", 15, {
-    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                            --MP 60
+    augments = { 'MP+60', 'INT+10', 'MND+10' }, })                        --MP 60
 gear.carmineFeetPathD = hp_gear("Carmine Greaves", 75, {
-    augments = { 'HP+60', 'MP+60', 'Phys. dmg. taken -3%' }, })               --HP 60, MP 60, PDT 3
+    augments = { 'HP+60', 'MP+60', 'Phys. dmg. taken -3%' }, })           --HP 60, MP 60, PDT 3
 
 --Emicho Armor Set -- Nolan paths
 gear.emichoHeadPathA = hp_gear("Emicho Coronet", 95, {
-    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                             --HP 50
+    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                            --HP 50
 gear.emichoHeadPathB = hp_gear("Emicho Coronet", 95, {
-    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                           --HP 50, Acc 15
+    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                          --HP 50, Acc 15
 gear.emichoHeadPathC = hp_gear("Emicho Coronet", 45, {
     augments = { 'Pet: Accuracy+15', 'Pet: Attack+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.emichoHeadPathD = hp_gear("Emicho Coronet", 45, {
-    augments = { 'Attack+20', '"Store TP"+6', 'Pet: STR+15' }, })                 --STP 6
+    augments = { 'Attack+20', '"Store TP"+6', 'Pet: STR+15' }, })                --STP 6
 gear.emichoBodyPathA = hp_gear("Emicho Haubert", 113, {
-    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                             --HP 50
+    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                            --HP 50
 gear.emichoBodyPathB = hp_gear("Emicho Haubert", 113, {
-    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                           --HP 50, Acc 15
+    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                          --HP 50, Acc 15
 gear.emichoBodyPathC = hp_gear("Emicho Haubert", 63, {
     augments = { 'Pet: Accuracy+15', 'Pet: Attack+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.emichoBodyPathD = hp_gear("Emicho Haubert", 163, {
-    augments = { 'Pet: HP+100', 'Pet: INT+15', 'Pet: "Regen"+2' }, })             --HP 100, Regen 2
+    augments = { 'Pet: HP+100', 'Pet: INT+15', 'Pet: "Regen"+2' }, })            --HP 100, Regen 2
 gear.emichoHandsPathA = hp_gear("Emicho Gauntlets", 84, {
-    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                             --HP 50
+    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                            --HP 50
 gear.emichoHandsPathB = hp_gear("Emicho Gauntlets", 84, {
-    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                           --HP 50, Acc 15
+    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                          --HP 50, Acc 15
 gear.emichoHandsPathC = hp_gear("Emicho Gauntlets", 34, {
     augments = { 'Pet: Accuracy+15', 'Pet: Attack+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.emichoHandsPathD = hp_gear("Emicho Gauntlets", 34, {
-    augments = { 'Accuracy+20', '"Dual Wield"+5', 'Pet: Accuracy+20' }, })        --DW 5, Acc 20
+    augments = { 'Accuracy+20', '"Dual Wield"+5', 'Pet: Accuracy+20' }, })       --DW 5, Acc 20
 gear.emichoLegsPathA = hp_gear("Emicho Hose", 100, {
-    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                             --HP 50
+    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                            --HP 50
 gear.emichoLegsPathB = hp_gear("Emicho Hose", 100, {
-    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                           --HP 50, Acc 15
+    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                          --HP 50, Acc 15
 gear.emichoLegsPathC = hp_gear("Emicho Hose", 50, {
     augments = { 'Pet: Accuracy+15', 'Pet: Attack+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.emichoLegsPathD = hp_gear("Emicho Hose", 50, {
-    augments = { 'STR+10', 'Accuracy+20', 'Attack+20' }, })                       --Acc 20
+    augments = { 'STR+10', 'Accuracy+20', 'Attack+20' }, })                      --Acc 20
 gear.emichoFeetPathA = hp_gear("Emicho Gambieras", 72, {
-    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                             --HP 50
+    augments = { 'HP+50', 'STR+10', 'Attack+15' }, })                            --HP 50
 gear.emichoFeetPathB = hp_gear("Emicho Gambieras", 72, {
-    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                           --HP 50, Acc 15
+    augments = { 'HP+50', 'DEX+10', 'Accuracy+15' }, })                          --HP 50, Acc 15
 gear.emichoFeetPathC = hp_gear("Emicho Gambieras", 22, {
     augments = { 'Pet: Accuracy+15', 'Pet: Attack+15', 'Pet: "Dbl.Atk."+3' }, }) --Acc 15
 gear.emichoFeetPathD = hp_gear("Emicho Gambieras", 22, {
@@ -5232,7 +5393,7 @@ gear.lustratioHeadPathA = hp_gear("Lustratio Cap", 22, {
 gear.lustratioHeadPathB = hp_gear("Lustratio Cap", 22, {
     augments = { 'Accuracy+15', 'DEX+5', 'Crit.hit rate +2%' }, }) --Acc 15
 gear.lustratioHeadPathC = hp_gear("Lustratio Cap", 22, {
-    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })        --STP 4, Acc 8
+    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })    --STP 4, Acc 8
 gear.lustratioHeadPathD = hp_gear("Lustratio Cap", 22, {
     augments = { 'INT+30', 'STR+5', 'DEX+5' }, })
 gear.lustratioBodyPathA = hp_gear("Lustratio Harness", 34, {
@@ -5240,33 +5401,33 @@ gear.lustratioBodyPathA = hp_gear("Lustratio Harness", 34, {
 gear.lustratioBodyPathB = hp_gear("Lustratio Harness", 34, {
     augments = { 'Accuracy+15', 'DEX+5', 'Crit.hit rate +2%' }, }) --Acc 15
 gear.lustratioBodyPathC = hp_gear("Lustratio Harness", 34, {
-    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })        --STP 4, Acc 8
+    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })    --STP 4, Acc 8
 gear.lustratioBodyPathD = hp_gear("Lustratio Harness", 34, {
-    augments = { 'Accuracy+8', 'Attack+10', '"Dbl.Atk."+2' }, }) --Acc 8
+    augments = { 'Accuracy+8', 'Attack+10', '"Dbl.Atk."+2' }, })   --Acc 8
 gear.lustratioHandsPathA = hp_gear("Lustratio Mittens", 15, {
     augments = { 'Attack+15', 'STR+5', '"Dbl.Atk."+2' }, })
 gear.lustratioHandsPathB = hp_gear("Lustratio Mittens", 15, {
     augments = { 'Accuracy+15', 'DEX+5', 'Crit.hit rate +2%' }, }) --Acc 15
 gear.lustratioHandsPathC = hp_gear("Lustratio Mittens", 15, {
-    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })        --STP 4, Acc 8
+    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })    --STP 4, Acc 8
 gear.lustratioHandsPathD = hp_gear("Lustratio Mittens", 15, {
-    augments = { 'Accuracy+25', 'VIT+10', 'DEX+7' }, })                --Acc 25
+    augments = { 'Accuracy+25', 'VIT+10', 'DEX+7' }, })            --Acc 25
 gear.lustratioLegsPathA = hp_gear("Lustratio Subligar", 27, {
     augments = { 'Attack+15', 'STR+5', '"Dbl.Atk."+2' }, })
 gear.lustratioLegsPathB = hp_gear("Lustratio Subligar", 27, {
     augments = { 'Accuracy+15', 'DEX+5', 'Crit.hit rate +2%' }, }) --Acc 15
 gear.lustratioLegsPathC = hp_gear("Lustratio Subligar", 27, {
-    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })        --STP 4, Acc 8
+    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })    --STP 4, Acc 8
 gear.lustratioLegsPathD = hp_gear("Lustratio Subligar", 77, {
-    augments = { 'HP+50', 'Attack+25', 'Enmity-5' }, })                --HP 50, Enmity -5
+    augments = { 'HP+50', 'Attack+25', 'Enmity-5' }, })            --HP 50, Enmity -5
 gear.lustratioFeetPathA = hp_gear("Lustratio Leggings", 11, {
     augments = { 'Attack+15', 'STR+5', '"Dbl.Atk."+2' }, })
 gear.lustratioFeetPathB = hp_gear("Lustratio Leggings", 11, {
     augments = { 'Accuracy+15', 'DEX+5', 'Crit.hit rate +2%' }, }) --Acc 15
 gear.lustratioFeetPathC = hp_gear("Lustratio Leggings", 11, {
-    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })        --STP 4, Acc 8
+    augments = { 'Accuracy+8', '"Store TP"+4', 'Attack+8' }, })    --STP 4, Acc 8
 gear.lustratioFeetPathD = hp_gear("Lustratio Leggings", 61, {
-    augments = { 'HP+50', 'STR+10', 'DEX+10' }, })                     --HP 50
+    augments = { 'HP+50', 'STR+10', 'DEX+10' }, })                 --HP 50
 
 --Rao Armor Set -- Nolan paths
 gear.raoHeadPathA = hp_gear("Rao Kabuto", 0, {
@@ -5300,7 +5461,7 @@ gear.raoLegsPathB = hp_gear("Rao Haidate", 0, {
 gear.raoLegsPathC = hp_gear("Rao Haidate", 100, {
     augments = { 'Pet: HP+100', 'Pet: Accuracy+15', 'Pet: Damage taken -3%' }, }) --HP 100, Acc 15
 gear.raoLegsPathD = hp_gear("Rao Haidate", 0, {
-    augments = { 'Accuracy+20', '"Dbl.Atk."+3', 'Pet: Accuracy+20' }, })    --Acc 20
+    augments = { 'Accuracy+20', '"Dbl.Atk."+3', 'Pet: Accuracy+20' }, })          --Acc 20
 gear.raoFeetPathA = hp_gear("Rao Sune-Ate", 0, {
     augments = { 'Accuracy+10', 'Attack+10', 'Evasion+15' }, })                   --Acc 10
 gear.raoFeetPathB = hp_gear("Rao Sune-Ate", 0, {
@@ -5308,7 +5469,7 @@ gear.raoFeetPathB = hp_gear("Rao Sune-Ate", 0, {
 gear.raoFeetPathC = hp_gear("Rao Sune-Ate", 100, {
     augments = { 'Pet: HP+100', 'Pet: Accuracy+15', 'Pet: Damage taken -3%' }, }) --HP 100, Acc 15
 gear.raoFeetPathD = hp_gear("Rao Sune-Ate", 50, {
-    augments = { 'HP+50', 'Crit.hit rate +3%', '"Dbl.Atk."+2' }, })     --HP 50
+    augments = { 'HP+50', 'Crit.hit rate +3%', '"Dbl.Atk."+2' }, })               --HP 50
 
 --Ryuo Armor Set -- Nolan paths
 gear.ryuoHeadPathA = hp_gear("Ryuo Somen", 41, {
@@ -5326,7 +5487,7 @@ gear.ryuoBodyPathB = hp_gear("Ryuo Domaru", 213, {
 gear.ryuoBodyPathC = hp_gear("Ryuo Domaru", 213, {
     augments = { 'HP+50', '"Store TP"+4', '"Subtle Blow"+7' }, })                --HP 50, STP 4
 gear.ryuoBodyPathD = hp_gear("Ryuo Domaru", 213, {
-    augments = { 'HP+50', '"Store TP"+5', '"Dbl.Atk."+2' }, })             --HP 50, STP 5
+    augments = { 'HP+50', '"Store TP"+5', '"Dbl.Atk."+2' }, })                   --HP 50, STP 5
 gear.ryuoHandsPathA = hp_gear("Ryuo Tekko", 29, {
     augments = { 'STR+10', 'DEX+10', 'Accuracy+15' }, })                         --Acc 15
 gear.ryuoHandsPathB = hp_gear("Ryuo Tekko", 79, {
@@ -5334,7 +5495,7 @@ gear.ryuoHandsPathB = hp_gear("Ryuo Tekko", 79, {
 gear.ryuoHandsPathC = hp_gear("Ryuo Tekko", 79, {
     augments = { 'HP+50', '"Store TP"+4', '"Subtle Blow"+7' }, })                --HP 50, STP 4
 gear.ryuoHandsPathD = hp_gear("Ryuo Tekko", 29, {
-    augments = { 'DEX+10', 'Accuracy+20', '"Dbl.Atk."+3' }, })             --Acc 20
+    augments = { 'DEX+10', 'Accuracy+20', '"Dbl.Atk."+3' }, })                   --Acc 20
 gear.ryuoLegsPathA = hp_gear("Ryuo Hakama", 50, {
     augments = { 'STR+10', 'DEX+10', 'Accuracy+15' }, })                         --Acc 15
 gear.ryuoLegsPathB = hp_gear("Ryuo Hakama", 100, {
@@ -5376,7 +5537,7 @@ gear.souveranHandsPathB = hp_gear("Souv. Handschuhs", 134, {
 gear.souveranHandsPathC = hp_gear("Souv. Handschuhs", 164, {
     augments = { 'HP+80', 'Enmity+7', 'Potency of "Cure" effect received +10%' }, }) --HP 80, Enmity 7
 gear.souveranHandsPathD = hp_gear("Souv. Handschuhs", 134, {
-    augments = { 'HP+50', 'Shield skill +10', 'Phys. dmg. taken -3', }, })            --HP 50, PDT 3, Shield Skill 10
+    augments = { 'HP+50', 'Shield skill +10', 'Phys. dmg. taken -3', }, })           --HP 50, PDT 3, Shield Skill 10
 gear.souveranLegsPathA = hp_gear("Souveran Diechlings", 57, {
     augments = { 'Accuracy+10', 'Attack+10', 'Enmity+4' }, })                        --Enmity 4, Acc 10
 gear.souveranLegsPathB = hp_gear("Souveran Diechlings", 107, {
@@ -5500,7 +5661,7 @@ gear.apogeeLegsPlusOnePathB = hp_gear("Apogee Slacks +1", -110, {
 gear.apogeeLegsPlusOnePathC = hp_gear("Apogee Slacks +1", -110, {
     augments = { 'Pet: Attack+25', 'Pet: "Mag.Atk.Bns."+25', 'Blood Pact Dmg.+8' }, })            --MAB 25, BP Dmg 8
 gear.apogeeLegsPlusOnePathD = hp_gear("Apogee Slacks +1", -110, {
-    augments = { 'Pet: STR+20', 'Blood Pact Dmg.+14', 'Pet: "Dbl.Atk."+4', }, })                 --Haste 5, MDB 6
+    augments = { 'Pet: STR+20', 'Blood Pact Dmg.+14', 'Pet: "Dbl.Atk."+4', }, })                  --Haste 5, MDB 6
 gear.apogeeFeetPlusOnePathA = hp_gear("Apogee Pumps +1", -90, {
     augments = { 'MP+80', 'Pet: "Mag.Atk.Bns."+35', 'Blood Pact Dmg.+8' }, })                     --MP 80, MAB 35, BP Dmg 8
 gear.apogeeFeetPlusOnePathB = hp_gear("Apogee Pumps +1", -90, {
@@ -5514,11 +5675,11 @@ gear.apogeeFeetPlusOnePathD = hp_gear("Apogee Pumps +1", -90, {
 gear.argosyHeadPlusOnePathA = hp_gear("Argosy Celata +1", 50, {
     augments = { 'STR+12', 'DEX+12', 'Attack+20' }, })
 gear.argosyHeadPlusOnePathB = hp_gear("Argosy Celata +1", 115, {
-    augments = { 'HP+65', 'Accuracy+13', 'Attack+20' }, })           --HP 65, Acc 13
+    augments = { 'HP+65', 'Accuracy+13', 'Attack+20' }, })       --HP 65, Acc 13
 gear.argosyHeadPlusOnePathC = hp_gear("Argosy Celata +1", 115, {
-    augments = { 'HP+65', 'STR+15', 'Phys. dmg. taken -4%' }, })     --HP 65, PDT 4
+    augments = { 'HP+65', 'STR+15', 'Phys. dmg. taken -4%' }, }) --HP 65, PDT 4
 gear.argosyHeadPlusOnePathD = hp_gear("Argosy Celata +1", 50, {
-    augments = { 'DEX+12', 'Accuracy+20', '"Dbl.Atk."+3' }, }) --Acc 20
+    augments = { 'DEX+12', 'Accuracy+20', '"Dbl.Atk."+3' }, })   --Acc 20
 gear.argosyBodyPlusOnePathA = hp_gear("Argosy Hauberk +1", 68, {
     augments = { 'STR+12', 'DEX+12', 'Attack+20' }, })
 gear.argosyBodyPlusOnePathB = hp_gear("Argosy Hauberk +1", 133, {
@@ -5546,81 +5707,81 @@ gear.argosyLegsPlusOnePathD = hp_gear("Argosy Breeches +1", 57, {
 gear.argosyFeetPlusOnePathA = hp_gear("Argosy Sollerets +1", 22, {
     augments = { 'STR+12', 'DEX+12', 'Attack+20' }, })
 gear.argosyFeetPlusOnePathB = hp_gear("Argosy Sollerets +1", 87, {
-    augments = { 'HP+65', 'Accuracy+13', 'Attack+20' }, })           --HP 65, Acc 13
+    augments = { 'HP+65', 'Accuracy+13', 'Attack+20' }, })       --HP 65, Acc 13
 gear.argosyFeetPlusOnePathC = hp_gear("Argosy Sollerets +1", 87, {
-    augments = { 'HP+65', 'STR+15', 'Phys. dmg. taken -4%' }, })     --HP 65, PDT 4
+    augments = { 'HP+65', 'STR+15', 'Phys. dmg. taken -4%' }, }) --HP 65, PDT 4
 gear.argosyFeetPlusOnePathD = hp_gear("Argosy Sollerets +1", 87, {
-    augments = { 'HP+65', '"Dbl.Atk."+3', '"Store TP"+5' }, }) --HP 65, STP 5
+    augments = { 'HP+65', '"Dbl.Atk."+3', '"Store TP"+5' }, })   --HP 65, STP 5
 
 --Carmine Armor Set +1 -- Nolan paths (Set: Increases Accuracy)
 gear.carmineHeadPlusOnePathA = hp_gear("Carmine Mask +1", 118, {
-    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                            --HP 80
+    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                      --HP 80
 gear.carmineHeadPlusOnePathB = hp_gear("Carmine Mask +1", 38, {
-    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                      --Acc 12
+    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                --Acc 12
 gear.carmineHeadPlusOnePathC = hp_gear("Carmine Mask +1", 38, {
-    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                            --MP 80
+    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                      --MP 80
 gear.carmineBodyPlusOnePathA = hp_gear("Carm. Sc. Mail +1", 176, {
-    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                            --HP 80
+    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                      --HP 80
 gear.carmineBodyPlusOnePathB = hp_gear("Carm. Sc. Mail +1", 96, {
-    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                      --Acc 12
+    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                --Acc 12
 gear.carmineBodyPlusOnePathC = hp_gear("Carm. Sc. Mail +1", 96, {
-    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                            --MP 80
+    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                      --MP 80
 gear.carmineBodyPlusOnePathD = hp_gear("Carm. Sc. Mail +1", 96, {
     augments = { '"Mag.Atk.Bns."+12', 'Attack+20', '"Dbl.Atk."+4' }, }) --MAB 12
 gear.carmineHandsPlusOnePathA = hp_gear("Carmine Fin. Ga. +1", 107, {
-    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                            --HP 80
+    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                      --HP 80
 gear.carmineHandsPlusOnePathB = hp_gear("Carmine Fin. Ga. +1", 27, {
-    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                      --Acc 12
+    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                --Acc 12
 gear.carmineHandsPlusOnePathC = hp_gear("Carmine Fin. Ga. +1", 27, {
-    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                            --MP 80
+    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                      --MP 80
 gear.carmineLegsPlusOnePathB = hp_gear("Carmine Cuisses +1", 50, {
-    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                      --Acc 12
+    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                --Acc 12
 gear.carmineLegsPlusOnePathC = hp_gear("Carmine Cuisses +1", 50, {
-    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                            --MP 80
+    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                      --MP 80
 gear.carmineFeetPlusOnePathA = hp_gear("Carmine Greaves +1", 95, {
-    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                            --HP 80
+    augments = { 'HP+80', 'STR+12', 'INT+12' }, })                      --HP 80
 gear.carmineFeetPlusOnePathB = hp_gear("Carmine Greaves +1", 15, {
-    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                      --Acc 12
+    augments = { 'Accuracy+12', 'DEX+12', 'MND+20' }, })                --Acc 12
 gear.carmineFeetPlusOnePathC = hp_gear("Carmine Greaves +1", 15, {
-    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                            --MP 80
+    augments = { 'MP+80', 'INT+12', 'MND+12' }, })                      --MP 80
 
 --Emicho Armor Set +1 -- Nolan paths (Set: Enhances "Double Attack" effect)
 gear.emichoHeadPlusOnePathA = hp_gear("Emicho Coronet +1", 110, {
-    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                             --HP 65
+    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                            --HP 65
 gear.emichoHeadPlusOnePathB = hp_gear("Emicho Coronet +1", 110, {
-    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                           --HP 65, Acc 20
+    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                          --HP 65, Acc 20
 gear.emichoHeadPlusOnePathC = hp_gear("Emicho Coronet +1", 45, {
     augments = { 'Pet: Accuracy+20', 'Pet: Attack+20', 'Pet: "Dbl.Atk."+4' }, }) --Acc 20
 gear.emichoHeadPlusOnePathD = hp_gear("Emicho Coronet +1", 45, {
-    augments = { 'Attack+25', '"Store TP"+7', 'Pet: STR+20' }, })                 --STP 7
+    augments = { 'Attack+25', '"Store TP"+7', 'Pet: STR+20' }, })                --STP 7
 gear.emichoBodyPlusOnePathA = hp_gear("Emicho Haubert +1", 128, {
-    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                             --HP 65
+    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                            --HP 65
 gear.emichoBodyPlusOnePathB = hp_gear("Emicho Haubert +1", 128, {
-    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                           --HP 65, Acc 20
+    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                          --HP 65, Acc 20
 gear.emichoBodyPlusOnePathC = hp_gear("Emicho Haubert +1", 63, {
     augments = { 'Pet: Accuracy+20', 'Pet: Attack+20', 'Pet: "Dbl.Atk."+4' }, }) --Acc 20
 gear.emichoBodyPlusOnePathD = hp_gear("Emicho Haubert +1", 188, {
-    augments = { 'Pet: HP+125', 'Pet: INT+20', 'Pet: "Regen"+3' }, })             --HP 125, Regen 3
+    augments = { 'Pet: HP+125', 'Pet: INT+20', 'Pet: "Regen"+3' }, })            --HP 125, Regen 3
 gear.emichoHandsPlusOnePathA = hp_gear("Emi. Gauntlets +1", 99, {
-    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                             --HP 65
+    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                            --HP 65
 gear.emichoHandsPlusOnePathB = hp_gear("Emi. Gauntlets +1", 99, {
-    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                           --HP 65, Acc 20
+    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                          --HP 65, Acc 20
 gear.emichoHandsPlusOnePathC = hp_gear("Emi. Gauntlets +1", 34, {
     augments = { 'Pet: Accuracy+20', 'Pet: Attack+20', 'Pet: "Dbl.Atk."+4' }, }) --Acc 20
 gear.emichoHandsPlusOnePathD = hp_gear("Emi. Gauntlets +1", 34, {
-    augments = { 'Accuracy+25', '"Dual Wield"+6', 'Pet: Accuracy+25' }, })        --DW 6, Acc 25
+    augments = { 'Accuracy+25', '"Dual Wield"+6', 'Pet: Accuracy+25' }, })       --DW 6, Acc 25
 gear.emichoLegsPlusOnePathA = hp_gear("Emicho Hose +1", 115, {
-    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                             --HP 65
+    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                            --HP 65
 gear.emichoLegsPlusOnePathB = hp_gear("Emicho Hose +1", 115, {
-    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                           --HP 65, Acc 20
+    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                          --HP 65, Acc 20
 gear.emichoLegsPlusOnePathC = hp_gear("Emicho Hose +1", 50, {
     augments = { 'Pet: Accuracy+20', 'Pet: Attack+20', 'Pet: "Dbl.Atk."+4' }, }) --Acc 20
 gear.emichoLegsPlusOnePathD = hp_gear("Emicho Hose +1", 50, {
-    augments = { 'STR+12', 'Accuracy+25', 'Attack+25' }, })                       --Acc 25
+    augments = { 'STR+12', 'Accuracy+25', 'Attack+25' }, })                      --Acc 25
 gear.emichoFeetPlusOnePathA = hp_gear("Emi. Gambieras +1", 87, {
-    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                             --HP 65
+    augments = { 'HP+65', 'STR+12', 'Attack+20' }, })                            --HP 65
 gear.emichoFeetPlusOnePathB = hp_gear("Emi. Gambieras +1", 87, {
-    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                           --HP 65, Acc 20
+    augments = { 'HP+65', 'DEX+12', 'Accuracy+20' }, })                          --HP 65, Acc 20
 gear.emichoFeetPlusOnePathC = hp_gear("Emi. Gambieras +1", 22, {
     augments = { 'Pet: Accuracy+20', 'Pet: Attack+20', 'Pet: "Dbl.Atk."+4' }, }) --Acc 20
 gear.emichoFeetPlusOnePathD = hp_gear("Emi. Gambieras +1", 22, {
@@ -5662,41 +5823,41 @@ gear.lustratioHeadPlusOnePathA = hp_gear("Lustratio Cap +1", 23, {
 gear.lustratioHeadPlusOnePathB = hp_gear("Lustratio Cap +1", 23, {
     augments = { 'Accuracy+20', 'DEX+8', 'Crit.hit rate +3%' }, }) --Acc 20
 gear.lustratioHeadPlusOnePathC = hp_gear("Lustratio Cap +1", 23, {
-    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })      --STP 5, Acc 10
+    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })  --STP 5, Acc 10
 gear.lustratioHeadPlusOnePathD = hp_gear("Lustratio Cap +1", 23, {
     augments = { 'STR+8', 'DEX+8', 'INT+35' }, })
 gear.lustratioBodyPlusOnePathA = hp_gear("Lustr. Harness +1", 35, {
     augments = { 'Attack+20', 'STR+8', '"Dbl.Atk."+3' }, })
 gear.lustratioBodyPlusOnePathB = hp_gear("Lustr. Harness +1", 35, {
-    augments = { 'Accuracy+20', 'DEX+8', 'Crit.hit rate +3%' }, })  --Acc 20
+    augments = { 'Accuracy+20', 'DEX+8', 'Crit.hit rate +3%' }, }) --Acc 20
 gear.lustratioBodyPlusOnePathC = hp_gear("Lustr. Harness +1", 35, {
-    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })       --STP 5, Acc 10
+    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })  --STP 5, Acc 10
 gear.lustratioBodyPlusOnePathD = hp_gear("Lustr. Harness +1", 35, {
-    augments = { 'Accuracy+10', 'Attack+13', '"Dbl.Atk."+4' }, }) --Acc 10
+    augments = { 'Accuracy+10', 'Attack+13', '"Dbl.Atk."+4' }, })  --Acc 10
 gear.lustratioHandsPlusOnePathA = hp_gear("Lustr. Mittens +1", 16, {
     augments = { 'Attack+20', 'STR+8', '"Dbl.Atk."+3' }, })
 gear.lustratioHandsPlusOnePathB = hp_gear("Lustr. Mittens +1", 16, {
     augments = { 'Accuracy+20', 'DEX+8', 'Crit.hit rate +3%' }, }) --Acc 20
 gear.lustratioHandsPlusOnePathC = hp_gear("Lustr. Mittens +1", 16, {
-    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })      --STP 5, Acc 10
+    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })  --STP 5, Acc 10
 gear.lustratioHandsPlusOnePathD = hp_gear("Lustr. Mittens +1", 16, {
-    augments = { 'Accuracy+30', 'VIT+13', 'DEX+10' }, })               --Acc 30
+    augments = { 'Accuracy+30', 'VIT+13', 'DEX+10' }, })           --Acc 30
 gear.lustratioLegsPlusOnePathA = hp_gear("Lustr. Subligar +1", 28, {
     augments = { 'Attack+20', 'STR+8', '"Dbl.Atk."+3' }, })
 gear.lustratioLegsPlusOnePathB = hp_gear("Lustr. Subligar +1", 28, {
     augments = { 'Accuracy+20', 'DEX+8', 'Crit.hit rate +3%' }, }) --Acc 20
 gear.lustratioLegsPlusOnePathC = hp_gear("Lustr. Subligar +1", 28, {
-    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })      --STP 5, Acc 10
+    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })  --STP 5, Acc 10
 gear.lustratioLegsPlusOnePathD = hp_gear("Lustr. Subligar +1", 93, {
-    augments = { 'HP+65', 'Attack+30', 'Enmity-6' }, })                --HP 65, Enmity -6
+    augments = { 'HP+65', 'Attack+30', 'Enmity-6' }, })            --HP 65, Enmity -6
 gear.lustratioFeetPlusOnePathA = hp_gear("Lustra. Leggings +1", 12, {
     augments = { 'Attack+20', 'STR+8', '"Dbl.Atk."+3' }, })
 gear.lustratioFeetPlusOnePathB = hp_gear("Lustra. Leggings +1", 12, {
     augments = { 'Accuracy+20', 'DEX+8', 'Crit.hit rate +3%' }, }) --Acc 20
 gear.lustratioFeetPlusOnePathC = hp_gear("Lustra. Leggings +1", 12, {
-    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })      --STP 5, Acc 10
+    augments = { 'Accuracy+10', '"Store TP"+5', 'Attack+10' }, })  --STP 5, Acc 10
 gear.lustratioFeetPlusOnePathD = hp_gear("Lustra. Leggings +1", 77, {
-    augments = { 'HP+65', 'STR+15', 'DEX+15' }, })                     --HP 65
+    augments = { 'HP+65', 'STR+15', 'DEX+15' }, })                 --HP 65
 
 --Rao Armor Set +1 -- Nolan paths (Set: Augments "Martial Arts")
 gear.raoHeadPlusOnePathA = hp_gear("Rao Kabuto +1", 0, {
@@ -5730,7 +5891,7 @@ gear.raoLegsPlusOnePathB = hp_gear("Rao Haidate +1", 0, {
 gear.raoLegsPlusOnePathC = hp_gear("Rao Haidate +1", 125, {
     augments = { 'Pet: HP+125', 'Pet: Accuracy+20', 'Pet: Damage taken -4%' }, }) --HP 125, Acc 20
 gear.raoLegsPlusOnePathD = hp_gear("Rao Haidate +1", 0, {
-    augments = { 'Accuracy+25', '"Dbl.Atk."+4', 'Pet: Accuracy+25' }, })    --Acc 25
+    augments = { 'Accuracy+25', '"Dbl.Atk."+4', 'Pet: Accuracy+25' }, })          --Acc 25
 gear.raoFeetPlusOnePathA = hp_gear("Rao Sune-Ate +1", 0, {
     augments = { 'Accuracy+12', 'Attack+12', 'Evasion+20' }, })                   --Acc 12
 gear.raoFeetPlusOnePathB = hp_gear("Rao Sune-Ate +1", 0, {
@@ -5738,7 +5899,7 @@ gear.raoFeetPlusOnePathB = hp_gear("Rao Sune-Ate +1", 0, {
 gear.raoFeetPlusOnePathC = hp_gear("Rao Sune-Ate +1", 125, {
     augments = { 'Pet: HP+125', 'Pet: Accuracy+20', 'Pet: Damage taken -4%' }, }) --HP 125, Acc 20
 gear.raoFeetPlusOnePathD = hp_gear("Rao Sune-Ate +1", 65, {
-    augments = { 'HP+65', 'Crit.hit rate +4%', '"Dbl.Atk."+4' }, })     --HP 65
+    augments = { 'HP+65', 'Crit.hit rate +4%', '"Dbl.Atk."+4' }, })               --HP 65
 
 --Ryuo Armor Set +1 -- Nolan paths (Set: Increases Attack)
 gear.ryuoHeadPlusOnePathA = hp_gear("Ryuo Somen +1", 41, {
@@ -5756,7 +5917,7 @@ gear.ryuoBodyPlusOnePathB = hp_gear("Ryuo Domaru +1", 233, {
 gear.ryuoBodyPlusOnePathC = hp_gear("Ryuo Domaru +1", 233, {
     augments = { 'HP+65', '"Store TP"+5', '"Subtle Blow"+8' }, })                --HP 65, STP 5
 gear.ryuoBodyPlusOnePathD = hp_gear("Ryuo Domaru +1", 233, {
-    augments = { 'HP+65', '"Store TP"+8', '"Dbl.Atk."+4' }, })             --HP 65, STP 8
+    augments = { 'HP+65', '"Store TP"+8', '"Dbl.Atk."+4' }, })                   --HP 65, STP 8
 gear.ryuoHandsPlusOnePathA = hp_gear("Ryuo Tekko +1", 29, {
     augments = { 'STR+12', 'DEX+12', 'Accuracy+20', }, })                        --Haste 4, MDB 1, Racc 33, Acc 33
 gear.ryuoHandsPlusOnePathB = hp_gear("Ryuo Tekko +1", 94, {
@@ -5764,7 +5925,7 @@ gear.ryuoHandsPlusOnePathB = hp_gear("Ryuo Tekko +1", 94, {
 gear.ryuoHandsPlusOnePathC = hp_gear("Ryuo Tekko +1", 94, {
     augments = { 'HP+65', '"Store TP"+5', '"Subtle Blow"+8' }, })                --HP 65, STP 5
 gear.ryuoHandsPlusOnePathD = hp_gear("Ryuo Tekko +1", 29, {
-    augments = { 'DEX+12', 'Accuracy+25', '"Dbl.Atk."+4' }, })             --Acc 25
+    augments = { 'DEX+12', 'Accuracy+25', '"Dbl.Atk."+4' }, })                   --Acc 25
 gear.ryuoLegsPlusOnePathA = hp_gear("Ryuo Hakama +1", 50, {
     augments = { 'STR+12', 'DEX+12', 'Accuracy+20' }, })                         --Acc 20
 gear.ryuoLegsPlusOnePathB = hp_gear("Ryuo Hakama +1", 115, {
@@ -6140,12 +6301,11 @@ gear.vijayaBowPathD = hp_gear("Vijaya Bow", 0, {
 
 --[==[ Trial of the Magians weapons: every stage of every trial line, under its in-game
      name. Each name has one entry with no augment list. The augments differ by stage and
-     by path, and where the item is not Rare, a set naming augments the copy does not
-     carry equips nothing, so a bare name is the only entry that always dresses. Main hand
+     by path. Where the item is not Rare, a set naming augments the carried copy does not
+     have equips nothing, so a bare name is the only entry that always dresses. Main hand
      and offhand weapons carry the weapon rank. Bows, guns, crossbows, the harp and the
-     shield are priced by HP like any other piece outside the weapon rank. The Empyrean,
-     Relic and Mythic weapons the trials also upgrade keep their entries above, one name
-     covering every level. ]==] --
+     shield are priced by HP like any other piece outside the weapon rank. The Empyrean, Relic and Mythic weapons
+     the trials also upgrade keep their entries above, one name covering every level. ]==] --
 
 --Trial of the Magians: Axes
 gear.alardAxe = rank_gear("Alard's Axe", 100)                   --Lv.80

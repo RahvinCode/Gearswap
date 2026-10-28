@@ -2,9 +2,9 @@
 
 *Including the GearSets-Include gear library*
 
-**Version 2.1** · A GearSwap engine for Final Fantasy XI (Windower 4)
+**Version 2.2** · A GearSwap engine for Final Fantasy XI (Windower 4)
 
-GearSwap is a Windower addon that changes your equipment automatically as you play. Rahvin GearSwap is a complete engine for it: you fill in gear sets for the jobs you play, and it decides what to wear, and when, for every action you take — casting, weaponskills, job abilities, ranged attacks, pet actions, songs, item uses, moving, resting, sleeping and dying. It ships with a 4,912-entry gear library, sample files for all 22 jobs, and a set of automations built for players running several characters at once.
+GearSwap is a Windower addon that changes equipment automatically during play. Rahvin GearSwap is a complete engine for it: fill in gear sets for each job, and the engine decides what to wear, and when, for every action — casting, weaponskills, job abilities, ranged attacks, pet commands and pet moves, songs, item uses, moving, resting, sleeping and dying. It ships with a 5,060-entry gear library, sample files for all 22 jobs, and a set of automations built for players running several characters at once.
 
 It began as a fork of Mirdain-Include, and Mirdain is credited for the original concept and scaffolding. Everything from 1.6.0 forward — engine and job files alike — is Rahvin's work, and the suite carries its own name and its own folder layout. Check the running version in game with `//gs c version`.
 
@@ -12,12 +12,11 @@ It began as a fork of Mirdain-Include, and Mirdain is credited for the original 
 
 ## Table of Contents
 
-**New here?** Follow [Clean install](#clean-install), then [Quick Start](#quick-start). **On 2.0?** See [Updating from 2.0](#updating-from-20). **Something wrong?** See [Troubleshooting](#13-troubleshooting).
+**New here?** Follow [Clean install](#clean-install), then [Quick Start](#quick-start). **On 2.1?** See [Updating from 2.1](#updating-from-21). **Something wrong?** See [Troubleshooting](#14-troubleshooting).
 
-- [Key Features](#key-features) — [Gear](#gear) · [The gear library](#the-gear-library) · [The on-screen display](#the-on-screen-display) · [Holds and locks](#holds-and-locks) · [Multibox and tracking](#multibox-and-tracking) · [Your job file](#your-job-file)
+- [Key Features](#key-features) — [Gear](#gear) · [Magic bursts](#magic-bursts) · [The gear library](#the-gear-library) · [The on-screen display](#the-on-screen-display) · [Holds and locks](#holds-and-locks) · [Multibox and tracking](#multibox-and-tracking) · [Your job file](#your-job-file)
 - [Installation](#installation) — [Coming from another GearSwap suite](#coming-from-another-gearswap-suite) · [Clean install](#clean-install)
-- [Quick Start](#quick-start) — [Words used in this manual](#words-used-in-this-manual)
-- [Updating from an earlier version](#updating-from-an-earlier-version) — [Updating from 2.0](#updating-from-20) · [Upgrading from Mirdain-Include](#upgrading-from-mirdain-include)
+- [Quick Start](#quick-start) — [Words used in this manual](#words-used-in-this-manual) · [Running several characters](#running-several-characters)
 - [The Manual](#the-manual)
   1. [How it works](#1-how-it-works)
   2. [The on-screen display](#2-the-on-screen-display)
@@ -26,15 +25,17 @@ It began as a fork of Mirdain-Include, and Mirdain is credited for the original 
   5. [Commands](#5-commands)
   6. [Holds and locks](#6-holds-and-locks)
   7. [Job file settings](#7-job-file-settings)
-  8. [Gear sets reference](#8-gear-sets-reference)
+  8. [Gear sets reference](#8-gear-sets-reference) — [Core sets](#core-sets) · [Weapons](#weapons) · [Precast](#precast) · [Midcast](#midcast) · [Midcast children](#midcast-children) · [Weaponskills](#weaponskills) · [Job-specific sets](#job-specific-sets) · [Pet sets](#pet-sets) · [Blue magic categories](#blue-magic-categories) · [Spell-received sets](#spell-received-sets) · [Buff sets](#buff-sets) · [The XIRoll set](#the-xiroll-set) · [Spellings the engine does not read](#spellings-the-engine-does-not-read)
   9. [The gear library](#9-the-gear-library)
   10. [Automatic engine checks](#10-automatic-engine-checks)
-  11. [Action and spell tracking](#11-action-and-spell-tracking)
-  12. [Customization hooks](#12-customization-hooks)
-  13. [Troubleshooting](#13-troubleshooting)
-      - Messages in chat: [A set warning](#a-set-warning-in-chat) · [A weaponskill warning names main or sub](#a-weaponskill-warning-names-main-or-sub) · [A line about a buff set](#a-line-about-a-buff-set-as-your-file-loads) · [A retired feature](#a-startup-message-mentions-a-retired-feature) · [No round named](#a-ranged-attack-is-canceled-with-no-round-named) · [A song or Geomancy spell fails](#a-bard-song-or-geomancy-spell-fails-with-a-command-error)
-      - Gear and holds: [Gear is not swapping](#gear-is-not-swapping) · [A slot is stuck](#a-slot-is-stuck) · [A hold I did not ask for](#the-status-box-shows-a-hold-i-did-not-ask-for) · [An item is not equipping](#an-item-is-not-equipping) · [An enchanted item is not being used](#an-enchanted-item-is-not-being-used)
+  11. [Magic bursts](#11-magic-bursts) — [Setting up burst gear](#setting-up-burst-gear) · [How a burst window works](#how-a-burst-window-works) · [When a burst goes wrong](#when-a-burst-goes-wrong)
+  12. [Action and spell tracking](#12-action-and-spell-tracking)
+  13. [Customization hooks](#13-customization-hooks)
+  14. [Troubleshooting](#14-troubleshooting)
+      - Messages in chat: [A set warning](#a-set-warning-in-chat) · [A weaponskill warning names main or sub](#a-weaponskill-warning-names-main-or-sub) · [A warning about a set as the job file loads](#a-warning-about-a-set-as-the-job-file-loads) · [A retired feature](#a-startup-message-mentions-a-retired-feature) · [An action sent no end](#a-message-says-an-action-sent-no-end) · [An action refused during a pet's move](#an-action-is-refused-while-a-pets-move-is-in-flight) · [No round named](#a-ranged-attack-is-canceled-with-no-round-named) · [A song or Geomancy spell fails](#a-bard-song-or-geomancy-spell-fails-with-a-command-error)
+      - Gear and holds: [Gear is not swapping](#gear-is-not-swapping) · [A slot is stuck](#a-slot-is-stuck) · [An unexpected hold](#the-status-box-shows-an-unexpected-hold) · [An item is not equipping](#an-item-is-not-equipping) · [An enchanted item is not being used](#an-enchanted-item-is-not-being-used)
       - Files, settings and display: [Nothing loads](#nothing-loads-at-all) · [The wrong job file loads](#the-wrong-job-file-loads) · [An edit changes nothing](#an-edit-to-the-job-file-changes-nothing) · [A Lua error names a line](#a-lua-error-names-the-job-file-and-a-line) · [Settings are not saving](#settings-are-not-saving) · [The display box is gone](#the-display-box-is-gone) · [Blank squares or ragged columns](#the-status-box-shows-blank-squares-or-the-columns-are-ragged)
+- [Updating from an earlier version](#updating-from-an-earlier-version) — [Updating from 2.1](#updating-from-21) · [Job files written before 2.2](#job-files-written-before-22) · [Upgrading from Mirdain-Include](#upgrading-from-mirdain-include)
 - [Performance](#performance)
 - [Credits](#credits)
 - [License](#license)
@@ -43,46 +44,55 @@ It began as a fork of Mirdain-Include, and Mirdain is credited for the original 
 
 # Key Features
 
-A map of what the suite does. Each line links to the section that explains it.
+A map of what the suite does; each line links to the section that explains it. Terms such as set, mode, midcast and hold are defined under [Words used in this manual](#words-used-in-this-manual).
 
 ## Gear
 
-- **Gear for every step of every action**, from spells and weaponskills to pet actions and item uses, and your own code can add to any step. → [How it works](#1-how-it-works), [Customization hooks](#12-customization-hooks)
+- **Gear for every step of every action**, from spells and weaponskills to pet actions and item uses, and a job file's own code can add to any step. → [How it works](#1-how-it-works), [Customization hooks](#13-customization-hooks)
 - **Declare only what changes.** Idle, movement, resting, pet, Sublimation, melee-mode, Aftermath and dual-wield sets are laid over one another, so each set names only the pieces that differ. → [Gear sets reference](#8-gear-sets-reference)
-- **Gear for a buff, with no code.** A set named after a buff, such as `sets.OffenseMode.Impetus`, is worn while that buff is on you, and an `XIRoll` set is worn while a Corsair roll on you stands at 11. → [Buff sets](#buff-sets), [The XIRoll set](#the-xiroll-set)
-- **Switches on keys.** Melee mode, weapon set, weapon lock, Treasure Hunter and four more switches each sit on a key you can change, and `gs c help` lists every command. → [Modes](#4-modes), [Keybinds](#3-keybinds)
-- **Situational gear is put on for you**: the best day, weather and distance piece you carry, the items a few spells require, gear for sleep and Doom, and a Remedy for Silence and Paralysis when `AutoItem` is on. → [Automatic gear rules](#automatic-gear-rules), [Status ailment responses](#status-ailment-responses)
+- **Casting sets that follow the cast.** Under any midcast set, a child set keyed by the offense mode, `Self` or `Others`, the spell's name or `Burst` is worn when the cast matches, such as `sets.Midcast.Cure.Self`. → [Midcast children](#midcast-children)
+- **Gear for a buff, with no code.** A set named after a buff, such as `sets.OffenseMode.Impetus`, is worn while that buff is up, and an `XIRoll` set is worn while a Corsair roll on the character stands at 11. → [Buff sets](#buff-sets), [The XIRoll set](#the-xiroll-set)
+- **Pet commands and pet moves dressed apart.** A pet command wears its delay gear at the command, the pet's move wears its potency gear while the pet readies it, and new actions are refused until a commanded move ends. → [Pet sets](#pet-sets)
+- **A song keeps its instrument.** The instrument stays in range, with the ammo slot empty, from the song's start to its end. → [Instruments](#instruments)
+- **Switches on keys.** Offense mode, weapon set, weapon lock, Treasure Hunter, buff level and four more switches each sit on a key that can be changed, and `gs c help` lists every command. → [Modes](#4-modes), [Keybinds](#3-keybinds)
+- **Situational gear goes on automatically**: the best day, weather and distance piece carried, the items a few spells require, gear for sleep and Doom, and a Remedy for Silence and Paralysis when `AutoItem` is on. → [Automatic gear rules](#automatic-gear-rules), [Status ailment responses](#status-ailment-responses)
 - **Actions that would fail are canceled first** — asleep, KO'd, charmed, short of TP, on cooldown or out of ammunition — and chat names the reason for a cooldown, a waltz short of TP, missing stratagem charges and ammunition. → [Action validation](#action-validation), [Resource warnings](#resource-warnings)
+
+## Magic bursts
+
+- **A burst window on every monster**, opened by anyone's skillchain: players, trusts, jug pets, automatons and avatars. → [How a burst window works](#how-a-burst-window-works)
+- **Timed to the landing.** Each spell is judged for the moment it will land, so a cast that would land after the window closes is not dressed for a burst. → [How a burst window works](#how-a-burst-window-works)
+- **Burst gear for every kind of spell**: black magic nukes, helixes, ninjutsu, blue magic and any spell with a set of its own, down to one spell, such as `sets.Midcast.Burst['Thundara III']`. The casting samples add an `MB` mode for burst gear on every nuke. → [Setting up burst gear](#setting-up-burst-gear)
+- **Switched mid-cast.** A chain that lands while a spell is in flight puts the spell into its burst gear, and a window that closes early takes it back out. → [A cast already in flight](#a-cast-already-in-flight)
 
 ## The gear library
 
-- **4,912 ready-made item entries**, written as `gear.<key>`, from every job's Artifact, Relic and Empyrean gear to the endgame pieces the samples use. → [The gear library](#9-the-gear-library)
-- **Your max HP survives every swap.** The library puts high-HP pieces on first, so your maximum HP never dips mid-swap, and you can add your own entries the same way. → [Why priorities matter](#why-priorities-matter), [Adding your own entries](#adding-your-own-entries)
+- **5,060 ready-made item entries**, written as `gear.<key>`, from every job's Artifact, Relic and Empyrean gear to the endgame pieces the samples use. → [The gear library](#9-the-gear-library)
+- **Maximum HP survives every swap.** The library puts high-HP pieces on first, so maximum HP never dips mid-swap, and personal entries can be added the same way. → [Why priorities matter](#why-priorities-matter), [Adding your own entries](#adding-your-own-entries)
 
 ## The on-screen display
 
 - **A status box in four styles**, stacked or on one line, saved for each character. → [Display styles](#display-styles), [The status box](#the-status-box), [The settings file](#the-settings-file)
-- **Place boxes by command.** `gs c displaypos` puts a box at exact coordinates, so one command sent to all your characters lines them all up. → [Moving and saving the boxes](#moving-and-saving-the-boxes)
-- **The LATTICE style adds the rig**, a four-by-four grid of your sixteen gear slots, each colored by whatever is holding it. → [Display styles](#display-styles)
-- **A debug box** shows the engine's state when a swap surprises you. → [The debug box](#the-debug-box)
+- **Place boxes by command.** `gs c displaypos` puts a box at exact coordinates, so one command sent to every character lines them all up. → [Moving and saving the boxes](#moving-and-saving-the-boxes)
+- **The LATTICE style adds the rig**, a four-by-four grid of the sixteen gear slots, each colored by whatever is holding it. → [Display styles](#display-styles)
+- **A debug box** shows the engine's state when a swap is unexpected. → [The debug box](#the-debug-box)
 
 ## Holds and locks
 
 - **Bare a slot, or freeze it.** `gs c naked`, `gs c weaponsonly` and `gs c abysseaproc` strip slots and keep them bare, and `gs c disable <slot>` keeps a slot wearing what it wears. → [Strip holds](#strip-holds), [The disable hold](#the-disable-hold), [How the holds stack](#how-the-holds-stack)
-- **Keep something on.** The weapon lock (<kbd>F10</kbd>) keeps your weapons in hand, the Hoxne Ampulla hold keeps the Ampulla in your ammo slot, and `gs c capacity`, `gs c dynamisrp` and `gs c jubilee` keep on the best capacity cape, Dynamis neck or Jubilee Ring you carry. → [The weapon lock](#the-weapon-lock), [The Hoxne Ampulla hold](#the-hoxne-ampulla-hold), [Carried-item locks](#carried-item-locks)
+- **Keep something on.** The weapon lock (<kbd>F10</kbd>) keeps the weapons in hand, the Hoxne Ampulla hold keeps the Ampulla in the ammo slot, and `gs c capacity`, `gs c dynamisrp` and `gs c jubilee` keep on the best capacity cape, Dynamis neck or Jubilee Ring carried. → [The weapon lock](#the-weapon-lock), [The Hoxne Ampulla hold](#the-hoxne-ampulla-hold), [Carried-item locks](#carried-item-locks)
 - **`gs c use <item>` uses any enchanted item**: it equips the item, waits until the game allows the use, uses it and gives the slot back. → [Enchanted items](#enchanted-items)
 
 ## Multibox and tracking
 
 - **Gear for a spell another of your characters is casting on you**, put on before the spell lands, even through Quick Magic. → [Spell-received tracking](#spell-received-tracking)
 - **Treasure Hunter that remembers what it tagged**, so `Tag` mode goes back to full damage once the tag lands. → [TreasureHunter](#treasurehunter), [Treasure Hunter tracking](#treasure-hunter-tracking)
-- **Magic bursts.** When a skillchain closes on your target, whoever made it, a matching nuke wears `sets.Midcast.Burst`. → [Skillchain and magic burst tracking](#skillchain-and-magic-burst-tracking)
-- **Chat tells you what you wore.** One line per action names the set, as in `[Cure IV] [sets.Midcast.Cure][Used]`, and `gs c checksets` checks a whole job file. → [Diagnostics](#diagnostics)
+- **Chat names the set each action wore**, as in `[Cure IV] [sets.Midcast.Cure][Used]`, and `gs c checksets` checks a whole job file. → [Diagnostics](#diagnostics)
+- **Built for six characters at once.** Six clients in an 18-player alliance is the design target, and the engine is measured against it, in a report that currently covers 2.1. The gear trace starts off, and one command switches info or warning messages, so chat volume is easy to control. → [Running several characters](#running-several-characters), [Performance](#performance)
 
 ## Your job file
 
-- **Twenty-two sample job files**, one per job, ready to load and fill with your own gear, plus the settings that drive them. → [Installation](#installation), [Job file settings](#7-job-file-settings), [Instruments](#instruments)
-- **Built for six characters at once.** Six clients in an 18-player alliance is the design target, and the engine is measured against it. The gear trace starts off, and one command switches info or warning messages, so chat volume stays under your control. → [Performance](#performance)
+- **Twenty-two sample job files**, one per job, ready to load and fill with your own gear. Each carries a set for everything its job and common support jobs can use, with a comment saying when the engine wears it. → [Installation](#installation), [Job files written before 2.2](#job-files-written-before-22), [Job file settings](#7-job-file-settings)
 
 ---
 
@@ -92,26 +102,26 @@ New to GearSwap? Follow [Clean install](#clean-install), then [Quick Start](#qui
 
 ## Coming from another GearSwap suite
 
-If you have been running the Kinematics/Mote libraries, Selindrile's suite, or any other GearSwap package, clear it out before you copy anything in:
+After running the Kinematics/Mote libraries, Selindrile's suite, or any other GearSwap package, clear it out before copying anything in:
 
 1. **Remove that suite's folders and files from `Windower4/addons/GearSwap/data/`**, including any character folders inside it — its include files, its library folders, and its job files. GearSwap loads a job file by name and looks in the character's folder first, so a leftover `WAR.lua` or `John_WAR.lua` from another suite is the file it loads for Warrior.
 2. **Delete `Windower4/addons/GearSwap/data/settings.xml`** if there is one, with GearSwap unloaded (`//lua unload gearswap`). The first time each character loads this engine, its own settings file starts as a copy of that file, so whatever another suite left there would be carried into every character's settings.
 3. Follow the [clean install](#clean-install) below.
 
-**Job files written for another suite are not compatible.** The set names, the mode objects and the hook names are this engine's own. Start from the file in `Sample Job Files/` for your job and move your gear into it; the sample is also a worked example of every convention in this document.
+**Job files written for another suite are not compatible.** The set names, the mode objects and the hook names are this engine's own. Start from the file in `Sample Job Files/` for the job and move the gear into it; the sample is also a worked example of every convention in this document.
 
 ## Clean install
 
 GearSwap keeps everything in one folder, `Windower4/addons/GearSwap/data/`. The engine goes directly inside it, and each character gets a folder of its own for its job files.
 
 1. Install Windower 4 and enable the **GearSwap** addon, in the Windower launcher or by typing `//lua load gearswap` in game.
-2. Copy the whole `RahvinGS` folder from the download into `Windower4/addons/GearSwap/data/`. Every character shares this one copy, and you never need to edit anything in it.
-3. Inside `data/`, make a folder for each character you play, named exactly as the character is named in game — `data/John/` for a character called John.
-4. Copy the job files you want from `Sample Job Files/` into that character's folder. Name each file either way:
+2. Copy the whole `RahvinGS` folder from the download into `Windower4/addons/GearSwap/data/`. Every character shares this one copy, and nothing in it needs editing.
+3. Inside `data/`, make a folder for each character played, named exactly as the character is named in game — `data/John/` for a character called John.
+4. Copy the job files wanted from `Sample Job Files/` into that character's folder. Name each file either way:
    - `BLU.lua` — the job's short name
    - `John-BLU.lua` — the character's name, a hyphen, and the job's short name
-5. Log in as that character and change to that job. GearSwap loads the file, prints the key list, and dresses you.
-6. Type `//gs c version`. The engine answers `Include Version is [2.1]`.
+5. Log in as that character and change to that job. GearSwap loads the file, prints the key list, and dresses the character.
+6. Type `//gs c version`. The engine answers `Include Version is [2.2]`.
 
 Finished, it looks like this:
 
@@ -129,7 +139,7 @@ Windower4/addons/GearSwap/data/
 
 **Why a folder per character.** Each character's settings — box positions, display style, chat switches and mode keys — are saved in `settings.xml` inside that character's folder, and the engine creates the file the first time the character loads. With the job files beside it, everything that belongs to one character sits in one place, and two characters can each have their own `WAR.lua` with different gear. See [The settings file](#the-settings-file).
 
-**Which file loads.** GearSwap looks in the character's own folder first, so a job file there always wins over one in `data/`, whatever the names. If GearSwap loads a different file from the one you expect, see [The wrong job file loads](#the-wrong-job-file-loads).
+**Which file loads.** GearSwap looks in the character's own folder first, so a job file there always wins over one in `data/`, whatever the names. If GearSwap loads a different file from the one expected, see [The wrong job file loads](#the-wrong-job-file-loads).
 
 Next: [Quick Start](#quick-start).
 
@@ -137,9 +147,9 @@ Next: [Quick Start](#quick-start).
 
 # Quick Start
 
-You have installed the suite and copied `WAR.lua` into your character's folder. Here is the first ten minutes.
+With the suite installed and `WAR.lua` in the character's folder, these are the first ten minutes.
 
-**1. Open your job file and put your own gear in three sets.** Everything else can wait. The sample already names example gear in its main sets: replace the pieces you do not own, starting with these three.
+**1. Open the job file and put your own gear in three sets.** Everything else can wait. The sample already names example gear in its main sets: replace the pieces you do not own, starting with these three. Before the first load, also set `LockStylePallet`, `MacroBook` and `MacroSet` near the top of the file, or the sample's own lockstyle and macro book apply — see [Startup](#startup).
 
 ```lua
 function get_sets()
@@ -149,119 +159,64 @@ function get_sets()
 end
 ```
 
-`sets.Idle` is what you stand in, `sets.OffenseMode` what you fight in, `sets.WS` what you weaponskill in. Use `gear.<key>` from [the gear library](#9-the-gear-library) or plain item names in quotes — both work.
+This is an excerpt: the sample's `get_sets()` holds many more sets, so change these three where they stand. `sets.Idle` is the gear for standing, `sets.OffenseMode` for fighting, `sets.WS` for weaponskills. Use `gear.<key>` from [the gear library](#9-the-gear-library) or a plain item name in quotes, such as `head = "Nyame Helm"` — both work.
 
-**2. Change job in game.** The engine prints its key list, applies your lockstyle and macro book, and dresses you. After each later edit, save the file and type `//gs reload` to load the change.
+**2. Change job in game.** The engine prints its key list, applies the file's lockstyle and macro book, and dresses the character. After each later edit, save the file and type `//gs reload` to load the change.
 
-**3. Read the box in the corner.** It opens in the LATTICE style, stacked: a bordered panel with a header strip, and the rig — a four-by-four grid of your sixteen gear slots — at the right of the mode rows. The top row is your job and three indicators — spell-received gear, Treasure Hunter, Hoxne — each a colored square. Below it is one row per mode: `STN` your melee mode, `DPS` your weapon set, `LCK` the weapon lock. → [The status box](#the-status-box)
+**3. Read the box in the corner.** It opens in the LATTICE style, stacked: a bordered panel with a header strip, and the rig — a four-by-four grid of the sixteen gear slots — at the right of the mode rows. The top row is the job and three indicators — spell-received gear, Treasure Hunter, Hoxne — each a colored square. Below it is one row per mode: `STN` the offense mode, `DPS` the weapon set, `LCK` the weapon lock, `BUF` the buff level. → [The status box](#the-status-box)
+
+![The LATTICE style, stacked, with the rig](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Lattice%20Stacked.png)
 
 **4. Three keys and three commands for day one.** Type a command into the chat line. In an in-game macro, write it as `/console gs c checksets`.
 
 | | |
 |---|---|
-| <kbd>F12</kbd> | Cycle your melee mode through the modes your file offers — the WAR sample offers eight and starts in `DT` |
-| <kbd>F9</kbd> | Cycle your weapon set |
+| <kbd>F12</kbd> | Cycle the offense mode through the modes the file offers — the WAR sample offers seven and starts in `DT` |
+| <kbd>F9</kbd> | Cycle the weapon set |
 | <kbd>F11</kbd> | Cycle Treasure Hunter |
-| `//gs c checksets` | Count the sets carrying gear and the ones you left undeclared, and name every declared set that is empty |
-| `//gs c info` | Turn the running commentary on or off — one line per action naming the set it wore |
+| `//gs c checksets` | Count the sets carrying gear and the ones left undeclared, and name every declared set that is empty |
+| `//gs c info` | Turn the running commentary on or off — one chat message per action naming the set it wore |
 | `//gs c help` | List every command, with the key each mode is on |
 
 These are the default keys, and `//gs c keybind` moves any of them — see [Keybinds](#3-keybinds).
 
-**5. Where to read next.** [Gear sets reference](#8-gear-sets-reference) is the list of every set name the engine reads. [Modes](#4-modes) is how the switches work. [Troubleshooting](#13-troubleshooting) is what a warning in chat means. The words this manual uses are defined just below.
+**5. Where to read next.** [Gear sets reference](#8-gear-sets-reference) is the list of every set name the engine reads. [Modes](#4-modes) is how the switches work. [Troubleshooting](#14-troubleshooting) is what a warning in chat means. The words this manual uses are defined just below.
 
 ## Words used in this manual
 
-- **Slot** — one of your sixteen equipment slots: main, sub, range, ammo, head, neck, two ears, body, hands, two rings, back, waist, legs and feet.
+- **Slot** — one of the sixteen equipment slots: main, sub, range, ammo, head, neck, two ears, body, hands, two rings, back, waist, legs and feet.
 - **Set** — a list of gear by slot, such as `{ head = gear.nyameHead, body = gear.sakpataBody }`. A set names only the slots it cares about.
-- **Table** — anything written between `{` and `}` in your job file. Every set is a table.
+- **Table** — anything written between `{` and `}` in a job file. Every set is a table.
 - **Child set** — a set written inside another, such as `sets.Idle.DT` inside `sets.Idle`.
-- **Merge** — laying one set over another. Where both name a slot, the later set wins. A slot no set names keeps whatever you are wearing.
-- **Layer** — a set laid over others as your gear is chosen, such as the movement set over your idle set.
+- **Merge** — laying one set over another. Where both name a slot, the later set wins. A slot no set names keeps what is already on it.
+- **Layer** — a set laid over others as the gear is chosen, such as the movement set over the idle set.
 - **`set_combine(a, b)`** — a new set: `a` with `b` laid over it. It copies gear slots only, never child sets.
 - **Build** — the gear the engine puts together for one moment, such as an action or standing idle, built again whenever something changes.
-- **Mode** — a named switch the engine reads when it picks gear, such as your melee mode or your weapon set. A key or a command changes it. See [Modes](#4-modes).
-- **Mode names** — the key list and the status box use short names: OffenseMode (your melee mode) is *Stance* and `STN`, WeaponMode (your weapon set) *Weapon Mode* and `DPS`, WeaponLock *Weapon Lock* and `LCK`, and TreasureHunter *TH Mode* and `TH`.
+- **Mode** — a named switch the engine reads when it picks gear, such as the offense mode or the weapon set. A key or a command changes it. See [Modes](#4-modes).
+- **Mode names** — the key list and the status box use short names: OffenseMode, the offense mode, melee and casting modes alike, is *Stance* and `STN`, WeaponMode (the weapon set) *Weapon Mode* and `DPS`, WeaponLock *Weapon Lock* and `LCK`, BuffLevel *Buff Level* and `BUF`, and TreasureHunter *TH Mode* and `TH`.
 - **Hold** — something keeping a slot as it is until it lets go: an item being used, a strip, a lock. Whatever keeps the slot is its **holder**. See [Holds and locks](#6-holds-and-locks).
-- **Buff set** — a set named after a buff, worn while that buff is on you. See [Buff sets](#buff-sets).
-- **Pretarget, precast, midcast and aftercast** — the four steps of an action. Pretarget checks it (enough TP? on cooldown? asleep?), precast puts on the gear that starts it, midcast the gear that makes it land, and aftercast puts your idle or melee gear back. See [How it works](#1-how-it-works).
+- **Buff set** — a set named after a buff, worn while that buff is up. See [Buff sets](#buff-sets).
+- **Family set** — the set for one kind of spell, such as `sets.Midcast.Nuke` for nukes or `sets.Midcast.Cure` for cures.
+- **Dress** — put on the gear a build chose.
+- **Info message** — the chat message `gs c info` prints for each action, naming the set it wore. See [Diagnostics](#diagnostics).
+- **Predicted** — a buff counted as up before the game's own buff list shows it. See [When a buff counts as up](#when-a-buff-counts-as-up).
+- **A name in brackets** — a set whose name holds a space or a hyphen is written in brackets and quotes, as `sets.WS['Savage Blade']` or `sets.JA['Double-Up']`. A name with an apostrophe takes double quotes, as `sets.WS["Rudra's Storm"]`.
+- **Pretarget, precast, midcast and aftercast** — the four steps of an action. Pretarget checks it (enough TP? on cooldown? asleep?), precast puts on the gear that starts it, midcast the gear that makes it land, and aftercast puts the idle or melee gear back. See [How it works](#1-how-it-works).
 - **Channel** — one kind of chat message, with its own on/off switch: `info`, `warn`, `debug` and `gearreporting`. See [Diagnostics](#diagnostics).
-- **Mode abbreviations** are the game's own: ACC accuracy, CRIT critical hit, DT damage taken, MACC magic accuracy, MEVA magic evasion, PDL physical damage limit, PDT physical damage taken, SB subtle blow.
+- **Burst window** — the seconds after a skillchain lands on a monster in which a spell of a matching element magic bursts. See [Magic bursts](#11-magic-bursts).
+- **Mode abbreviations** are the game's own: ACC accuracy, CRIT critical hit, DT damage taken, MACC magic accuracy, MB magic burst, MEVA magic evasion, PDL physical damage limit, PDT physical damage taken, SB subtle blow. `Occult` is the casting samples' mode for Occult Acumen gear.
 
----
+## Running several characters
 
-# Updating from an earlier version
+The engine is built for several characters on one computer. What a multiboxer sets up, and where:
 
-## Updating from 2.0
-
-1. Replace the `RahvinGS` folder in `data/` with the new one, then reload GearSwap with `//lua r gearswap`. Type `//gs c version` to check for `[2.1]`.
-2. Move each character's job files into that character's own folder, as the [clean install](#clean-install) describes. A job file left in `data/` still loads, so this can wait.
-3. Log in each character once. Each gets its own settings file, copied from its settings in the shared `data/settings.xml`, so box positions, style, view and chat switches carry over. See [The settings file](#the-settings-file).
-
-Most job files written for 2.0 need no edits. Check yours for these:
-
-- **Weapons in weaponskill sets.** A weaponskill never changes main or sub, or range except on Bard and Geomancer, so take those slots out of your weaponskill sets and `sets.Idle`. With `gs c warn` on and the weapon lock off, a line names the set. See [Weaponskills](#weaponskills).
-- **Weaponskill mode sets.** A mode set built with `set_combine(sets.WS, ...)`, as a file from a 2.0 sample may have, puts the base pieces back over each named weaponskill's own gear. Name only what the mode changes: `sets.WS.ACC = { ... }`. See [Weaponskills](#weaponskills).
-- **Tables named after a buff.** Under any set [where buff sets work](#buff-sets), a table named for a buff is worn while that buff is on you. Rename one you keep for another purpose, such as `sets.Idle.Refresh`.
-- **`sets.Weapons['Light Bonus']`.** On a Light-day or Light-weather cure it goes on whole, main and sub included, whether or not you carry Chatoyant Staff. Check what it names.
-- **Command words.** The engine handles `help`, `keybind`, `displaypos` and `displaycells`, and `on` or `off` after the display and chat words, so rename any `gs c` command of your own that uses one of these names. A mistyped argument to them, or to the hold and lock commands, never reaches your job file. See [Argument validation](#argument-validation).
-- **Switches that save.** `gs c display`, `debug`, `warn`, `info` and `gearreporting` save their setting, so a channel you turn off stays off after a reload.
-- **A job file that calls `round`.** The engine supplies no `round` function, so the call stops with a Lua error: `attempt to call global 'round' (a nil value)`. Copy this into your file, near the top:
-
-  ```lua
-  function round(num, numDecimalPlaces)
-      if num ~= nil then
-          local mult = 10 ^ (numDecimalPlaces or 0)
-          return math.floor(num * mult + 0.5) / mult
-      end
-  end
-  ```
-
-The MNK, PLD, RDM, RUN, SAM and SCH samples wear their buff gear through buff sets. A job file you keep works as it is, and a Monk file's own code for `sets.Impetus`, `sets.Foot_Work` or `sets.Boost` can go — see [Buff sets in the sample files](#buff-sets-in-the-sample-files). Per-release detail is in [PATCH NOTES.md](PATCH%20NOTES.md).
-
-## Upgrading from Mirdain-Include
-
-This covers everyone arriving from **Mirdain-Include 1.5.x** and from **any 1.6.x or 1.7.x version of this suite**, up to and including 1.7.3. Your gear sets, your modes and your macros carry over; the shape on disk is what changes, and a handful of job-file edits go with it.
-
-### The upgrade itself
-
-1. Delete `Mirdain-Include.lua` and `GearSets-Include.lua` from `Windower4/addons/GearSwap/data/`.
-2. Copy the whole `RahvinGS` folder into that same `data/` folder.
-3. Point each of your job files at the new engine. The two include lines at the top become:
-
-   ```lua
-   include('RahvinGS/GearSets-Include')
-   include('RahvinGS/Rahvin-Engine')
-   ```
-
-   The refreshed samples carry them already.
-4. Move each character's job files into a folder of its own, as the [clean install](#clean-install) describes. A job file left in `data/` still loads, so this can wait.
-5. Reload GearSwap with `//lua r gearswap`, then type `//gs c version` and check the answer.
-
-> **Running several characters? Upgrade them all in one sitting.** The messages your characters send each other for spell-received gear carry an internal tag tied to the suite name, and versions on either side of the rename ignore each other's messages — no error, just silence. Until every character is upgraded, spell-received gear stops arriving between mixed versions.
-
-### What happens to `settings.xml`
-
-Nothing has to be deleted. The first time each character loads 2.1, the engine creates that character's own `data/<CharacterName>/settings.xml` as a copy of its settings in your existing `data/settings.xml`, and leaves the old file as it was. On that first load the display settings return to their defaults, so the status box opens in LATTICE, stacked, and the box positions you dragged are kept. One line per group says so:
-
-```
-Display settings reset to defaults (version 2); box positions kept
-Halo settings reset to defaults (version 1)
-```
-
-Your chat switches and the spell-received failsafe window carry through untouched. To change the look, see [Display styles](#display-styles); to start from a blank file, see [The settings file](#the-settings-file).
-
-### What to change in your own job file
-
-The job-file edits each release asks for are listed in the Notices of [PATCH NOTES.md](PATCH%20NOTES.md): read those of every release after yours, through 2.0, then work through [Updating from 2.0](#updating-from-20). Three places in this manual cover what upgraded files most often miss:
-
-- the two retired features a file may still carry, which the engine names as it loads — see [A startup message mentions a retired feature](#a-startup-message-mentions-a-retired-feature);
-- set paths the engine does not read — see [Spellings the engine does not read](#spellings-the-engine-does-not-read);
-- a mode with no set of its own, and a ranged action whose set names no round — see [Core sets](#core-sets) and [Ammunition](#ammunition).
-
-All 22 sample files ship refreshed. Copying the one for your job brings its gear and behavior corrections into your own file; keeping your own file is equally fine.
-
-After the upgrade, run **`//gs c checksets`**. It names every set you declared and left empty, which is the fastest way to find something the move disturbed.
+- **One engine for every character.** Each loads the one `RahvinGS` folder — see [Clean install](#clean-install).
+- **A folder per character**, holding its job files and its own settings file, so boxes, styles and keys can differ — see [The settings file](#the-settings-file).
+- **Commands for every character at once.** The `on` and `off` forms of the switches, and `gs c displaypos`, leave every character alike when sent through Windower's Send addon — see [Moving and saving the boxes](#moving-and-saving-the-boxes).
+- **Gear for another character's spell.** A character dresses for a supported spell another character on the same computer casts on it — see [Spell-received tracking](#spell-received-tracking).
+- **Shared roll totals.** A character that reloads learns a roll's total from another character holding that roll — see [The XIRoll set](#the-xiroll-set).
+- **Chat volume.** With six characters, `gs c info off` on the boxes not being watched keeps chat readable, while `warn` still reports problems — see [Diagnostics](#diagnostics).
+- **Mixed versions.** Characters on 2.1 and 2.2 share spell-received gear and roll totals, so they can be upgraded one at a time. Versions on either side of the 2.0 rename ignore each other, so upgrade those together — see [Upgrading from Mirdain-Include](#upgrading-from-mirdain-include).
 
 ---
 
@@ -269,11 +224,11 @@ After the upgrade, run **`//gs c checksets`**. It names every set you declared a
 
 ## 1. How it works
 
-GearSwap is a Windower addon that changes your equipment automatically as you play. Normally you would write all of that swapping logic yourself, for every job. This suite does it for you.
+Without an engine, every job file carries its own swapping logic. This engine supplies it for every job.
 
-**The `RahvinGS` folder** is the engine — `Rahvin-Engine.lua`, the component files beside it, and the gear library `GearSets-Include.lua`. It holds all the rules: which gear to wear while idle, while fighting, while casting, while moving. It is the same folder for every job and you should not need to edit anything in it.
+**The `RahvinGS` folder** is the engine — `Rahvin-Engine.lua`, the component files beside it, and the gear library `GearSets-Include.lua`. It holds all the rules: which gear to wear while idle, while fighting, while casting, while moving. It is the same folder for every job, and nothing in it needs editing.
 
-**Job files** (`WAR.lua`, `WHM.lua`, `BLM.lua`, …) are yours. They hold your gear, your modes and your preferences. You will spend all of your time in these.
+**Job files** (`WAR.lua`, `WHM.lua`, `BLM.lua`, …) hold the gear, the modes and the preferences, and they are the only files to edit.
 
 Every job file begins by loading the gear library and the engine:
 
@@ -282,14 +237,31 @@ include('RahvinGS/GearSets-Include')
 include('RahvinGS/Rahvin-Engine')
 ```
 
-From that point the engine drives everything, calling into your job file at specific moments. The flow for any action looks like this:
+A sample job file is then laid out top to bottom like this:
 
 ```
-You press a macro
+include(...)                      1. the gear library, then the engine
+LockStylePallet = "20"            2. the lockstyle, macro book and macro set it applies
+Food = ..., AutoItem = ...        3. plain settings
+state.OffenseMode:options(...)    4. each mode's options, then :set(...) for the value it starts at,
+                                     with a job mode's UI_Name just above its options, and a setting
+                                     that tunes one mode, such as PetWSThreshold, just below it
+Pet_Modes = { ... }               5. on a pet job, the value Auto gives each pet
+jobsetup(...)                     6. applies the lockstyle and macros, binds the mode keys and lists them
+function get_sets() ... end       7. every gear set
+-- DO NOT EDIT BELOW THIS LINE    8. the hooks, for rules no set can express
+```
+
+The PLD and RUN samples pick their macro set by subjob, with a function that also sets the starting offense mode. A mode's options line resets its value, so those two declare their offense modes above their lockstyle lines.
+
+From that point the engine drives everything, calling into the job file at specific moments. The flow for any action looks like this:
+
+```
+A macro or command starts an action
         │
         ▼
    pretarget ──► engine validates the action (enough TP? spell on cooldown? asleep?)
-        │        cancels it and tells you why if not
+        │        cancels it if not
         ▼
     precast  ──► engine equips Fast Cast / weaponskill / ability gear
         │
@@ -297,12 +269,17 @@ You press a macro
     midcast  ──► engine equips potency / accuracy / recast gear
         │
         ▼
-   aftercast ──► engine returns you to idle or melee gear
+   aftercast ──► engine puts idle or melee gear back on
 ```
 
-At each step the engine builds a gear set from its own rules, then calls **your** matching `_custom` function and merges whatever you return. See [Customization hooks](#12-customization-hooks).
+At each step the engine builds a gear set from its own rules, then calls the job file's matching `_custom` function and merges whatever it returns. See [Customization hooks](#13-customization-hooks).
 
-Three details are worth knowing early. `sets.Idle` is laid underneath every precast and midcast as a floor, so an action that matches no set of its own still comes out dressed rather than in whatever the last step left on — and a slot `sets.Idle` names is part of every action's gear. Weaponskills, job abilities (Corsair rolls and shots, stratagems, runes, wards and effusions, and Dancer's waltzes, jigs, sambas, steps and flourishes among them) and item uses are final at precast: their precast gear is what the action lands in, and no midcast runs. Blood pacts, Ready moves and pet commands are not final at precast, and go on to a midcast. And a weaponskill never changes your weapons, because that would reset your TP — see [Weaponskills](#weaponskills).
+Four details are worth knowing early:
+
+- **`sets.Idle` is the floor.** It is laid underneath every precast and midcast, so an action that matches no set of its own still comes out dressed rather than in whatever the last step left on — and a slot `sets.Idle` names is part of every action's gear.
+- **Some actions are final at precast.** Weaponskills, job abilities (Corsair rolls and shots, stratagems, runes, wards and effusions, and Dancer's waltzes, jigs, sambas, steps and flourishes among them), pet commands and item uses land in their precast gear, and no midcast runs. A pet command stands on the idle or engaged gear instead of `sets.Idle`, and the pet's own move is dressed when the pet readies it — see [Pet sets](#pet-sets).
+- **One action at a time.** While an action is under way, a new one is refused until it ends, and the gear it dressed stays on until then.
+- **A weaponskill never changes the weapons**, because that would reset TP — see [Weaponskills](#weaponskills).
 
 Separately, a background loop runs about ten times a second to handle what is not tied to an action — movement gear, weapon checks, housekeeping. See [Automatic engine checks](#10-automatic-engine-checks).
 
@@ -329,27 +306,27 @@ Each style in both views, stacked first and then one line:
 
 **`lattice`** — the default
 
-![The LATTICE style, stacked, with the rig](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Lattice%20Stacked.png)
+![The LATTICE style, stacked, with the rig](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Lattice%20Stacked.png)
 
-![The LATTICE style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Lattice%20Oneline.png)
+![The LATTICE style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Lattice%20Oneline.png)
 
 **`classic`**
 
-![The CLASSIC style, stacked](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Classic%20Stacked.png)
+![The CLASSIC style, stacked](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Classic%20Stacked.png)
 
-![The CLASSIC style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Classic%20Oneline.png)
+![The CLASSIC style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Classic%20Oneline.png)
 
 **`harness`**
 
-![The HARNESS style, stacked](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Harness%20Stacked.png)
+![The HARNESS style, stacked](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Harness%20Stacked.png)
 
-![The HARNESS style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Harness%20Oneline.png)
+![The HARNESS style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Harness%20Oneline.png)
 
 **`halo`**
 
-![The HALO style, stacked](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Halo%20Stacked.png)
+![The HALO style, stacked](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Halo%20Stacked.png)
 
-![The HALO style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Halo%20Oneline.png)
+![The HALO style in one line](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Halo%20Oneline.png)
 
 ```
 //gs c displaystyle              -- cycle
@@ -373,7 +350,7 @@ Usage: //gs c displaystyle [classic|harness|lattice|halo]
 | Green | The Hoxne hold |
 | Pale yellow | An item use |
 | Blue | Sleep gear |
-| Red | The item the cast in progress requires |
+| Red | The cast in progress: the item it requires, or a song's instrument and its empty ammo slot |
 | Pink | Received gear |
 
 A cell changes color the moment a hold takes or releases its slot. To turn the rig off, set `Lattice.rig.enabled` to `false` in your [settings file](#the-settings-file). The colors are under `Lattice.rig.hue` there.
@@ -389,6 +366,7 @@ SR .   TH .   HOX .
 STN     < DT >
 DPS < Black Halo >
 LCK  < Unlocked >
+BUF   < MidBuff >
 MDE    < Melee >
 HLD  DIS NKD
 ```
@@ -396,7 +374,7 @@ HLD  DIS NKD
 One-line:
 
 ```
-WHM/SCH  SR .  TH .  HOX .  STN < DT >  DPS < Black Halo >  LCK < Unlocked >  MDE < Melee >  HLD DIS NKD
+WHM/SCH  SR .  TH .  HOX .  STN < DT >  DPS < Black Halo >  LCK < Unlocked >  BUF < MidBuff >  MDE < Melee >  HLD DIS NKD
 ```
 
 *(The box draws colored squares and solid triangles. They are transcribed above as `.`, `<` and `>`.)*
@@ -410,7 +388,7 @@ WHM/SCH  SR .  TH .  HOX .  STN < DT >  DPS < Black Halo >  LCK < Unlocked >  MD
 | Cyan square | THF-only TH `SATA` |
 | Gray square | Mode is off (`None` / `OFF`) |
 
-**The mode rows** show full text, so the weapon or job function currently selected is always readable: `STN` OffenseMode, `DPS` WeaponMode, `LCK` WeaponLock, then JobMode and JobMode2 when your file names them. The `LCK` value turns violet while the lock is actually holding main and sub.
+**The mode rows** show full text, so the weapon or job function currently selected is always readable: `STN` OffenseMode, `DPS` WeaponMode, `LCK` WeaponLock, `BUF` BuffLevel, then JobMode and JobMode2 when your file names them. The `LCK` value turns violet while the lock is actually holding main and sub. On a pet job set to `Auto`, the pet mode's row shows the role it chose for the pet out, as `Auto (Tank)`.
 
 **The hold row** appears only while something is holding a slot: the label `HLD`, then a three-letter code for each hold, strongest first.
 
@@ -426,7 +404,7 @@ WHM/SCH  SR .  TH .  HOX .  STN < DT >  DPS < Black Halo >  LCK < Unlocked >  MD
 
 `//gs c debug` shows it and opens the verbose log channel with it; typed again, it hides both. `//gs c debug on` and `//gs c debug off` set it outright. The choice is saved.
 
-![The debug box: six engine flags, the legend rail and the hold map](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Rahvin%20GS%202.0%20Images/Debug%20Box.png)
+![The debug box: six engine flags, the legend rail and the hold map](https://raw.githubusercontent.com/RahvinCode/Gearswap/master/Images/Debug%20Box.png)
 
 | Field | Meaning |
 |---|---|
@@ -455,7 +433,7 @@ Below those are two lines the other boxes do not carry: a **legend rail** of the
 
 Drag either box with the left mouse button while it is visible. The new position is saved a second after you let go, silently — there is no chat confirmation.
 
-You can also place a box by typing its position, in screen pixels from the top-left corner. This is the way to line up several characters: sent to all of them at once, for example through Windower's Send addon, the same command puts every box in the same place.
+Place a box by typing its position, in screen pixels from the top-left corner. This is the way to line up several characters: sent to all of them at once, for example through Windower's Send addon, the same command puts every box in the same place.
 
 ```
 //gs c displaypos                    -- report where both boxes are
@@ -479,7 +457,7 @@ Windower4/addons/GearSwap/data/<CharacterName>/settings.xml
 
 It holds the box positions and their look, the display style and view, the chat switches (`info`, `warn`, `debug`, `gear_reporting`), your mode keys, and the spell-received failsafe window (`delay`, in seconds). The file is in the same place wherever your job files are.
 
-- **It is created on the character's first load.** Windower prints one line naming it: `New file: data/John/settings.xml`. If the shared `data/settings.xml` from an earlier version is there, the new file starts as a copy of that character's settings in it. The shared file itself is never changed, and it is read again only by a character that has no file of its own.
+- **It is created on the character's first load.** Windower prints a message naming it: `New file: data/John/settings.xml`. If the shared `data/settings.xml` from an earlier version is there, the new file starts as a copy of that character's settings in it. The shared file itself is never changed, and it is read again only by a character that has no file of its own.
 - **It is saved as you go** — by a box drag, a display, chat or key command, and `//gs c save`. Nothing is saved while zoning or at the character select screen.
 - **To edit it by hand, unload GearSwap first** (`//lua unload gearswap`). Every save rewrites the whole file, so an edit made while GearSwap is running is undone at the next save. A value in the section named for your character wins over the same value under `<global>`.
 - **To start a character fresh**, unload GearSwap and delete its `settings.xml`. Delete `data/settings.xml` too if it is still there, or the next load copies it again.
@@ -493,7 +471,7 @@ It holds the box positions and their look, the display style and view, the chat 
 
 ## 3. Keybinds
 
-Eight keys are bound when your job file loads, and released when it unloads. These are the defaults:
+Nine keys are bound when your job file loads, and released when it unloads. These are the defaults:
 
 | Key | Action |
 |---|---|
@@ -501,6 +479,7 @@ Eight keys are bound when your job file loads, and released when it unloads. The
 | <kbd>F10</kbd> | Cycle **WeaponLock** |
 | <kbd>F11</kbd> | Cycle **TreasureHunter** |
 | <kbd>F12</kbd> | Cycle **OffenseMode** |
+| <kbd>Alt</kbd>+<kbd>F12</kbd> | Cycle **BuffLevel** — `MidBuff` → `HighBuff` |
 | <kbd>Ctrl</kbd>+<kbd>F9</kbd> | Cycle **SpellReceived** |
 | <kbd>Ctrl</kbd>+<kbd>F10</kbd> | Cycle **Hoxne** — `OFF` → `ON-Allow Critical` → `ON-Locked` |
 | <kbd>Ctrl</kbd>+<kbd>F11</kbd> | Cycle **JobMode2** |
@@ -509,11 +488,11 @@ Eight keys are bound when your job file loads, and released when it unloads. The
 The engine lists the keys in chat as your job file loads, and `//gs c keybind` lists them again:
 
 ```
-Keys: [F12] Stance  [F9] Weapon Mode  [F10] Weapon Lock  [F11] TH Mode
+Keys: [F12] Stance  [F9] Weapon Mode  [F10] Weapon Lock  [F11] TH Mode  [Alt+F12] Buff Level
 Keys: [Ctrl+F10] Hoxne Ampulla  [Ctrl+F9] Spell Received (Multibox)
 ```
 
-In that list OffenseMode is called *Stance*, the name the status box shortens to `STN`. When your file names its job modes with `UI_Name` or `UI_Name2`, their keys lead the second line, under the names you gave them.
+In that list OffenseMode is called *Stance*, the name the status box shortens to `STN`. When the job file names its job modes with `UI_Name` or `UI_Name2` above its `jobsetup` call, their keys lead the second line, under those names. `jobsetup` prints the startup list, so a name set below that call shows only in later lists from `//gs c keybind`.
 
 Each key sends a command you can also type or put in a macro — <kbd>F12</kbd> sends `gs c OffenseMode`, for example. The commands are under [Mode commands](#mode-commands).
 
@@ -527,16 +506,16 @@ Each key sends a command you can also type or put in a macro — <kbd>F12</kbd> 
 //gs c keybind jobmode ~f12            -- Shift+F12
 //gs c keybind hoxne none              -- no key; //gs c hoxne still cycles it
 //gs c keybind hoxne default           -- back to its default key
-//gs c keybind default                 -- all eight back to their defaults
+//gs c keybind default                 -- all nine back to their defaults
 ```
 
-The mode words are `offensemode`, `weaponmode`, `weaponlock`, `treasurehunter`, `jobmode`, `jobmode2`, `hoxne` and `spellreceived`. In the short spelling, `^` means Ctrl, `!` Alt and `~` Shift.
+The mode words are `offensemode`, `weaponmode`, `weaponlock`, `treasurehunter`, `bufflevel`, `jobmode`, `jobmode2`, `hoxne` and `spellreceived`. In the short spelling, `^` means Ctrl, `!` Alt and `~` Shift.
 
 - **Each change is saved** in the character's own settings file, and confirmed: `TH Mode bound to [Ctrl+F5]; any other Windower bind on this key is replaced.`
 - **A key another mode already uses is refused**, and the answer names that mode: `[F12] is bound to Stance; free it first (gs c keybind offensemode none) or choose another key.`
 - **A key bound here does not do its usual job in game** while your job file is loaded. While <kbd>F9</kbd> is bound to a mode, for example, it does not target the nearest player.
 - **A mode set to `none` leaves that key alone.** The engine binds nothing to it at load and releases nothing from it at unload, so a Windower bind of your own on that key survives job changes.
-- **The keys live in the `<Keybinds>` section of the settings file**, under the mode words above, in the short spelling. A value there that is not a key is replaced by the default for that session, with a line saying so.
+- **The keys live in the `<Keybinds>` section of the settings file**, under the mode words above, in the short spelling. A value there that is not a key is replaced by the default for that session, with a message saying so.
 
 ---
 
@@ -546,17 +525,30 @@ A "mode" is a named switch the engine reads when choosing gear. Cycle a mode wit
 
 ### OffenseMode
 
-The main damage-versus-survival switch. Drives `sets.OffenseMode`, `sets.WS`, `sets.Idle` and ammunition selection.
+The main damage-versus-survival switch. Drives `sets.OffenseMode`, `sets.WS`, `sets.Idle`, ammunition selection, and the offense-mode children of the midcast and pet move sets.
 
 - **Default options:** `TP` `ACC` `DT`
 - **Set your own in your job file:**
   ```lua
-  state.OffenseMode:options('TP','PDL','ACC','DT','MEVA','CRIT','SB')
+  state.OffenseMode:options('TP','ACC','DT','MEVA','Occult','MB')
   state.OffenseMode:set('DT')
   ```
-- **Command:** `//gs c OffenseMode PDL` · **Default key:** <kbd>F12</kbd>
+- **Command:** `//gs c OffenseMode Occult` · **Default key:** <kbd>F12</kbd>
 
-Every option you list needs its own `sets.OffenseMode.<Name>` and `sets.Idle.<Name>` — see [Core sets](#core-sets) for what a missing one costs.
+Give every option listed its own `sets.OffenseMode.<Name>` and `sets.Idle.<Name>` — see [Core sets](#core-sets) for what a missing one costs. A casting mode such as `Occult` or `MB` mostly matters through the [midcast children](#midcast-children) named for it, such as `sets.Midcast.Nuke.Occult`; its idle and engaged sets decide only what is worn between casts.
+
+### BuffLevel
+
+Switches weaponskill gear by how heavily the character is buffed. Only weaponskills read it.
+
+- **Options:** `MidBuff` `HighBuff` · **Default:** `MidBuff`
+- **Command:** `//gs c BuffLevel HighBuff` · **Default key:** <kbd>Alt</kbd>+<kbd>F12</kbd>
+- At `HighBuff` a weaponskill wears its `HighBuff` child, such as `sets.WS.HighBuff` or `sets.WS['Savage Blade'].HighBuff`. The samples put their physical damage limit gear there. `MidBuff` reads only a weaponskill's own `MidBuff` child, never `sets.WS.MidBuff`. See [Weaponskills](#weaponskills).
+- The samples declare it, so the level a file starts at can be chosen:
+  ```lua
+  state.BuffLevel:options('MidBuff','HighBuff')
+  state.BuffLevel:set('MidBuff')
+  ```
 
 ### WeaponMode
 
@@ -580,12 +572,17 @@ Whether anything but the weapon mode may change main and sub. The mode says what
 |---|---|
 | `Unlocked` | Any set may change main and sub, except during a weaponskill |
 | `Locked` | `sets.Weapons[<mode>]` is the only thing that changes main and sub, in every phase |
-| `Songs` | Bard only — `Locked`, except for a song aimed at yourself, another player or a Trust |
+| `Songs` | Bard only — `Locked`, except for a song aimed at yourself, another player or a Trust. A song aimed at a monster stays locked |
 | `Locked+R` | Corsair only — holds range with main and sub |
-| `Geomancy` | Geomancer only — `Locked`, except for a Geomancy spell, whose set's main and sub swap in for the cast |
+| `Geomancy` | Geomancer only — `Locked`, except for a Geomancy spell, `Indi-` and `Geo-` alike, whatever the target: the spell's own main and sub swap in for the cast, and the weapon set's pair comes back after it |
 
 - **Command:** `//gs c weaponlock Locked` · **Default key:** <kbd>F10</kbd>
-- **The engine fixes this list per job and a job file never redeclares it** — a job file's own `:options()` call wipes it. To boot locked, call `state.WeaponLock:set('Locked')` and nothing else.
+- **The engine sets this list per job**: `Unlocked` and `Locked` on every job, plus `Songs` on Bard, `Locked+R` on Corsair and `Geomancy` on Geomancer. The samples restate their job's list and pick the value they start in:
+  ```lua
+  state.WeaponLock:options('Unlocked','Locked')
+  state.WeaponLock:set('Unlocked')
+  ```
+  A restated list replaces the engine's whole, so keep to the job's own values. A starting value the list does not offer stops the file from loading, with a Lua error.
 - `Locked+R` is refused while a Hoxne mode is on, because the Hoxne hold outranks the weapon lock on range: `Weapon Lock: [Locked+R] refused; Hoxne Ampulla holds range.` Asked for by name, the lock stays where it was; while cycling, `Locked+R` is skipped.
 - Whatever the value, a weaponskill never changes main or sub — see [Weaponskills](#weaponskills). The full behavior is under [The weapon lock](#the-weapon-lock).
 
@@ -608,7 +605,7 @@ Defaults to `Full Time` on THF and `None` on every other job. Tagged monsters ar
 
 ### SpellReceived
 
-For players running more than one character. When another of your characters casts a supported spell on you, this character equips its "received" gear *before the spell lands* — even through Quick Magic.
+For players running more than one character. When another character on the same computer casts a supported spell on this one, this character equips its "received" gear *before the spell lands* — even through Quick Magic.
 
 | Mode | Behavior |
 |---|---|
@@ -623,7 +620,7 @@ Requires the corresponding `*_Received` sets. See [Spell-received tracking](#spe
 
 ### Hoxne
 
-Keeps Hoxne Ampulla in your ammo slot, and uses the item for you whenever its enchantment has worn off and the item is off cooldown.
+Keeps Hoxne Ampulla in the ammo slot, and uses the item whenever its enchantment has worn off and the item is off cooldown. The Ampulla's enchantment gives Double Attack +100% for 30 minutes, at 1,000 gil for each double attack, and only while the Ampulla stays equipped, which is why the mode holds the slot.
 
 - **Options:** `OFF` `ON-Allow Critical` `ON-Locked`
 - **Command:** `//gs c hoxne`, or `//gs c hoxne ON-Locked` · **Default key:** <kbd>Ctrl</kbd>+<kbd>F10</kbd>
@@ -632,23 +629,39 @@ Full behavior, including what each on state does with the range slot, is under [
 
 ### JobMode and JobMode2
 
-Two free-form modes for anything a job needs. The engine tracks the value and shows it; what it *means* is up to your job file. Left alone, both offer `OFF` and `ON`.
+Two modes for anything a job needs. The engine tracks the value and shows it, and outside the few uses below, what it *means* is up to your job file. Left alone, both offer `OFF` and `ON`.
 
 ```lua
 UI_Name  = 'TP Mode'       -- name used in chat messages and the status box
 state.JobMode:options('Standard','Melee','Ranged','Subtle Blow')
 state.JobMode:set('Standard')
 
-UI_Name2 = 'Pet'
-state.JobMode2:options('None','FatsoFargann','ScissorlegXerin','GenerousArthur')
+UI_Name2 = 'Pet Mode'
+state.JobMode2:options('Auto','Tank','Melee')
+state.JobMode2:set('Auto')
 ```
 
-- **Commands:** `//gs c JobMode Ranged` · `//gs c JobMode2 FatsoFargann`
+The engine reads them in these places:
+
+- **JobMode `Ranged`** adds the idle set's offense-mode child to the engaged build, as the COR and RNG samples' TP mode uses.
+- **JobMode on Beastmaster** names the jug: Call Beast and Bestial Loyalty put on `sets.Jugs[<JobMode value>]`.
+- **JobMode on Puppetmaster** is the Pet WS mode, `Idle`, `Always` or `Off`, which decides when `sets.Pet_WS` is worn — see [Pet sets](#pet-sets).
+- **JobMode2 on BST, SMN, PUP, DRG and GEO** is the pet mode. Its value names a child of `sets.Idle.Pet` and `sets.Idle.Pet.Engaged`, and while a pet is out, of your offense mode's engaged set, such as `sets.OffenseMode.TP.Tank`. Set to `Auto`, it takes the value the job file's `Pet_Modes` table gives the pet that is out: by the pet's name, or for an automaton by an attachment, then by its frame and head. The value is read once per pet.
+
+  ```lua
+  Pet_Modes = { Carbuncle = 'Carbuncle', ['Cait Sith'] = 'Cait Sith' }   -- by the pet's name
+  Pet_Modes = {
+      Attachments = { ['Strobe'] = 'Tank' },                          -- an attachment wins first
+      ['Valoredge Frame'] = { ['Soulsoother Head'] = 'Tank' },        -- then the frame and head
+  }
+  ```
+
+- **Commands:** `//gs c JobMode Ranged` · `//gs c JobMode2 Tank`
 - **Default keys:** <kbd>Ctrl</kbd>+<kbd>F12</kbd> and <kbd>Ctrl</kbd>+<kbd>F11</kbd>
 - Both call your `self_command_custom` before the gear rebuild, which is where a job file usually acts on them.
 - If `UI_Name` is left empty the mode is hidden from the status box and its key is not announced.
 
-The shipped COR and RNG samples use the first slot for a TP mode, BST for its jug pet, and BLU for an AoE-versus-melee switch. `Job_Mode_Check` is the engine helper that turns any of these into a weapon set — see [Helpers the engine supplies](#helpers-the-engine-supplies).
+The shipped COR and RNG samples use the first slot for a TP mode, BST for its jug pet, PUP for its Pet WS mode and BLU for an AoE-versus-melee switch. BST, SMN and PUP use the second for the pet mode. `Job_Mode_Check` is the engine helper that turns any of these into a weapon set — see [Helpers the engine supplies](#helpers-the-engine-supplies).
 
 **Status box labels.** The box needs a short label, and the engine derives one from `UI_Name` automatically. A table of known names is checked first:
 
@@ -679,6 +692,7 @@ All commands are typed as `//gs c <command>` in the chat line, or as `/console g
 
 ```
 Modes: offensemode [F12]  weaponmode [F9]  weaponlock [F10]  treasurehunter [F11]
+Modes: bufflevel [Alt+F12]
 Modes: jobmode [Ctrl+F12]  jobmode2 [Ctrl+F11]  hoxne [Ctrl+F10]  spellreceived [Ctrl+F9]
 Display: display  displaymode  displaystyle  displaypos  displaycells  zero  save
 Holds: naked  weaponsonly  abysseaproc  nakedunlocked  disable  enable  enableall
@@ -717,6 +731,7 @@ A partial value is offered as a suggestion but never accepted, so `//gs c Treasu
 | `gs c WeaponMode [mode]` | Cycle, or jump to a weapon set |
 | `gs c WeaponLock [Unlocked\|Locked\|Songs\|Locked+R\|Geomancy]` | Cycle, or set the weapon lock |
 | `gs c TreasureHunter [mode]` | Cycle, or jump to a TH mode |
+| `gs c BuffLevel [MidBuff\|HighBuff]` | Cycle, or set the buff level weaponskills read |
 | `gs c SpellReceived [ON\|OFF]` | Cycle, or set spell-received tracking |
 | `gs c Hoxne [OFF\|ON-Allow Critical\|ON-Locked]` | Cycle, or set the Hoxne Ampulla hold |
 | `gs c JobMode [mode]` | Cycle, or jump to a job-specific mode |
@@ -803,7 +818,7 @@ Cooldown and equip delay are read live from the item itself, so the times are ac
 
 **The slot is held for the whole use.** A gear change during a fight, a buff wearing off or a weapon-mode change leaves the item where it is until the use finishes. Zoning cancels the use and gives the slot straight back.
 
-**Changing your mind.** `gs c cancel` stops a use that is under way, hands the slot back and re-equips your normal gear. You rarely need it, because any new `gs c use` or shortcut takes over from the one already running:
+**Changing your mind.** `gs c cancel` stops a use that is under way, hands the slot back and re-equips your normal gear. It is rarely needed: any new `gs c use` or shortcut takes over from the one already running:
 
 ```
 //gs c warp
@@ -822,8 +837,8 @@ The Warp Ring is dropped and the Trizek Ring takes its place. Two things are wor
 | `gs c help [<group>]` | List every command by group, with each mode's key. With a group, list each command's form and purpose |
 | `gs c keybind` | List the mode keys |
 | `gs c keybind <mode> <key\|none\|default>` | Move one mode to another key, take its key away, or put it back — see [Choosing your own keys](#choosing-your-own-keys) |
-| `gs c keybind default` | Put all eight mode keys back on their defaults |
-| `gs c version` | Print the running engine version — `Include Version is [2.1]` |
+| `gs c keybind default` | Put all nine mode keys back on their defaults |
+| `gs c version` | Print the running engine version — `Include Version is [2.2]` |
 | `gs c profile <path>` | Run a Windower script named for your job, subjob and character |
 | `gs c shutdown` | Terminate the game client |
 
@@ -844,9 +859,18 @@ These answer questions about what the engine is doing. All are safe to run at an
 | `gs c info [on\|off]` | Switch informational messages, including the set each action wears |
 | `gs c debug [on\|off]` | Switch the debug box and verbose engine logging |
 
-Each of the four switches is saved in the character's settings file, so a channel you turn off stays off after a reload until you turn it back on.
+Each of the four switches is saved in the character's settings file, so a channel you turn off stays off after a reload until you turn it back on. A new character starts with these:
 
-**Every action names the set it used.** With `info` on, every action gets one line, pet actions and gear worn for an incoming spell included:
+| Switch | Starts |
+|---|---|
+| `info` | On |
+| `warn` | On |
+| `debug` | Off |
+| `gearreporting` | Off |
+
+For six characters at once, see [Running several characters](#running-several-characters).
+
+**Every action names the set it used.** With `info` on, every action gets one chat message, pet actions and gear worn for an incoming spell included:
 
 ```
 [Cure IV] [sets.Midcast.Cure][Used]
@@ -861,6 +885,12 @@ An Aftermath tier gets a clause of its own after the set the action chose, and s
 [Victory Smite] [sets.WS.Victory Smite][Used] + [sets.WS.Impetus][Used]
 ```
 
+A set worn for a buff the game has not yet listed is marked `predicted` — see [When a buff counts as up](#when-a-buff-counts-as-up):
+
+```
+[Bind] [sets.Midcast.Enfeebling.Duration][Used] + [sets.Midcast.Enfeebling.Saboteur][Used, predicted]
+```
+
 **`gs c checksets`** is the one to run after writing a job file. It separates a set you never declared from one you declared and left empty — the second is almost always a set you meant to fill in:
 
 ```
@@ -873,7 +903,7 @@ A set you placed under several names is listed under each of them. With nothing 
 
 **The channels answer different questions.** Leave `info` on for a running commentary, `warn` on to hear only about problems, and turn `gearreporting` on when you want to see why. Replies to commands you type, confirmations of a change, hold announcements and the startup key list always print, whatever the four switches are set to, except a refused argument, which is answered on `warn`. Gear and action reporting stays on `info`, the channel to turn down in a long fight.
 
-**`gs c gearreporting`** answers "why that set?" It traces all three steps of a swap, and the whole fallback path when a set it reached for was empty. A clause at the end of a line names the buff sets that step added:
+**`gs c gearreporting`** answers "why that set?" It traces all three steps of a swap, and the whole fallback path when a set it reached for was empty. A clause at the end of a message names the buff sets that step added:
 
 ```
 Precast: Using sets.Precast.Cure [Filled]
@@ -881,7 +911,7 @@ Attempted to use sets.Midcast.Regen [Empty] falling back -> Using sets.Midcast [
 Aftercast: Using sets.OffenseMode.DT [Filled] + Buff children sets.OffenseMode.Impetus [Filled]
 ```
 
-It is off by default, and worth turning off again once you have your answer — it prints three lines for every action.
+It is off by default. Turn it off again once it has answered: it prints three messages for every action.
 
 **Warnings silence themselves per set** for 60 seconds so a long fight stays readable, and tell you when they do. A set that speaks again reports what it held back:
 
@@ -913,7 +943,7 @@ The highest value wins: a Mecisto. Mantle whose augment is worth more than eithe
 
 ### Engine-internal
 
-`gs c help` leaves these words out: they belong to the engine, and you never need to type them. Four of them — `update auto`, `enchrepair`, `hoxnerelock` and `hoxnerelease` — are commands the engine sends itself. Every word here still answers if typed, and all are listed so you recognize them in a verbose log.
+`gs c help` leaves these words out: they belong to the engine, and you never need to type them. Five of them — `update auto`, `enchrepair`, `hoxnerelock`, `hoxnerelease` and `burstredress` — are commands the engine sends itself. Every word here still answers if typed, and all are listed so you recognize them in a verbose log.
 
 | Command | What it does |
 |---|---|
@@ -924,6 +954,7 @@ The highest value wins: a Mecisto. Mantle whose augment is worth more than eithe
 | `gs c enchrepair` | Sent by the enchanted item engine when an item it is using is knocked out of its slot |
 | `gs c hoxnerelock` | Sent by the Hoxne Ampulla's background check, re-asserting its hold on range and ammo |
 | `gs c hoxnerelease` | Sent by the Hoxne Ampulla's background check, freeing a stranded Ampulla after a reload |
+| `gs c burstredress` | Sent when a skillchain lands on the monster a cast in flight is aimed at, or a move ends that monster's window early. It puts that cast into its burst gear, or takes it back out — see [A cast already in flight](#a-cast-already-in-flight) |
 
 ---
 
@@ -947,7 +978,7 @@ Strongest first. A holder may take a slot from anything below it; asking for one
 | 8 | The carried-item locks | — they never refuse; they wait |
 | 9 | The weapon lock | `the weapon lock` |
 
-A refusal reads one line per holder, strongest first, with the slots in the order of the game's equipment window:
+A refusal prints one message per holder, strongest first, with the slots in the order of the game's equipment window:
 
 ```
 Aptitude Mantle +1: back is held by an item use right now.
@@ -996,27 +1027,27 @@ Usage: //gs c disable <slot>... | all
 
 Accepted slot words are the sixteen slot names plus the spellings people actually type: `main sub range ranged ammo head body hands legs feet neck waist back ear1 ear2 lear rear learring rearring left_ear right_ear ring1 ring2 lring rring left_ring right_ring`, plus `all`.
 
-GearSwap's own `//gs disable` and `//gs enable` are not tracked by this engine. Using one with a slot name gets a single line pointing at the tracked form:
+GearSwap's own `//gs disable <slot>` and `//gs enable <slot>` run these same commands and give the same answers. A bare `//gs disable` or `//gs enable`, which switches your whole job file off or on, stays GearSwap's.
+
+**A disabled slot keeps what you put on it.** A piece put on a disabled slot from the equipment menu or with an in-game `/equipset` becomes what the hold keeps. A piece the game removes, or one another piece forces off, stays off until the slot is released.
+
+**Enabling a slot another hold has frees nothing**, and the message names that hold:
 
 ```
-Disable: //gs disable leaves the slot untracked -- use //gs c disable <slot>... instead.
+Disable: main is held by the weapon lock
 ```
 
-(A bare `//gs disable`, which switches your whole job file off, is left alone.)
+`gs c enable` also opens a slot that GearSwap's own disable shut while no hold of the engine's has it, such as one a job file's own `disable()` call shut. `gs c enableall` frees every hold but the weapon lock — see [Releasing a slot](#releasing-a-slot).
 
 ### The weapon lock
 
-`gs c weaponlock` is a [mode](#weaponlock) rather than a momentary hold, and <kbd>F10</kbd> cycles it by default. Under `Locked`, `sets.Weapons[<your weapon mode>]` is the only thing that changes main and sub, in every phase — precast, midcast and aftercast alike. No other set can put a different weapon beside the locked pair: not a pet, Sublimation or movement set, and not a buff set. The pair starts as whatever you are wearing, so a slot the mode names nothing for is held as found.
+`gs c weaponlock` is a [mode](#weaponlock) rather than a momentary hold, and <kbd>F10</kbd> cycles it by default. Under `Locked`, `sets.Weapons[<the weapon mode>]` is the only thing that changes main and sub, in every phase — precast, midcast and aftercast alike. No other set can put a different weapon beside the locked pair: not a pet, Sublimation or movement set, and not a buff set. The pair starts as whatever is worn, so a slot the mode names nothing for is held as found.
 
-Three jobs get a value of their own:
+The values for Bard, Corsair and Geomancer are listed under [WeaponLock](#weaponlock). Corsair's `Locked+R` stands down to `Locked` when a Hoxne mode takes range:
 
-- **Bard's `Songs`** stands aside for a song aimed at yourself, another player or a Trust. A song aimed at a monster stays locked, and so does everything else.
-- **Geomancer's `Geomancy`** stands aside for every Geomancy spell, `Indi-` and `Geo-` alike, whatever the target. The main and sub named in that spell's own sets swap in for the cast, and your weapon set's pair comes back after it.
-- **Corsair's `Locked+R`** holds range as well, and stands down to `Locked` if a Hoxne mode takes range:
-
-  ```
-  Weapon Lock: [Locked] (Hoxne Ampulla holds range)
-  ```
+```
+Weapon Lock: [Locked] (Hoxne Ampulla holds range)
+```
 
 Under every value, `Unlocked` included, a weaponskill leaves main and sub as they are — see [Weaponskills](#weaponskills).
 
@@ -1058,7 +1089,7 @@ Hoxne Ampulla not found.  Not locking range/ammo
 Hoxne Ampulla Mode: [OFF]
 ```
 
-Automatic use waits out the item's equip delay and its recast, so the first use after switching the mode on takes a few seconds. If it is genuinely on cooldown you get one line with the time remaining, not a repeated one. The game refuses item use while you are mounted, so the automatic use holds for the ride and fires promptly once you dismount; while you are dead the mode stops scanning entirely and picks up again when you are raised.
+Automatic use waits out the item's equip delay and its recast, so the first use after switching the mode on takes a few seconds. A real cooldown prints one message with the time remaining, never a repeated one. The game refuses item use while you are mounted, so the automatic use holds for the ride and fires promptly once you dismount; while you are dead the mode stops scanning entirely and picks up again when you are raised.
 
 **Zoning turns the mode `OFF`** and restores your normal gear — `Hoxne Ampulla Mode: [OFF] (zoned)`. Reloading GearSwap resets it to `OFF` too; the engine frees a stranded Ampulla and puts your gear back on its own within a few seconds of loading. `//gs c hoxneinfo` prints everything the mode is acting on — the slots, the buff and the item's timers.
 
@@ -1091,7 +1122,7 @@ No WAR Dynamis neck found in inventory or wardrobes.
 
 Because their item is chosen rather than fixed, setting one on while it is already on **chooses afresh** — a cape whose augment reads higher, or a neck rank you have acquired since. `gs c jubilee on` while on puts the same ring back instead, which is how to repair the slot if something else took it.
 
-**They never take a slot from another hold**, the weapon lock included: a slot something else is holding is refused and named, and the mode waits. They also let go on their own when they must — if the item leaves your bags, or a level sync drops it below what you can wear, the mode switches itself off instead of holding an empty slot shut. And if an `/equipset`, the server or `//gs enable` takes the slot, the mode puts the item back the next time your gear is chosen.
+**They never take a slot from another hold**, the weapon lock included: a slot something else is holding is refused and named, and the mode waits. They also let go on their own when they must — if the item leaves your bags, or a level sync drops it below what you can wear, the mode switches itself off instead of holding an empty slot shut. And if an `/equipset` or the server takes the slot, the mode puts the item back the next time your gear is chosen.
 
 Entering a Dynamis Divergence zone prints a reminder:
 
@@ -1111,7 +1142,7 @@ Zoning releases every lock mode — `Lock modes released (zoned).` — and so do
 Hoxne Ampulla Mode is [ON-Locked]; its hold returns shortly.
 ```
 
-If you want them free, switch Hoxne to `OFF`.
+To keep them free, switch Hoxne to `OFF`.
 
 ---
 
@@ -1142,6 +1173,9 @@ Apply them by calling `jobsetup(LockStylePallet, MacroBook, MacroSet)` once, out
 | `UI_Name2` | string | `''` | Name used for JobMode2; empty hides the mode |
 | `UI_Short` | string | `''` | Optional status box label for JobMode; derived from `UI_Name` when empty |
 | `UI_Short2` | string | `''` | Optional status box label for JobMode2 |
+| `PetMoveHold` | boolean | `true` | Hold your actions while a pet move you commanded is in flight, so the move keeps its set on. See [Pet sets](#pet-sets) |
+| `PetWSThreshold` | number | `600` | The automaton's TP from which `sets.Pet_WS` is worn |
+| `Pet_Modes` | table | — | The pet mode value `Auto` picks for each pet. See [JobMode and JobMode2](#jobmode-and-jobmode2) |
 | `Elemental_Bonus_Ring_Slot` | string | `"right_ring"` | The ring slot Zodiac Ring goes in when the day suits the spell — `"right_ring"` or `"left_ring"`. Every sample declares it inside `get_sets()` |
 | `Bonus_Keep` | table | `{ ['Oneiros Rope'] = true }` | Pieces the engine never swaps out for a [day, weather or distance piece](#automatic-gear-rules) when your set names them in the waist, the back or the Zodiac Ring slot. Add one as `Bonus_Keep['Item Name'] = true`, spelled exactly as the game spells it |
 
@@ -1180,15 +1214,19 @@ Ammo.WS  = Ammo[state.RAMode.value].WS
 
 ### Instruments
 
-Bard files map song purposes to instruments, and the engine equips the matching one during a song's midcast.
+Bard files map song purposes to instruments, and the engine equips the matching one for a song's midcast, or at its precast under Nightingale.
 
 | Key | When it is equipped |
 |---|---|
 | `Instrument.Count` | A dummy song |
 | `Instrument.AOE_Sleep` | A Horde lullaby |
-| `Instrument.Enfeebling` | An enfeebling song — also at precast under Nightingale |
+| `Instrument.Enfeebling` | An enfeebling song |
 | `Instrument.Potency` | Every other real song |
 | `Instrument.Pianissimo` | A song aimed at one other player or a Trust |
+
+A song with a midcast set named for it, such as `sets.Midcast['Foe Lullaby II']`, takes the instrument that set names instead, and a dummy song always takes `Instrument.Count`.
+
+**The instrument stays for the whole song.** From the moment the song's gear names an instrument until the song ends, the instrument holds range and the ammo slot stays empty, so a buff, a status change or received gear cannot take it off mid-song. Honor March and Aria of Passion hold their required instrument from the precast. On the rig both slots show red, the color of [the cast in progress](#how-the-holds-stack).
 
 ```lua
 Instrument.Count      = { name = "Daurdabla" }
@@ -1210,11 +1248,11 @@ All 25 song families are matched, Hymnus included. Honor March and Aria of Passi
 
 ## 8. Gear sets reference
 
-Every set below is pre-created as an empty table by the engine, so you only fill in the ones you use. A set you never declare merges as nothing and the engine falls back to a more general one, which is normal and expected.
+Most sets below are pre-created as empty tables by the engine, so only the ones in use need filling. A set never declared merges as nothing and the engine falls back to a more general one, which is normal and expected.
 
-Two things help while building a file. **If you do not want a set for a spell, ability or weaponskill, delete its line rather than emptying it**: an empty set is reported in chat, and one you never declare is not — see [A set warning in chat](#a-set-warning-in-chat). And **`//gs c checksets`** lists both kinds — see [Diagnostics](#diagnostics).
+Two things help while building a file. **For a named spell, ability or weaponskill that needs no set of its own, delete its line rather than emptying it**: an empty set is reported in chat, and one never declared is not. The engine's family sets, such as `sets.Midcast.Cure`, always exist — see [A set warning in chat](#a-set-warning-in-chat). And **`//gs c checksets`** lists both kinds — see [Diagnostics](#diagnostics).
 
-All sets go inside `function get_sets()` in your job file. The idle, engaged, weaponskill and midcast sets below can also carry [buff sets](#buff-sets), worn while a buff is on you.
+All sets go inside `function get_sets()` in the job file. The idle, engaged, weaponskill and midcast sets below can also carry [buff sets](#buff-sets), worn while a buff is up.
 
 ### Core sets
 
@@ -1224,16 +1262,17 @@ All sets go inside `function get_sets()` in your job file. The idle, engaged, we
 | `sets.Idle.<Mode>` | Idle variant matched to the current OffenseMode — **declare one for every OffenseMode you offer** |
 | `sets.Idle.Resting` | Resting |
 | `sets.Idle.Pet` | Idle while you have a pet |
+| `sets.Idle.Pet.Engaged` | Idle while your pet fights, over `sets.Idle.Pet` — see [Pet sets](#pet-sets) |
 | `sets.Idle.Sublimation` | Idle while Sublimation is charging |
 | `sets.Movement` | Layered on top of idle while moving and not engaged |
 | `sets.OffenseMode` | Base melee set, always applied when engaged |
 | `sets.OffenseMode.<Mode>` | Per-mode melee set — **declare one for every OffenseMode you offer** |
 | `sets.OffenseMode.AM` / `.AM1` / `.AM2` / `.AM3` | Aftermath tiers, worn over the mode set |
 | `sets.OffenseMode.AM3['<Weapon Mode>']` | An Aftermath tier refined for one weapon mode |
-| `sets.DualWield` | Layered when the Dual Wield trait is detected |
+| `sets.DualWield` | Layered in the shield's place while you have the Dual Wield trait and a one-handed main that is not a hand-to-hand weapon |
 | `sets.Enmity` | Not read by the engine — a building block the samples combine into `sets.JA['Provoke']` and the other enmity abilities |
 
-An OffenseMode you offer with no matching child set costs you the rest of the engaged build: the weapons, the shield or dual-wield offhand, Aftermath and Treasure Hunter are all skipped. The base `sets.OffenseMode` still equips, which is what makes the gap easy to miss. Idle needs a child for every mode too: without `sets.Idle.<Mode>`, every idle rebuild prints `sets.Idle.PDL not found!` while `gs c warn` is on, though the rest of the idle set still goes on. An empty declaration is enough to close either gap.
+An OffenseMode offered with no matching child set costs the rest of the engaged build: the weapon set with its shield or dual-wield offhand, Aftermath, the buff sets of `sets.OffenseMode`, `sets.Pet_WS`, the pet mode's set and Treasure Hunter are all skipped. Only the base `sets.OffenseMode`, the mode's round from `Ammo` and, under the weapon lock, the locked weapons still go on, which is what makes the gap easy to miss. Idle needs a child for every mode too: without `sets.Idle.<Mode>`, every idle rebuild prints `sets.Idle.MEVA not found!` while `gs c warn` is on, though the rest of the idle set still goes on. An empty declaration is enough to close either gap.
 
 An Aftermath tier set dresses you whichever weapon you hold; its weapon-mode child refines it on top. The child's key is the WeaponMode value, the same string `state.WeaponMode:options(...)` offers. Declaring the child alone is fine, and so is declaring only the tier.
 
@@ -1243,13 +1282,13 @@ An Aftermath tier set dresses you whichever weapon you hold; its weapon-mode chi
 |---|---|
 | `sets.Weapons.<Mode>` | One per WeaponMode option |
 | `sets.Weapons.Sleep` | Held on automatically while you are asleep |
-| `sets.Weapons.Shield` | The offhand, merged last wherever the main is one-handed and no dual-wield trait is up |
+| `sets.Weapons.Shield` | The offhand, merged last wherever the main is one-handed and not a hand-to-hand weapon, and no Dual Wield trait is up |
 | `sets.Weapons.Songs` | BRD instrument handling |
 | `sets.Weapons.Songs.Precast` | Weapons held through a song's precast |
 | `sets.Weapons.Songs.Midcast` | Weapons merged at a song's midcast |
 | `sets.Weapons['Light Bonus']` | Worn whole on a Cure, Cura or Curaga cast on Lightsday or in Light weather, its own main and sub included unless the weapon lock holds them. Left empty, Chatoyant Staff goes in main instead when you carry one |
 
-A song's precast wears `sets.Weapons.Songs` and then `sets.Weapons.Songs.Precast`; its midcast wears `sets.Weapons.Songs` and then `sets.Weapons.Songs.Midcast`. Idle and engaged gear, and a precast or midcast while the weapon lock holds your weapons, wear `sets.Weapons.<Mode>`. Either way, `sets.Weapons.Shield` goes on last, and only while your main is one-handed and you are not dual wielding.
+A song's precast wears `sets.Weapons.Songs` and then `sets.Weapons.Songs.Precast`; its midcast wears `sets.Weapons.Songs` and then `sets.Weapons.Songs.Midcast`. Idle and engaged gear, and a precast or midcast while the weapon lock holds your weapons, wear `sets.Weapons.<Mode>`. Either way, `sets.Weapons.Shield` goes on last, and only while your main is one-handed, not a hand-to-hand weapon, and you are not dual wielding.
 
 ### Precast
 
@@ -1269,22 +1308,31 @@ A song's precast wears `sets.Weapons.Songs` and then `sets.Weapons.Songs.Precast
 | `sets.JA` | Job abilities, stratagems, runes, wards and effusions — the catch-all each of them falls back to |
 | `sets.JA['<Ability Name>']` | One job ability |
 
-`sets.JA` and its named child sets are read for job abilities, and for stratagems, runes, wards and effusions; Corsair rolls and shots and Dancer's waltzes, jigs, sambas, steps and flourishes read their own sets instead (see [Job-specific sets](#job-specific-sets)). A pet command — Fight, Heel, Spur, Deploy and the rest — is not one of those, and has no set of its own: your pet's own actions are dressed by [the pet midcast sets](#midcast).
+`sets.JA` and its named child sets are read for job abilities, and for stratagems, runes, wards and effusions. Corsair rolls and shots and Dancer's waltzes, jigs, sambas, steps and flourishes read their own sets instead (see [Job-specific sets](#job-specific-sets)). Double-Up wears `sets.JA['Double-Up']` where your file declares one, even empty, and `sets.PhantomRoll` where it does not. A pet command — a blood pact, a Ready move, Sic, Spur, a maneuver, Fight and the rest — reads `sets.Pet_Command` instead — see [Pet sets](#pet-sets).
 
 ### Midcast
 
-Offensive magic:
+Every spell:
 
 | Set | When used |
 |---|---|
 | `sets.Midcast` | The base for every cast, over `sets.Idle` |
 | `sets.Midcast.SIRD` | Spell Interruption Rate Down — merged under every midcast except a ranged attack. Takes no buff sets |
+| `sets.Midcast.ACC` | Every spell in ACC mode, merged over `sets.Midcast` and under the family set — a [midcast child](#midcast-children) |
+| `sets.Midcast['<Spell Name>']` | A named midcast for one spell |
+
+Offensive magic:
+
+| Set | When used |
+|---|---|
 | `sets.Midcast.Nuke` | Elemental nukes |
 | `sets.Midcast.Nuke.Earth` | An extra layer for Earth nukes |
-| `sets.Midcast.Burst` | Nukes during an open skillchain window |
+| `sets.Midcast.Burst` | A black magic nuke with no set of its own that will magic burst, worn in the nuke set's place — see [Setting up burst gear](#setting-up-burst-gear) |
+| `sets.Midcast.Enfeebling` | Every enfeebling spell, with the first of the three tiers below that lists the spell over it |
 | `sets.Midcast.Enfeebling.MACC` | Accuracy-based enfeebles (Dispel, Frazzle, Poison) |
 | `sets.Midcast.Enfeebling.Potency` | Potency-based enfeebles (Paralyze, Slow, Addle, Distract, Blind, Gravity) |
 | `sets.Midcast.Enfeebling.Duration` | Duration-based enfeebles (Sleep, Dia, Bio, Silence, Bind, Break, Inundation) |
+| `sets.Midcast.Dark` | Every dark spell but Aspir and Drain, with its child below over it |
 | `sets.Midcast.Dark.MACC` | Death, Kaustra, Stun |
 | `sets.Midcast.Dark.Absorb` | The Absorb- spells |
 | `sets.Midcast.Dark.Enhancing` | Dread Spikes, Endark, Klimaform, Tractor |
@@ -1292,7 +1340,7 @@ Offensive magic:
 | `sets.Helix` | Helix spells, with `.Dark` and `.Light` layered on top by element |
 | `sets.Midcast.BlueMagic` | Blue magic, by family — see the note below |
 
-`sets.Midcast.BlueMagic` holds the blue magic families — `.Physical`, `.Breath`, `.Nuke`, `.Skill`, `.Buff`, `.Enmity`, `.Healing` and `.ACC`. A blue spell with no set of its own wears the one family its class names, with `sets.Diffusion` over it while Diffusion is up. `sets.Midcast.BlueMagic` itself is never worn, so gear belongs in the families.
+`sets.Midcast.BlueMagic` holds the blue magic categories — `.Physical`, `.Breath`, `.Nuke`, `.Skill`, `.Buff`, `.Enmity`, `.Healing` and `.ACC`. A blue spell with no set of its own wears the one category its list names, with `sets.Diffusion` over it while Diffusion is up. `sets.Midcast.BlueMagic` itself is never worn, so gear belongs in the categories. Which spell goes where: [Blue magic categories](#blue-magic-categories).
 
 Healing and enhancing:
 
@@ -1309,12 +1357,9 @@ Healing and enhancing:
 | `sets.Midcast.Enhancing.Gain` | Gain-STR and friends |
 | `sets.Midcast.Utsusemi` | Utsusemi midcast |
 | `sets.Midcast.Phalanx` | Phalanx midcast |
-| `sets.Midcast.Divine` | Divine magic — also the set RUN's Vivacious Pulse reads |
-| `sets.Midcast.Skill` | Generic magic skill |
-| `sets.Midcast.ACC` | Generic magic accuracy |
-| `sets.Midcast['<Spell Name>']` | A named midcast for one spell |
+| `sets.Midcast.Divine` | Divine magic. The RUN sample also builds its Vivacious Pulse set on it |
 
-Ranged and pets:
+Ranged and summoning:
 
 | Set | When used |
 |---|---|
@@ -1323,14 +1368,45 @@ Ranged and pets:
 | `sets.Midcast.RA.TripleShot` / `.DoubleShot` / `.Barrage` | With the matching buff active |
 | `sets.Midcast.RA['True Shot']` | True Shot |
 | `sets.Midcast.RA.AM` / `.AM1` / `.AM2` / `.AM3` | Ranged Aftermath tiers, each with an optional `['<Weapon Mode>']` child |
-| `sets.Midcast.BP` | Blood Pacts |
-| `sets.Midcast.Summon` / `.SummoningMagic` | Summoning |
-| `sets.Pet_Midcast` | Every pet action |
-| `sets.Pet_Midcast['<Action Name>']` | One pet action — `sets.Pet_Midcast['Flame Breath']` |
+| `sets.Midcast.Summon` | Summoning an avatar or a spirit, when no set is named for it |
 
-Aftermath tiers under midcast are **ranged only**. Nothing merges an Aftermath tier into a spell midcast, so `sets.Midcast.AM3` and its siblings are inert.
+Aftermath tiers under midcast are **ranged only**. Nothing merges an Aftermath tier into a spell midcast, so `sets.Midcast.AM3` and its siblings are inert. Pet commands and pet moves have sets of their own — see [Pet sets](#pet-sets).
 
-Bard songs get one set per family under `sets.Midcast`: `.DummySongs`, `.Finale`, `.Lullaby`, `.Threnody`, `.Elegy`, `.Requiem`, `.March`, `.Minuet`, `.Madrigal`, `.Ballad`, `.Scherzo`, `.Mazurka`, `.Paeon`, `.Carol`, `.Minne`, `.Mambo`, `.Etude`, `.Prelude`, `.Dirge`, `.Sirvente`, `.Aria`, `.Fugue`, `.Hum`, `.Hymnus`, `.Virelai` and `.Nocturne`. Every castable song belongs to exactly one of them.
+Bard songs get one set per family under `sets.Midcast`: `.DummySongs`, `.Finale`, `.Lullaby`, `.Threnody`, `.Elegy`, `.Requiem`, `.March`, `.Minuet`, `.Madrigal`, `.Ballad`, `.Scherzo`, `.Mazurka`, `.Paeon`, `.Carol`, `.Minne`, `.Mambo`, `.Etude`, `.Prelude`, `.Dirge`, `.Sirvente`, `.Aria`, `.Fugue`, `.Hum`, `.Hymnus`, `.Virelai` and `.Nocturne`. Every castable song belongs to exactly one of them. **`sets.Midcast.Songs`** holds the gear for every song but a dummy song. It goes on first, under the song's own set, the enfeebling set and the family set, so each of those wins over it, and Nightingale's precast wears it too.
+
+### Midcast children
+
+Every set a spell's midcast wears — `sets.Midcast`, the family set such as `sets.Midcast.Nuke` or `sets.Midcast.Cure`, and a spell's own set — can carry child sets keyed by the cast. A child goes on right after its parent while its key matches, so every set merged after the parent still wins over it, and so do the day, weather and distance pieces.
+
+| Key | Worn when | Example |
+|---|---|---|
+| An offense mode | The offense mode is set to it | `sets.Midcast.Nuke.Occult` in Occult mode |
+| `Self` | The spell targets the caster, without Accession | `sets.Midcast.Cure.Self` |
+| `Others` | The spell targets anyone else, or the caster under Accession | `sets.Midcast.Enhancing.Others` |
+| A spell's name | That spell is cast | `sets.Midcast.Nuke['Fire VI']` |
+| `Burst` | The cast will magic burst, or a skillchain carrying its element lands on its target mid-cast | `sets.Midcast.Nuke.Burst` |
+
+```lua
+sets.Midcast.Nuke.Occult = { ... }              -- every nuke in Occult mode
+sets.Midcast.Cure.Self = { ... }                -- a cure on the caster
+sets.Midcast.Burst['Thundara III'] = { ... }    -- Thundara III when it bursts
+sets.Midcast['Death'].Burst = { ... }           -- Death, which has a set of its own, when it bursts
+sets.Midcast.Nuke.Occult['Fire VI'] = { ... }   -- keys nest, up to three in any order
+```
+
+- **Declare the parent first**, then each child on a line of its own, as for [buff sets](#buff-sets).
+- **`sets.Midcast` itself reads only its mode and `Self` or `Others` children**, merged before every family set. `sets.Midcast.ACC` is its child in ACC mode, and a warning at load points it out when it holds gear.
+- **Spell each key exactly.** `Self`, `Others` and `Burst` take a capital first letter, a mode is spelled as `state.OffenseMode:options(...)` spells it, and a spell as the game spells it. A miscased `Self`, `Others` or `Burst`, and `Other`, each draw a warning as the file loads.
+- **A buff set goes below a child, never above it.** `sets.Midcast.Enfeebling.ACC.Saboteur` is worn in ACC mode under Saboteur, while a child under a buff set is never read, and a warning at load points it out.
+- **A set the engine already names keeps its role.** `sets.Midcast.Enfeebling.MACC` stays the accuracy tier in a mode named MACC, and `sets.Midcast.Nuke.Earth` stays the Earth layer.
+- **Where no children are read:**
+  - under `sets.Idle`;
+  - under `sets.Midcast.SIRD`;
+  - under the `sets.Midcast.BlueMagic` container itself, though its categories read them;
+  - for a ranged attack;
+  - under the weapon, instrument and Treasure Hunter sets that go on after the family set.
+
+  The pet move sets read only each category's offense-mode child, and the pet command sets read none.
 
 ### Weaponskills
 
@@ -1340,6 +1416,9 @@ Bard songs get one set per family under `sets.Midcast`: `.DummySongs`, `.Finale`
 | `sets.WS.<Mode>` | Per OffenseMode, in any mode but TP — `ACC`, `PDL`, `SB`, `CRIT`, `MEVA` |
 | `sets.WS['<Weaponskill Name>']` | A specific weaponskill — `sets.WS['Savage Blade']` |
 | `sets.WS['<Name>'].<Mode>` | A specific weaponskill in a specific mode |
+| `sets.WS.HighBuff` | Every weaponskill at [Buff Level](#bufflevel) `HighBuff` |
+| `sets.WS['<Name>'].HighBuff` / `.MidBuff` | A specific weaponskill at that buff level |
+| `sets.WS.<Mode>.HighBuff` | A mode and a buff level together, the mode written first |
 | `sets.WS.AM` / `.AM1` / `.AM2` / `.AM3` | Aftermath tiers, each with an optional `['<Weapon Mode>']` child |
 | `sets.WS.RA` | Ranged weaponskills, the base |
 | `sets.WS.RA.<Mode>` | Ranged weaponskills per OffenseMode, in any mode but TP |
@@ -1349,6 +1428,8 @@ Named weaponskill sets layer on top of the generic ones, so you only specify wha
 
 **A mode set names only what that mode changes.** In any mode but TP, a weaponskill wears `sets.WS`, then the set named for it, then the mode's set: in ACC mode, `sets.WS.ACC` goes on over `sets.WS['Savage Blade']`, unless that weaponskill has an ACC set of its own. A mode set copied from the whole of `sets.WS` would put the base pieces back over every named weaponskill's own gear. So give `sets.WS.ACC` only the slots ACC changes, and give a weaponskill that needs its own gear in a mode a set of its own, such as `sets.WS['Savage Blade'].ACC`. The same goes for `sets.WS.RA.<Mode>` over a named ranged weaponskill.
 
+**The full order.** A weaponskill wears `sets.WS`, then its own set, then three children: the offense mode's, the buff level's, then the two together, written mode first, as `sets.WS['Savage Blade'].ACC.HighBuff`. Each child is the weaponskill's own where it declares one, even empty, and otherwise `sets.WS`'s child of the same name. TP reads no mode child of `sets.WS`, and `MidBuff` no level child of `sets.WS`. The Aftermath tiers go on last, and read no buff level child. A level written before the mode, such as `sets.WS.HighBuff.ACC`, is never read, and a warning at load points it out.
+
 **Ranged weaponskill keys read `RA` first**: `sets.WS.RA.ACC`, not `sets.WS.ACC.RA`. A declaration written the other way round sits in a table the engine does not read.
 
 **A weaponskill keeps the weapons in your hands.** Changing main or sub resets your TP, and so does changing a ranged weapon, so a weaponskill that swapped one would fail. Main and sub — and range, on every job but Bard and Geomancer — stay exactly as they are for the whole weaponskill, whatever your weaponskill sets, buff sets or `sets.Idle` name. With `gs c warn` on and the weapon lock off, a set that names one of those slots is pointed out, once a minute per set:
@@ -1357,7 +1438,7 @@ Named weaponskill sets layer on top of the generic ones, so you only specify wha
 [Savage Blade] sets.Idle names main, sub; a weaponskill keeps the weapons in hand.  Silencing warnings for 60s.
 ```
 
-Take the slot out of the set the line names. Weapons belong in `sets.Weapons`.
+Take the slot out of the set the message names. Weapons belong in `sets.Weapons`.
 
 ### Job-specific sets
 
@@ -1365,14 +1446,92 @@ Take the slot out of the set the line names. Weapons belong in `sets.Weapons`.
 |---|---|
 | `sets.Waltz`, `sets.Jig`, `sets.Samba`, `sets.Step`, `sets.Flourish` | DNC — each with an optional child named for the ability |
 | `sets.PhantomRoll`, `sets.QuickDraw` | COR — each with an optional child named for the roll or shot. The six elemental shots also take the [day, weather and distance pieces](#automatic-gear-rules) |
-| `sets.Jugs` | BST — keyed by your JobMode value |
-| `sets.Ready` | BST — the one set worn for a Ready move |
+| `sets.Jugs` | BST — keyed by your JobMode value. Call Beast and Bestial Loyalty put the jug in the ammo slot, as `sets.Jugs['FatsoFargann'] = { ammo = gear.jugOfCurdledPlasmaBroth }` |
+| `sets.Pet_Command`, `sets.Pet_Midcast`, `sets.Pet_WS` | BST, SMN, PUP and DRG — see [Pet sets](#pet-sets) |
 | `sets.Geomancy`, `.Geo`, `.Indi`, `.Indi.Entrust` | GEO |
 | `sets.Storms` | SCH |
 | `sets.Diffusion` | BLU |
 | `sets.TreasureHunter` | THF, and anyone using a TH mode |
 
-`sets.Ready.Magic`, `.TP`, `.Debuff` and `.Standard` exist for your own use; the engine wears only `sets.Ready` itself.
+### Pet sets
+
+A pet job's gear is split by when the game reads it: at the master's command, or while the pet readies its move.
+
+**The command** — a blood pact, a Ready move, Sic, Spur, a maneuver, Fight and the rest. The game reads delay gear at the command, so these sets go on at the command's precast, over the idle or engaged gear, with no fast-cast or midcast sets:
+
+| Set | Worn for |
+|---|---|
+| `sets.Pet_Command` | Every pet command |
+| `sets.Pet_Command.BloodPact` | Every blood pact |
+| `sets.Pet_Command.Ready` | A Ready move's command, and Sic |
+| `sets.Pet_Command.Maneuver` | Every maneuver |
+| `sets.Pet_Command['<Command>']` | One command, such as `sets.Pet_Command['Spur']`, or one pact |
+
+A child named for a buff goes on while that buff is up, such as `sets.Pet_Command.Ready.Unleash`. A key that is also a pet command's name is that command's own set, so `sets.Pet_Command['Fire Maneuver']` is the maneuver's set, never a buff set for the Fire Maneuver buff. Under Astral Conduit a blood pact swaps nothing at the command.
+
+**The move** — what the pet does. The game reads a move's potency gear while the pet readies it, so these sets go on from the readying to the move's finish, in the table's order, each over the one above it:
+
+| Set | Worn for |
+|---|---|
+| `sets.Pet_Midcast` | Every pet move |
+| `sets.Pet_Midcast.BloodPact` / `.Ready` / `.Wyvern` | The move's family: a blood pact, a Ready move or a wyvern's move |
+| `sets.Pet_Midcast.<Category>` | The move's category, below |
+| `sets.Pet_Midcast.<Category>.<Mode>` | The category in that offense mode, such as `sets.Pet_Midcast.Physical.ACC` |
+| `sets.Pet_Midcast.TPBonus` | A move whose damage or potency follows the pet's TP |
+| `sets.Pet_Midcast['<Move>']` | One move, such as `sets.Pet_Midcast['Flame Breath']` |
+
+| Category | Its moves | The gear that helps |
+|---|---|---|
+| `Physical` | Physical blood pacts and Ready moves | The pet's attack and accuracy, and for a pact Blood Pact damage |
+| `Magical` | Magical blood pacts and Ready moves | The pet's magic attack bonus and magic accuracy, and for a pact Blood Pact damage |
+| `Hybrid` | A pact of physical hits and a magical one | Both of the above |
+| `Multi` | A multi-hit Ready move | Pet double attack |
+| `Breath` | A breath whose damage follows its user's HP: the wyvern's elemental breaths, and Aqua Breath | The pet's current HP, and for a wyvern, breath bonus gear |
+| `Debuff` | Debuff pacts and Ready moves | The pet's magic accuracy, and for a pact Summoning Magic skill |
+| `Buff` | Buff pacts and Ready moves | For a pact, Summoning Magic skill |
+| `Healing` | Healing pacts, the wyvern's healing breaths, and Wild Carrot | For a pact or a healing breath, the pet's maximum HP |
+
+The engine sorts each move into its family and category with its `Pet_Moves` table, in `RahvinGS/interface.lua`. A move the table does not list takes `sets.Pet_Midcast` and its own set alone, and every move of a Beastmaster's pet takes the Ready family. A family, category or TP bonus set the job file never declares is skipped.
+
+- **Two kinds of move wear no set.** A spirit's own spells, whose gear goes in the set worn while the spirit fights, such as `sets.Idle.Pet.Engaged.Spirit`, and the automaton's weaponskills, which take `sets.Pet_WS` below. A move readied while the master's own cast is in flight goes without its set, and the info message says so.
+- **Actions are refused during a commanded move.** With `PetMoveHold` on, the default, a commanded move holds new actions from the command's completion until the move ends. If the pet readies nothing, the hold ends after two seconds. If the move's end never arrives, it ends three seconds after the readying. An action pressed meanwhile is refused with its reason, `Can't use Cure IV while Garuda's Predator Claws is in flight.`, and buff, status and movement changes wait for the move's end. A move the pet makes on its own holds nothing. With `PetMoveHold = false`, actions go through and dress over the pet's set.
+
+**The automaton's weaponskill.** The automaton chooses its weaponskill before the readying reaches GearSwap, so `sets.Pet_WS` goes on ahead of time: over the idle or engaged gear once the automaton's TP reads `PetWSThreshold` (600 by default) or more, until the weaponskill spends it. Puppetmaster's first job mode, the Pet WS mode, decides when: `Idle` while idle, `Always` idle or engaged, `Off` never. A child named for the frame goes over it, such as `sets.Pet_WS['Valoredge Frame']`, then the child for the offense mode. The weaponskill's info message says whether the set was on.
+
+**While the pet fights.** `sets.Idle.Pet` is worn while a pet is out and the master is idle, and `sets.Idle.Pet.Engaged` over it while the pet fights. Each takes its own child for the offense mode, then on a pet job its child for the [pet mode](#jobmode-and-jobmode2). While the master fights with a pet out, the offense mode's set takes the pet mode's child too, such as `sets.OffenseMode.TP.Tank`. Gear is rebuilt each time the pet engages or stops fighting, and the job file's `pet_status_change_custom` runs then — see [Pet hooks](#pet-hooks).
+
+### Blue magic categories
+
+A blue spell with no set of its own wears the one `sets.Midcast.BlueMagic` category its list names, with `sets.Diffusion` over it while Diffusion is up. The lists are the same on a Blue Mage main job and support job. Each category scales differently, so each wants different gear:
+
+| Category | Gear that helps |
+|---|---|
+| `.Physical` | Weapon accuracy, the spell's stat modifier and attack. Magic attack does nothing |
+| `.Breath` | Max HP and level, nothing else |
+| `.Nuke` | Magic attack bonus and the spell's stat modifier, as a black mage's nuke. Also takes the day, weather and distance pieces |
+| `.Skill` | Blue Magic Skill alone |
+| `.Buff` | Duration only: no gear changes the effect |
+| `.Healing` | Cure potency, MND and Blue Magic Skill. White Wind heals from max HP, so it takes a set of its own |
+| `.Enmity` | Enmity, for the enfeebles a tank casts to hold hate |
+| `.ACC` | Magic accuracy: the enfeebles whose only question is whether they land |
+
+**`.Physical` (59):** Amorphic Spikes, Asuran Claws, Barbed Crescent, Battle Dance, Benthic Typhoon, Bilgestorm, Bloodrake, Bludgeon, Body Slam, Cannonball, Claw Cyclone, Death Scissors, Delta Thrust, Dimensional Death, Disseverment, Empty Thrash, Feather Storm, Final Sting, Foot Kick, Frenetic Rip, Frypan, Glutinous Dart, Goblin Rush, Grand Slam, Head Butt, Heavy Strike, Helldive, Hydro Shot, Hysteric Barrage, Jet Stream, Mandibular Bite, Paralyzing Triad, Pinecone Bomb, Power Attack, Quad. Continuum, Quadrastrike, Queasyshroom, Ram Charge, Saurian Slide, Screwdriver, Seedspray, Sickle Slash, Sinker Drill, Smite of Rage, Spinal Cleave, Spiral Spin, Sprout Smack, Sub-zero Smash, Sudden Lunge, Sweeping Gouge, Tail Slap, Terror Touch, Thrashing Assault, Tourbillion, Uppercut, Vanity Dive, Vertical Cleave, Whirl of Rage, Wild Oats
+
+**`.Breath` (12):** Bad Breath, Flying Hip Press, Frost Breath, Heat Breath, Hecatomb Wave, Magnetite Cloud, Poison Breath, Radiant Breath, Self-Destruct, Thunder Breath, Vapor Spray, Wind Breath
+
+**`.Nuke` (49):** Acrid Stream, Anvil Lightning, Blastbomb, Blazing Bound, Blinding Fulgor, Blitzstrahl, Bomb Toss, Cesspool, Charged Whisker, Crashing Thunder, Cursed Sphere, Dark Orb, Death Ray, Diffusion Ray, Droning Whirlwind, Embalming Earth, Entomb, Evryone. Grudge, Eyes On Me, Firespit, Foul Waters, Gates of Hades, Ice Break, Leafstorm, Maelstrom, Magic Hammer, Mind Blast, Molting Plumage, Mysterious Light, Nectarous Deluge, Palling Salvo, Polar Roar, Rail Cannon, Regurgitation, Rending Deluge, Retinal Glare, Scouring Spate, Searing Tempest, Silent Storm, Spectral Floe, Subduction, Tearing Gust, Tem. Upheaval, Temporal Shift, Tenebral Crush, Thermal Pulse, Thunderbolt, Uproot, Water Bomb
+
+**`.Skill` (9):** Atra. Libations, Barrier Tusk, Diamondhide, Magic Barrier, Metallic Body, Occultation, Plasma Charge, Pyric Bulwark, Reactor Cool
+
+**`.Buff` (21):** Amplification, Animating Wail, Battery Charge, Carcharian Verve, Cocoon, Erratic Flutter, Exuviation, Fantod, Feather Barrier, Harden Shell, Memento Mori, Mighty Guard, Nat. Meditation, O. Counterstance, Refueling, Regeneration, Saline Coat, Triumphant Roar, Warm-Up, Winds of Promy., Zephyr Mantle
+
+**`.Healing` (6):** Healing Breeze, Magic Fruit, Plenilune Embrace, Pollen, Restoral, Wild Carrot
+
+**`.Enmity` (9):** Actinic Burst, Blank Gaze, Demoralizing Roar, Frightful Roar, Geist Wall, Jettatura, Sheep Song, Soporific, Stinking Gas
+
+**`.ACC` (30):** 1000 Needles, Absolute Terror, Auroral Drape, Awful Eye, Blistering Roar, Blood Drain, Blood Saber, Chaotic Eye, Cimicine Discharge, Cold Wave, Corrosive Ooze, Cruel Joke, Digest, Dream Flower, Enervation, Feather Tickle, Filamented Hold, Infrasonics, Light of Penance, Lowing, MP Drainkiss, Mortal Ray, Osmosis, Reaving Wind, Sandspin, Sandspray, Sound Blast, Venom Shell, Voracious Trunk, Yawn
+
+A spell in no list wears no category. Give it, or any spell the job file should dress another way, a set named for it, such as `sets.Midcast['White Wind']`. The spellings follow the game's own short names, such as `Quad. Continuum` and `Winds of Promy.`.
 
 ### Spell-received sets
 
@@ -1391,7 +1550,7 @@ Only needed if you use `SpellReceived`.
 
 ### Buff sets
 
-A **buff set** is a set named after a buff. While that buff is on you, it is worn over the set it sits under, and when the buff ends it comes off. No code is needed: declare the set, and the engine does the rest.
+A **buff set** is a set named after a buff. While that buff is up, it is worn over the set it sits under, and when the buff ends it comes off. No code is needed: declare the set, and the engine does the rest.
 
 ```lua
 sets.OffenseMode.Impetus = { body = gear.bhikkuBodyPlusThree }              -- engaged, in every offense mode
@@ -1418,7 +1577,8 @@ sets.Midcast.Cure['Afflatus Solace'] = { body = gear.ebersBodyPlusThree }   -- C
 | Casting | `sets.Midcast` | On every spell's midcast, and every ranged attack |
 | | A midcast family — `sets.Midcast.Cure`, `.Enfeebling`, `.Nuke`, `.Enhancing`, `sets.Midcast.BlueMagic.Nuke` and the rest | On the spells that set dresses |
 | Shooting | `sets.Midcast.RA`, its mode sets in any mode but TP, and `sets.Midcast.RA.TripleShot`, `.DoubleShot` and `.Barrage` | On the shots that set dresses |
-| Using a job's own sets | `sets.Helix` and its `.Dark` and `.Light` sets, `sets.Storms`, a Geomancy spell's own set, `sets.Geomancy.Indi` and its `.Entrust` set, `sets.Geomancy.Geo`, `sets.Diffusion` and `sets.Ready` | On the actions that set dresses |
+| Using a job's own sets | `sets.Helix` and its `.Dark` and `.Light` sets, `sets.Storms`, a Geomancy spell's own set, `sets.Geomancy.Indi` and its `.Entrust` set, `sets.Geomancy.Geo` and `sets.Diffusion` | On the actions that set dresses |
+| Commanding a pet | `sets.Pet_Command`, its family sets and a command's own set, where a key named for a pet command is that command's set | On the commands that set dresses |
 
 Anywhere else, a buff set is never worn; the list is at the end of this section.
 
@@ -1437,25 +1597,20 @@ sets.OffenseMode = { head = gear.nyameHead }
 - **Declare the set it sits under first, and give the buff set a line of its own.** A buff set written before its parent is lost when the parent's own line replaces the table, and one under a parent that does not exist at all stops the file from loading, with a Lua error in chat. One written inside a `set_combine(...)`, or under a parent your file later rebuilds with `set_combine`, is dropped, because `set_combine` keeps gear slots only. No loss is announced.
 - **Under `sets.Midcast`, a buff that shares its name with a spell cannot be a buff set.** Haste, Refresh, Regen, Phalanx, Stoneskin, Klimaform, the storms and the en-spells are among them. Directly under `sets.Midcast` such a name is that spell's own set, and deeper under it the key is ignored. The same names work as buff sets under every set in the table above that is outside `sets.Midcast`.
 - **`sets.Midcast.Diffusion` is a buff set** — worn on every spell while Diffusion is up. The engine's own `sets.Diffusion`, which dresses blue magic under Diffusion, is a different set.
-- **A buff set is found as your file loads.** A file that declares none at load and adds one later from its own code wears it only after the next reload.
+- **A buff set is found as the job file loads.** A file that declares none at load and adds one later from its own code wears it only after the next reload.
 
-**How buff sets stack.** A buff set is laid over the rest of the gear being chosen for that moment, and a few things still beat it:
+**What they cost.** Once a job file declares any buff set, every gear change runs a small extra check, whether the buff is up or not. A file with none pays nothing. That is why the samples ship their extra buff sets for a job's own buffs commented out — remove the `--` in front of the ones wanted — while the MNK, PLD, RDM, RUN, SAM and SCH samples below wear their buff gear through live buff sets.
 
-| A buff set wins its slots over | A buff set loses its slots to |
-|---|---|
-| The set it sits under, and the mode set | Treasure Hunter gear |
-| Your weapon set, while the weapon lock is off | Your `Ammo` round |
-| The Aftermath tiers | A song's instrument |
-| The movement set, while you move | The weapon lock |
-| | Anything your own [hooks](#12-customization-hooks) return |
-| | Every [hold](#6-holds-and-locks) |
+#### How buff sets combine
+
+**How buff sets stack.** A buff set is laid over the rest of the gear being chosen for that moment. It wins its slots over the set it sits under and the mode set, the weapon set while the weapon lock is off, the Aftermath tiers, and the movement set while moving. It loses them to Treasure Hunter gear, the `Ammo` round, a song's instrument, the weapon lock, anything the job file's [hooks](#13-customization-hooks) return, and every [hold](#6-holds-and-locks).
 
 - **A buff set on a broad set reaches far.** `sets.WS.Impetus` goes on over every weaponskill's own set while Impetus is up, and a buff set directly under `sets.Midcast` over every spell's. Put it on a narrower set — `sets.WS['Victory Smite'].Footwork`, `sets.Midcast.Cure['Afflatus Solace']` — when it should dress only some actions. When a broad and a narrower buff set are both worn, the narrower one wins the slots they share.
-- **A spell with a set of its own skips the family's buff sets.** Phalanx wears `sets.Midcast.Phalanx` and Dispelga `sets.Midcast['Dispelga']` in place of the enhancing or enfeebling set, so a buff set under that family is not reached. To dress such a spell too, put the same table under its own set as well, after both are declared: `sets.Midcast.Phalanx.Embolden = sets.Midcast.Enhancing.Embolden`.
+- **A spell with a set of its own skips the family's buff sets.** Stoneskin wears `sets.Midcast['Stoneskin']` and Dispelga `sets.Midcast['Dispelga']` in place of the enhancing or enfeebling set, so a buff set under that family is not reached. To dress such a spell too, put the same table under its own set as well, after both are declared: `sets.Midcast['Stoneskin'].Embolden = sets.Midcast.Enhancing.Embolden`. Regen, Refresh and Phalanx are the exception: their sets go on over the enhancing set, so they wear its buff sets already.
 - **A buff set under `sets.Idle` or `sets.OffenseMode` is not worn during an action.** A spell or weaponskill builds from `sets.Idle` itself and its own sets, so give the buff set to `sets.WS` or `sets.Midcast` as well when you want it there too.
 - **Two buff sets under one set** both go on when both buffs are up. Where they name the same slot, the one whose name comes later in alphabetical order wins, so nest them when it matters which.
 
-**Nesting.** A buff set can hold buff sets of its own, each worn only while every buff on the way to it is up: `sets.OffenseMode.Impetus.Footwork` goes on while Impetus and Footwork are both on you. Nesting goes three buffs deep, and the deepest set wins a slot it shares with the sets above it. A mode goes above the buff, never below it: `sets.OffenseMode.TP.Impetus` works, while `sets.OffenseMode.Impetus.TP` is never worn.
+**Nesting.** A buff set can hold buff sets of its own, each worn only while every buff on the way to it is up: `sets.OffenseMode.Impetus.Footwork` goes on while Impetus and Footwork are both up. Nesting goes three buffs deep, and the deepest set wins a slot it shares with the sets above it. A mode goes above the buff, never below it: `sets.OffenseMode.TP.Impetus` works, while `sets.OffenseMode.Impetus.TP` is never worn.
 
 **Weapons and the day and weather pieces:**
 
@@ -1466,37 +1621,45 @@ sets.OffenseMode = { head = gear.nyameHead }
 | Range, at idle or while engaged | It is worn under every lock value but `Locked+R` |
 | Range, on a spell or weaponskill under `Locked`, `Songs` or `Geomancy` | A range your weapon set names wins over the buff set's |
 | Main, on a Light-day or Light-weather cure with the weapon lock off | It wins over Chatoyant Staff and `sets.Weapons['Light Bonus']` |
-| Waist, back, or the ring slot Zodiac Ring uses, on a spell | It wins over the [day, weather and distance choice](#automatic-gear-rules), and the info line still names the piece that choice picked |
+| Waist, back, or the ring slot Zodiac Ring uses, on a spell | It wins over the [day, weather and distance choice](#automatic-gear-rules), and the info message still names the piece that choice picked |
 | Those three slots, on a magical weaponskill | The day, weather and distance choice wins them |
 
 A weaponskill never changes the weapons at all — see [Weaponskills](#weaponskills).
 
-**What chat tells you.** As your file loads, the `warn` channel names any key that is neither a gear slot nor a buff when it sits under a mode set, such as `sets.OffenseMode.TP` or `sets.Idle.DT`, or under a buff set:
+**What chat reports.** As the job file loads, the `warn` channel names any key that is neither a gear slot nor a buff when it sits under a mode set, such as `sets.OffenseMode.TP` or `sets.Idle.DT`, or under a buff set:
 
 ```
 sets.OffenseMode.TP.Footwrk is not a buff name
 ```
 
-Directly under `sets.Idle`, `sets.OffenseMode`, `sets.WS`, `sets.Midcast` and the family sets, a misspelled name prints nothing and is never worn, so check the spelling there. The info line names each buff set a spell or weaponskill wore — `[Victory Smite] [sets.WS.Victory Smite][Used] + [sets.WS.Impetus][Used]` — and idle and engaged buff sets appear in the `gs c gearreporting` trace. The other load lines are under [A line about a buff set as your file loads](#a-line-about-a-buff-set-as-your-file-loads).
-
-**What they cost.** Once your file declares any buff set, every gear change runs a small extra check, whether the buff is up or not. A file with none pays nothing. That is why the samples ship their extra buff sets for a job's own buffs commented out — remove the `--` in front of the ones you want — while the MNK, PLD, RDM, RUN, SAM and SCH samples below wear their buff gear through live buff sets.
+Directly under `sets.Idle`, `sets.OffenseMode`, `sets.WS`, `sets.Midcast` and the family sets, a misspelled name prints nothing and is never worn, so check the spelling there. The info message names each buff set a spell or weaponskill wore — `[Victory Smite] [sets.WS.Victory Smite][Used] + [sets.WS.Impetus][Used]` — and idle and engaged buff sets appear in the `gs c gearreporting` trace. The other warnings at load are under [A warning about a set as the job file loads](#a-warning-about-a-set-as-the-job-file-loads).
 
 **Where a buff set is never read:**
 
-- precast sets other than the weaponskill sets, and `sets.JA`;
-- `sets.Idle.Pet`, `sets.Idle.Sublimation` and `sets.Movement`, which go on after the idle set's own layers;
+- precast sets other than the weaponskill and pet command sets, and `sets.JA`;
+- `sets.Idle.Pet`, its `Engaged` set, `sets.Idle.Sublimation` and `sets.Movement`, which go on after the idle set's own layers. A buff-named key under them draws a warning as the file loads;
+- the pet move sets and `sets.Pet_WS`;
 - the Aftermath tiers;
 - `sets.WS.TP`, `sets.WS.RA.TP` and `sets.Midcast.RA.TP`, which TP mode never wears;
 - `sets.Midcast.SIRD`;
-- `sets.Midcast.BlueMagic` and `sets.Geomancy` themselves, which are never worn — use a family under them, such as `sets.Midcast.BlueMagic.Physical` or `sets.Geomancy.Indi`;
-- `sets.Ready.Magic`, `.TP`, `.Debuff` and `.Standard`, which are never worn.
+- `sets.Midcast.BlueMagic` and `sets.Geomancy` themselves, which are never worn — use a category under them, such as `sets.Midcast.BlueMagic.Physical` or `sets.Geomancy.Indi`.
+
+#### When a buff counts as up
+
+A buff counts as up from the moment the game reports the action that gives it, a moment before the game's own buff list shows it, so an action pressed right after the buff already wears its sets. That covers the buffs of the character's own job abilities, Phantom Roll and Double-Up included, and every buff another player's spell or ability gives it, their rolls included. It does not cover the character's own spells, the actions of pets, trusts or monsters, or a Geomancer's Indi- effects. The engine's own buff checks see it too, such as the Triple Shot set and Sublimation's idle set, and so does job file code that reads `buffactive`.
+
+The prediction ends when the game lists or removes the buff, at the next spell, shot or weaponskill, at a zone change, when a roll busts, or two seconds after the action's report. A buff still missing from the game's list then is dropped, and an info message in chat says so:
+
+```
+[Saboteur] Saboteur did not reach your buff list within 2 s of its result: no longer predicted.
+```
 
 #### Buff sets in the sample files
 
 - **MNK** wears Impetus, Footwork and Boost through `sets.OffenseMode.Impetus`, `.Footwork` and `.Boost`. Impetus and Boost are also placed under `sets.WS`, and Boost under `sets.Idle`, so they carry into weaponskills and idle. A Monk file that still declares `sets.Impetus`, `sets.Foot_Work` or `sets.Boost` keeps working: where the new name is not declared, the engine wears the old set in its place.
 - **PLD** wears its Cover gear through `sets.Idle.Cover` and `sets.OffenseMode.Cover`, one table under both keys.
 - **RDM** wears its Saboteur gear through `sets.Midcast.Enfeebling.Saboteur`, and puts the same table under the enfeebling spells that have sets of their own, such as Diaga and Dispelga.
-- **RUN** wears its Embolden gear through `sets.Midcast.Enhancing.Embolden`, and puts the same table under the sets of Phalanx, Stoneskin, Aquaveil, Foil, Regen and Refresh: those four spells, and the first tier of Regen and Refresh, wear their own set instead of the enhancing set, while Regen II and higher wear the enhancing set with the Regen set over it.
+- **RUN** wears its Embolden gear through `sets.Midcast.Enhancing.Embolden`, and puts the same table under the sets of Stoneskin, Aquaveil and Foil, which wear their own set instead of the enhancing set. It sits under Regen, Refresh and Phalanx too, which go on over the enhancing set already, so the Embolden cape stays if one of those sets is given a back piece.
 - **SAM** wears its Seigan gear through `sets.OffenseMode.Seigan`, with a nested `['Third Eye']` set ready to uncomment.
 - **SCH** wears its stratagem gear through buff sets under `sets.Midcast`, such as `sets.Midcast.Rapture`. Its Klimaform gear stays in the file's own code, because Klimaform is also a spell name.
 - **WHM** carries a Divine Caress set, commented out, under each status-removal spell's own set, all sharing one table.
@@ -1512,7 +1675,7 @@ sets.Idle.XIRoll = { left_ring = "Roller's Ring" }
 
 - **Any Corsair's roll counts**, yours or another player's. The engine reads each roll's total as it lands on you, and drops it when the roll busts or wears off, or when you zone. Nothing prints when a roll reaches 11.
 - **An idle `XIRoll` set is worn at idle only.** `sets.Idle` is the floor under every precast and midcast, so if `sets.Idle` names that ring slot, your idle ring goes on for each action and the `XIRoll` ring comes back after it. To keep the ring on while engaged and through weaponskills and spells, give `sets.OffenseMode.XIRoll`, `sets.WS.XIRoll` and `sets.Midcast.XIRoll` the ring as well. The precast of a spell, an ability or an item still swaps it, since those precast sets take no buff sets.
-- **After a reload or a job change,** the engine does not know the total until the next roll or Double-Up lands, or until another of your characters tells it. That character must be on the same computer, in your party, running 2.1 and holding that roll. If two of your characters hold the same roll at different totals, the reloading one keeps the first answer it hears until that roll's next Double-Up, re-roll or end.
+- **After a reload or a job change,** the engine does not know the total until the next roll or Double-Up lands, or until another of your characters tells it. That character must be on the same computer, in your party, running 2.1 or later and holding that roll. If two of your characters hold the same roll at different totals, the reloading one keeps the first answer it hears until that roll's next Double-Up, re-roll or end.
 - **A file whose only buff-style set is `XIRoll` pays nothing for it** until a roll on you stands at 11. A buff set placed under `XIRoll` counts like any other buff set.
 
 ### Spellings the engine does not read
@@ -1528,15 +1691,18 @@ Gear declared at a path the engine does not read sits there doing nothing. These
 | `sets.Midcast.Drain`, `sets.Midcast.Aspir` | `sets.Midcast.Enfeebling.Drain` and `.Aspir` |
 | `sets.DualWield` | `sets.OffenseMode.DW` |
 | `sets.Precast.RA.Flurry`, `.Flurry_II` | `sets.Precast.RA.ACC` and other mode children |
-| `sets.Pet_Midcast['<Action Name>']` | `sets.JA['Spur']` and other pet-command names |
+| `sets.Pet_Command['Spur']` and other pet-command names | `sets.JA['Spur']` |
+| `sets.Pet_Command.BloodPact`, and the pet move sets | `sets.Midcast.BP`, which a message at load points out |
+| `sets.Pet_Command.Ready`, and the pet move sets | `sets.Ready` and its children, which a message at load points out |
+| `sets.Pet_WS` | An automaton weaponskill's set under `sets.Pet_Midcast`, which a warning at load points out |
 
-Under `sets.Midcast.Enfeebling` the engine reads `.MACC`, `.Potency` and `.Duration` and nothing else. A pet command has no set of its own — see [Precast](#precast).
+Under `sets.Midcast.Enfeebling` the engine reads `.MACC`, `.Potency` and `.Duration`, a buff set, and the [midcast children](#midcast-children), and nothing else. Pet commands and pet moves: see [Pet sets](#pet-sets).
 
 ---
 
 ## 9. The gear library
 
-`GearSets-Include.lua` is a companion library of pre-built item entries — 4,912 of them. Instead of typing item names into your sets, you reference entries by key:
+`GearSets-Include.lua` is a companion library of pre-built item entries — 5,060 of them. Instead of typing item names into your sets, you reference entries by key:
 
 ```lua
 sets.Idle = {
@@ -1576,9 +1742,9 @@ Keys follow consistent conventions:
 
 To find a key, open `RahvinGS/GearSets-Include.lua` in a text editor and search for the item's name. The key is the `gear.` name at the start of that line: `gear.nyameHead = hp_gear("Nyame Helm", 91)` is Nyame Helm.
 
-The library covers the full Artifact, Relic and Empyrean catalog for every job across the original era and every reforge tier, every Nolan augment path for the Escha and Geas Fete sets at maximum rank, every stage of every Trial of the Magians weapon, and the endgame gear the sample files reference. It also carries the day and weather pieces: `gear.hachirinNoObi`, the eight single-element obis such as `gear.karinObi`, `gear.twilightCape` and `gear.zodiacRing`. Each entry carries an inline comment with the item's highlight stats, and armor set categories note their set bonus.
+The library covers the full Artifact, Relic and Empyrean catalog for every job across the original era and every reforge tier, every Nolan augment path for the Escha and Geas Fete sets at maximum rank, every stage of every Trial of the Magians weapon, and the endgame gear the sample files reference. It also carries the day and weather pieces: `gear.hachirinNoObi`, the eight single-element obis such as `gear.karinObi`, `gear.twilightCape` and `gear.zodiacRing`. For pet jobs it carries every Beastmaster jug, such as `gear.jugOfCurdledPlasmaBroth`, with the pet each calls and its level in the entry's comment, and the pet foods, the automaton oils and animators, and the avatar ammo. Each entry carries an inline comment with the item's highlight stats, and armor set categories note their set bonus.
 
-**A name must match the game exactly.** GearSwap compares against the item's name and its log name, without regard to case. A name matching neither equips nothing and reports nothing, which is why a misspelling is worse than an outright error.
+**A name must match the game exactly.** GearSwap compares against the item's name and its log name, without regard to case. A name matching neither equips nothing and reports nothing, which is why a misspelling is worse than an outright error. A misspelled key, such as `gear.nyameHed`, is just as silent: Lua reads it as nothing, so its slot drops out of the set without a warning.
 
 Duplicate copies of one item — rings especially — are separate entries pinned to different wardrobes, which is the reliable way to equip both copies at once. Ask for `gear.chirich1` and `gear.chirich2` rather than the same name twice.
 
@@ -1603,7 +1769,7 @@ gear.myCape = hp_gear("Rosmerta's Cape", 80, {
 gear.myRing2 = hp_gear("Chirich Ring", 0, { bag = "wardrobe2" })
 ```
 
-Write the augments exactly as `//gs export` prints them, and the entry will match only that copy.
+`//gs export`, GearSwap's own command, writes the gear worn now, augments included, to a file named for the character in `Windower4/addons/GearSwap/data/export/`. Write the augments exactly as it prints them, and the entry will match only that copy.
 
 ---
 
@@ -1616,7 +1782,7 @@ These run without you asking. Most produce a chat message explaining what happen
 Runs about ten times a second:
 
 - **Movement detection** — your position is read off the game's own movement messages and compared against the last one; more than half a yalm of movement while you are not engaged swaps in `sets.Movement`, and stopping swaps it back. The read is skipped while you are mounted, mid-action, asleep, charmed or dead.
-- **Spell timeout** — clears the engine's busy state (`is_Busy` on the debug box) if an action never reported completion, so the engine cannot get stuck.
+- **Lost action ends** — an action whose end never arrives is let go once GearSwap itself would drop it, so the engine cannot get stuck refusing your actions (`is_Busy` on the debug box). A chat message says so — see [A message says an action sent no end](#a-message-says-an-action-sent-no-end).
 - **Gear refresh** — re-equips the correct set whenever something has changed that warrants it.
 - **Every 2 seconds** — calls your `Cycle_Timer()` if you defined one, skipped while the engine is busy.
 - **Every 30 seconds** — re-checks the Dual Wield trait and expires Treasure Hunter entries older than three minutes.
@@ -1630,7 +1796,8 @@ The engine refuses actions that would fail, before the action is sent to the gam
 | Asleep | Canceled; idle plus `sets.Weapons.Sleep` equipped |
 | Stunned, petrified or terrorized | Canceled; idle equipped |
 | KO'd or charmed | Canceled |
-| Pet is mid-action | Canceled |
+| Another of your actions still under way | Canceled until it ends, silently. `gs c debug` logs it |
+| A pet move you commanded still in flight | Canceled while `PetMoveHold` is on — `Can't use Cure IV while Garuda's Predator Claws is in flight.` See [Pet sets](#pet-sets) |
 | Weaponskill below 1000 TP | Canceled |
 | Weaponskill with Amnesia | Canceled — `Can't Weapon Skill due to amnesia.` |
 | Ability or spell still on cooldown | Canceled, remaining time shown as `m:ss` |
@@ -1657,20 +1824,20 @@ Macros aimed with a subtarget cursor, such as `/ma "Cure IV" <stpt>` or `/ws "Ae
   - Cures take no sash, and a single-target Cure keeps your own back piece.
   - A spell with no element, such as Meteor, takes none of these.
   - A waist, back or Zodiac Ring slot your set fills with a piece listed in `Bonus_Keep` is left alone. Oneiros Rope is listed. Add your own as `Bonus_Keep['Item Name'] = true`.
-  - One info line names what went on and what each piece adds:
+  - One info message names what went on and what each piece adds:
     ```
     [Fire VI] waist: Hachirin-no-Obi (+6.7%, day), back: Twilight Cape (+5.0%, day), right_ring: Zodiac Ring (+3.0%, day)
     ```
 - **Light cures** — a Cure, Cura or Curaga cast on Lightsday or in Light weather wears `sets.Weapons['Light Bonus']`, or Chatoyant Staff when that set is empty and you carry one — see [Weapons](#weapons).
-- **Required equipment** — Dispelga equips Daybreak, Honor March equips Marsyas, Aria of Passion equips Loughnashade, Impact equips a Crepuscular or Twilight Cloak, and a White Mage main job carrying Yagrush casts Cursna with it. These are merged over everything else the build chose. When a stronger hold has one of those slots, the piece stands down and the line names the holder.
+- **Required equipment** — Dispelga equips Daybreak, Honor March equips Marsyas, Aria of Passion equips Loughnashade, Impact equips a Crepuscular or Twilight Cloak, and a White Mage main job carrying Yagrush casts Cursna with it. These go to the spells alone, never to a blood pact or an item of the same name. They are merged over everything else the build chose, and held until the cast ends. When a stronger hold has one of those slots, the piece stands down and a message names the holder.
 - **Tomahawk and Angon** — a typed `/ja "Tomahawk"` or `/ja "Angon"`, aimed with `<t>` or a numeric target id, equips Thr. Tomahawk or Angon for the ability while Hoxne is `OFF` or `ON-Allow Critical`, and the ability fires. Under Hoxne `ON-Locked` the ability is refused with its reason on every press:
   ```
   Hoxne ON-Locked holds ammo. Use ON-Allow Critical or OFF for Tomahawk.
   ```
 - **Weapons stay in hand for a weaponskill**, because changing them would reset your TP — see [Weaponskills](#weaponskills).
-- **A spell's ammo and your handbell or instrument** — when a spell's precast set names an ammo while a handbell or instrument is worn, the engine takes the handbell or instrument off for the precast, so the one your midcast names goes back on for the cast.
-- **Two-handed detection** — checks whether your WeaponMode weapon is two-handed (`TwoHand` on the debug box); while it is, sub-slot swaps are suppressed.
-- **Long casts hold their gear** — blue magic, avatar and spirit summons and Trust summons each get a busy window sized from their own cast time, so a buff landing mid-cast does not rebuild you into idle or engaged gear. A buff that lands in the seconds after your own cast finishes is dressed the moment it arrives.
+- **A spell's ammo and your handbell or instrument** — when a spell's precast set names an ammo, the engine leaves range bare for the precast, whether the handbell or instrument there was worn or named by the set, so the one your midcast names goes on for the cast.
+- **Two-handed detection** — checks whether the weapon mode's main is two-handed (`TwoHand` on the debug box). While it is, the shield and the dual-wield offhand are left out.
+- **An action keeps its gear until it ends** — from precast to the action's end, a buff, a status change, a mode or lock command, a hold's release, a received cast's end or a Treasure Hunter retarget waits, and the action's end dresses you for the new state. Your job file's `buff_change_custom` and `status_change_custom` still run on time, but gear they return mid-action is not worn: the action's end dresses you from your sets. A buff that lands in the seconds after your own cast finishes is dressed the moment it arrives.
 
 ### Status ailment responses
 
@@ -1678,15 +1845,97 @@ Macros aimed with a subtarget cursor, such as `/ma "Cure IV" <stpt>` or `/ws "Ae
 |---|---|
 | **Sleep** | Equips idle plus `sets.Weapons.Sleep` and holds those slots; cancels Stoneskin so you can be woken |
 | **Doom** | Equips and holds `sets.Cursna_Received`; uses a Holy Water if `AutoItem` is on, and says so if you have none |
-| **Silence** (mage main or subjob) | Uses a Remedy if `AutoItem` is on |
-| **Paralysis** | Uses a Remedy if `AutoItem` is on |
+| **Silence** (mage main or subjob) | Uses a Remedy if `AutoItem` is on, and says so if you have none |
+| **Paralysis** | Uses a Remedy if `AutoItem` is on, and says so if you have none |
 | **Petrification / Stun** | Re-evaluates and re-equips your correct set |
 
-Sleep and Doom holds are released automatically when the status wears off. With `SpellReceived` on, the Doom set is dressed by the spell-received feature instead. Spectral Jig cancels an active Sneak before the ability fires, so the jig's own Sneak lands.
+A sleep, stun, terror, petrification or charm that stops your cast ends it at once, and you are dressed as you would be outside a cast. Sleep and Doom holds are released automatically when the status wears off. If your cast, or a pet move you commanded, is in flight then, the release waits for its end. With `SpellReceived` on, the Doom set is dressed by the spell-received feature instead. Spectral Jig cancels an active Sneak before the ability fires, so the jig's own Sneak lands.
 
 ---
 
-## 11. Action and spell tracking
+## 11. Magic bursts
+
+The engine watches every skillchain on every monster and judges each spell for the moment it will land. A spell that will land inside a burst window wears its burst gear, and a spell already in flight switches into its burst gear when a chain lands on its target. A job file supplies only the gear.
+
+### Setting up burst gear
+
+Burst gear goes in the `Burst` [child](#midcast-children) of a set the spell already wears, or for a black magic nuke in `sets.Midcast.Burst`:
+
+| The spell | Its burst gear | How it goes on |
+|---|---|---|
+| A black magic nuke with no set of its own | `sets.Midcast.Burst` | In place of `sets.Midcast.Nuke` |
+| One such nuke | `sets.Midcast.Burst['Thundara III']` | Over `sets.Midcast.Burst` |
+| An Earth nuke | `sets.Midcast.Nuke.Earth.Burst` | Over the Earth layer, which goes over the burst set |
+| A helix | `sets.Helix.Burst` | Over `sets.Helix` |
+| An elemental ninjutsu | `sets.Midcast.Nuke.Burst` | Over `sets.Midcast.Nuke` |
+| A spell with a set of its own, such as Death or Impact | `sets.Midcast['Death'].Burst` | Over that spell's set |
+| Blue magic | `sets.Midcast.BlueMagic.Nuke.Burst`, or another category's `Burst` child | Over the category |
+| Any other spell | The `Burst` child of its family set, such as `sets.Midcast.Divine.Burst` | Over the family set |
+
+**Choose one shape for black magic nukes.** Once declared, even empty, `sets.Midcast.Burst` replaces the nuke set for every black magic nuke that bursts, so it holds a whole burst set. Left undeclared, such a burst wears `sets.Midcast.Nuke` with `sets.Midcast.Nuke.Burst` over it, which then holds only the pieces that change. With `sets.Midcast.Burst` declared, a black magic nuke never reaches `sets.Midcast.Nuke.Burst`. Other black magic, such as Bio or Stun, bursts in its family set's `Burst` child either way.
+
+```lua
+sets.Midcast.Nuke = { ... }                     -- every nuke
+sets.Midcast.Burst = { ... }                    -- a nuke that will burst, in the nuke set's place
+sets.Midcast.Burst['Thundara III'] = { ... }    -- Thundara III when it bursts
+sets.Midcast.Burst.Occult = { ... }             -- a black magic nuke's burst in Occult mode
+sets.Helix.Burst = { ... }                      -- any helix that bursts
+```
+
+The day, weather and distance pieces go on after the burst set, as they do after every casting set.
+
+**The MB mode.** The BLM, BLU, GEO, NIN, RDM and SCH samples offer an `MB` offense mode, for burst gear on every nuke. Its child of the nuke set, such as `sets.Midcast.Nuke.MB`, goes on over every nuke the nuke set dresses in that mode. A black magic nuke the engine expects to burst wears `sets.Midcast.Burst` instead, where the file declares it, so the MB child stays off then. An elemental ninjutsu always wears the nuke set, so its MB child stays on during a burst too. The mode's idle and engaged sets decide only what is worn between casts.
+
+### How a burst window works
+
+Every skillchain opens a window on the monster it lands on, whoever made it: players, trusts, jug pets, automatons and avatars' blood pacts. Each monster keeps its own window, carrying that chain's elements, so a chain on one monster leaves every other monster's window alone. Radiance and Umbra are recognized.
+
+| The chain | Its window |
+|---|---|
+| The monster's first chain, made by the second weaponskill | 9 seconds |
+| Each chain continued inside the window | A second shorter each step: 8, 7, 6, then 5 seconds |
+| A chain closed by a helix | 2 seconds longer |
+
+**A spell bursts when it will land inside the window.** A cast is judged for the moment it is expected to land rather than the moment it starts: a fifth of its listed cast time, which assumes 80% fast cast, plus 0.6 seconds. Under Chainspell or Nightingale the estimate is one second plus 0.6. Any spell aimed at that monster, whose element the chain carries, is dressed for a burst, except:
+
+- a Geomancy spell;
+- blue magic, unless Burst Affinity is up and the spell is not physical, or Azure Lore is up;
+- an elemental spell cast under Immanence;
+- a spell aimed at anything but a monster.
+
+With `gs c info` on, every cast dressed for a burst says so in chat:
+
+```
+[Blizzard VI] Burst Detected!
+```
+
+**What ends a window early:**
+
+- a weaponskill, a pet's or a trust's TP move, or a blood pact with a skillchain property that lands without making a chain. A move with no property, such as Sanguine Blade, leaves the window open, and so does one that misses or hits shadows;
+- a physical blue spell that hits under Chain Affinity or Azure Lore, cast by this character or another Blue Mage;
+- a Scholar's single-target elemental spell cast under Immanence that deals damage without making a chain, cast by this character or another Scholar;
+- zoning, which clears every window.
+
+### A cast already in flight
+
+When a chain carrying a cast's element lands on its target mid-cast, the cast is put into its burst gear, however little of it is left. When a move ends the window mid-cast, or a chain without the cast's element lands there, the burst gear comes back off while 0.6 seconds or more of the cast remains:
+
+```
+[Thunder VI] Burst window ended: burst set taken off
+[Thunder VI] Burst window ended too late to take the burst set off
+```
+
+Each change prints the cast's info message again and runs the job file's `midcast_custom` again.
+
+### When a burst goes wrong
+
+- **No `Burst Detected!` message.** With `gs c info` on, every cast dressed for a burst prints one. Without it, the engine did not expect a burst: the chain landed on another monster, its elements did not include the spell's, the window had ended, or the spell is one of the exceptions above. `gs c gearreporting` shows which sets the cast wore.
+- **The message, but the wrong gear.** The burst set may be empty or under another name. Check the [table above](#setting-up-burst-gear), and remember that a `sets.Midcast.Burst` declared empty replaces the nuke set with nothing. With `gs c warn` on, the cast prints `[sets.Midcast.Burst] is empty!`.
+- **Dressed for a burst the game did not give.** A caster with less than 80% fast cast lands later than the engine expects, so a nuke cast near the end of a window can miss it.
+
+---
+
+## 12. Action and spell tracking
 
 ### Treasure Hunter tracking
 
@@ -1698,16 +1947,6 @@ The phase the set is worn in follows what actually applies the tag. Weaponskills
 [Savage Blade] Set with Treasure Hunter
 ```
 
-### Skillchain and magic burst tracking
-
-The engine watches every skillchain that happens on your target — including ones made by other players. When one closes it records the elements and opens an eight-second window. A nuke cast into that window, at the same monster, whose element the chain opened, wears `sets.Midcast.Burst` instead of `sets.Midcast.Nuke`:
-
-```
-[Blizzard VI] Burst Detected!
-```
-
-Radiance and Umbra skillchains are recognized. A weaponskill that closes the window clears it.
-
 ### Spell-received tracking
 
 For players running several characters at once. When one of your characters begins casting a supported spell, it tells your other characters on the same computer, through Windower. Any of them targeted by that spell equips its "received" gear immediately — as the cast starts, before the spell lands and ahead of Quick Magic.
@@ -1716,7 +1955,7 @@ For players running several characters at once. When one of your characters begi
 
 **Supported abilities:** Curing Waltz I–V · Divine Waltz I–II
 
-The engine also predicts which spells reach a whole party — the `-ga` and `-ra` spells, a spell spread by Accession or Majesty, and Cursna cast under Divine Seal — so every affected character dresses rather than only the direct target. Only characters in the caster's party dress for a spread, so an alliance member in another party is not dressed for a buff that cannot land on them.
+The engine also predicts which spells reach a whole party — the `-ga` and `-ra` spells, a spell spread by Accession or Majesty, and Cursna cast under Divine Seal — so every affected character dresses rather than only the direct target. Accession and Divine Seal count once they take effect, so a failed attempt spreads nothing. Only characters in the caster's party dress for a spread, so an alliance member in another party is not dressed for a buff that cannot land on them.
 
 Received gear sits below an item use, the two holds, the Hoxne hold, Sleep gear and the cast in progress, and it says which slot a higher hold kept from it:
 
@@ -1728,11 +1967,11 @@ A canceled cast releases the gear and slots it borrowed on your other characters
 
 ---
 
-## 12. Customization hooks
+## 13. Customization hooks
 
 The engine builds a gear set, then calls your function and merges whatever you return. Define only the hooks you need — the engine names the missing ones in chat while `warn` is on.
 
-Every gear hook returns a table: the gear to add, or `{}` when it has nothing to add. A value that is not a table is ignored, with a line saying so. A hook that stops on a Lua error ends that step's gear change, and GearSwap prints the error in chat.
+Every gear hook returns a table: the gear to add, or `{}` when it has nothing to add. A value that is not a table is ignored, and a warning in chat says so. A hook that stops on a Lua error ends that step's gear change, and GearSwap prints the error in chat. The next action is not held up by it.
 
 ### Required
 
@@ -1751,30 +1990,36 @@ end
 | `midcast_custom(spell)` | During an action | Extra midcast gear |
 | `aftercast_custom(spell)` | After an action | Extra aftercast gear |
 | `pretarget_custom(spell, action)` | Before targeting | — (validation and retargeting) |
-| `buff_change_custom(name, gain)` | A buff is gained or lost | Extra gear |
-| `status_change_custom(new, old)` | Engaged, idle, resting, … | Extra gear |
+| `buff_change_custom(name, gain)` | A buff is gained or lost | Extra gear, not worn while an action is under way |
+| `status_change_custom(new, old)` | Engaged, idle, resting, … | Extra gear, not worn while an action is under way |
 
 Example:
 
 ```lua
+-- A rule about the luopan's HP, which no set can express: keep sets.Luopan on while
+-- the luopan stays above 68% HP. A shorter form of the GEO sample's Luopan().
 function choose_set_custom()
-    local built_set = {}
-    if buffactive['Aftermath: Lv.3'] then
-        built_set = set_combine(built_set, sets.OffenseMode.AM3)
+    if pet.isvalid and pet.hpp > 68 then
+        return sets.Luopan
     end
-    return built_set
+    return {}
 end
 ```
 
-Gear that depends only on a buff, other than Aftermath, needs no hook at all: a [buff set](#buff-sets) is worn while its buff is up.
+The GEO sample pairs this with a `Cycle_Timer` that asks for a rebuild when the luopan crosses 68%, since a change in a pet's HP starts no rebuild by itself.
+
+Gear for a buff needs no hook: a [buff set](#buff-sets) is worn while its buff is up, and Aftermath has its own tier sets — see [Core sets](#core-sets).
 
 ### Pet hooks
 
 | Function | Called |
 |---|---|
 | `pet_change_custom(pet, gain)` | Pet summoned or dismissed |
-| `pet_midcast_custom(spell)` | Pet action midcast |
-| `pet_aftercast_custom(spell)` | Pet action complete |
+| `pet_status_change_custom(new, old)` | Pet engaged, idle or dead |
+| `pet_midcast_custom(spell)` | Pet move readied |
+| `pet_aftercast_custom(spell)` | Pet move complete |
+
+Each returns extra gear, as the gear hooks do. The samples sort no pet moves in these hooks, since the [pet sets](#pet-sets) do that work. They keep only what no set can do, such as the Summoner sample's macro switch for each avatar.
 
 ### Other hooks
 
@@ -1816,7 +2061,7 @@ A function of the same name defined in your job file loads after the include and
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### A set warning in chat
 
@@ -1827,7 +2072,7 @@ Two messages mean an action reached for gear and found none:
 [sets.Midcast.Regen] is empty!  Silencing warnings for 60s.
 ```
 
-**"not found!"** means your job file never declared that set. If the action should have its own gear, add it in `get_sets()`. If it should not, nothing is wrong — a more general set dressed you instead, and the info line names which one.
+**"not found!"** means your job file never declared that set. If the action should have its own gear, add it in `get_sets()`. If it should not, nothing is wrong — a more general set dressed you instead, and the info message names which one.
 
 **"is empty!"** means you declared the set but it holds no gear. This is the one that usually indicates a mistake, and the most common cause is building a set from a parent that is itself empty:
 
@@ -1840,9 +2085,9 @@ Run **`gs c checksets`** to see every such set in one list — see [Diagnostics]
 
 **Each set warns at most once a minute**, and says so — see [Diagnostics](#diagnostics). The trace hint appears on the first warning after a load, not on every one, and `gs c checksets` clears the silences if you want everything reported again at once.
 
-**To stop a warning for a set you deliberately leave bare, delete the declaration rather than emptying it.** The engine never asks for a set you have not declared, so `sets.JA["Light Arts"] = {}` is noisier than no line at all: deleting it moves the report up to `sets.JA`, which collapses many per-ability warnings into one. Put gear in `sets.JA` and it goes quiet entirely, while the info line still confirms what you wore. This works for ability and named-spell sets, which are yours to declare; the engine's own category sets — `sets.Midcast.Cure` and the like — always exist, so for those the answer is gear or `gs c warn off`.
+**To stop a warning for a set you deliberately leave bare, delete the declaration rather than emptying it.** The engine never asks for a set you have not declared, so `sets.JA["Light Arts"] = {}` is noisier than no line at all: deleting it moves the report up to `sets.JA`, which collapses many per-ability warnings into one. Put gear in `sets.JA` and it goes quiet entirely, while the info message still confirms what you wore. This works for ability and named-spell sets, which are yours to declare; the engine's own category sets — `sets.Midcast.Cure` and the like — always exist, so for those the answer is gear or `gs c warn off`.
 
-A third message, `Chosen set is [Empty] - nothing to equip.`, means no set at all produced gear for your current state. It repeats at most once every 30 seconds.
+A third message, `Chosen set is [Empty] - nothing to equip. gs c checksets lists your sets.`, means no set at all produced gear for the current state. It repeats at most once every 30 seconds.
 
 `//gs c warn off` turns these off entirely.
 
@@ -1852,25 +2097,52 @@ A third message, `Chosen set is [Empty] - nothing to equip.`, means no set at al
 [Savage Blade] sets.Idle names main, sub; a weaponskill keeps the weapons in hand.  Silencing warnings for 60s.
 ```
 
-A set in that weaponskill's gear names a weapon slot, and the weaponskill left your weapons as they were, because changing them would reset your TP. Nothing failed. Take main and sub, and range except on Bard and Geomancer, out of the set the line names. `sets.Idle` counts, because it sits under every weaponskill. See [Weaponskills](#weaponskills).
+A set in that weaponskill's gear names a weapon slot, and the weaponskill left your weapons as they were, because changing them would reset your TP. Nothing failed. Take main and sub, and range except on Bard and Geomancer, out of the set the message names. `sets.Idle` counts, because it sits under every weaponskill. See [Weaponskills](#weaponskills).
 
-### A line about a buff set as your file loads
+### A warning about a set as the job file loads
 
-A second or two after your job file loads, the `warn` channel names any [buff set](#buff-sets) key it cannot use. Each is printed once per load.
+A second or two after the job file loads, the `warn` channel names any key the engine cannot use as written: a [buff set](#buff-sets), a [midcast child](#midcast-children), a buff level child or a pet set. Each is printed once per load.
 
-| Line | What it means |
+**Buff sets:**
+
+| Warning | What it means |
 |---|---|
 | `sets.OffenseMode.TP.Footwrk is not a buff name` | A key under a mode set or a buff set is neither a gear slot nor a buff. Fix the spelling to the buff's name as the game spells it, or remove the key |
 | `sets.OffenseMode.Aftermath: Lv.3 is reserved to the Aftermath tiers -- AM3, AM2, AM1 and AM are read on the base set, never under a child` | Aftermath gear goes in the tier sets — `sets.OffenseMode.AM3` and the rest — not in a set named for the buff |
 | `sets.Idle.xiroll: a second XIRoll key under one set` | Two spellings of `XIRoll` under one set. Only one is worn, so keep one |
 | `sets.Midcast.SIRD.Impetus: SIRD carries no children` | `sets.Midcast.SIRD` takes no buff sets. Move it to `sets.Midcast` or a family under it |
+| `sets.Idle.Pet.Haste is never worn: the engine does not merge buff sets under sets.Idle.Pet` | The same for `sets.Idle.Sublimation` and `sets.Movement`. Put the buff set under `sets.Idle` |
 
-A misspelled name in other places prints nothing — see [Buff sets](#buff-sets). If a buff set seems to do nothing, check its spelling, and watch the info line on your next spell or weaponskill: every buff set it wore is named there.
+**Midcast children:**
+
+| Warning | What it means |
+|---|---|
+| `sets.Midcast.Cure.other is never read: spell it Others` | A midcast child's key is miscased or misspelled. Use `Self`, `Others` or `Burst` exactly |
+| `sets.Midcast.Enfeebling.Saboteur.ACC is never read below a buff child: put the condition above the buff` | Write the child first and the buff set under it: `sets.Midcast.Enfeebling.ACC.Saboteur` |
+| `sets.Midcast.Occult.Fire VI merges before every family set, which overrides it: put the condition under the family set or under sets.Midcast['Fire VI']` | A spell's name under a child of `sets.Midcast` goes on before the family set, which wins its slots |
+| `sets.Midcast.ACC merges in ACC mode, as the first layer of every spell's midcast, before the family set` | A reminder, printed when `sets.Midcast.ACC` holds gear |
+| `Offense mode Burst is also a midcast child key, so in that mode every Burst child merges on every cast` | Rename the mode, since `Burst`, `Self` and `Others` are child keys |
+| `sets.Midcast.BlueMagic.Burst is never worn: put blue burst gear in each subcategory's Burst child, such as sets.Midcast.BlueMagic.Nuke.Burst` | Blue magic bursts in its category's `Burst` child |
+
+**Buff levels:**
+
+| Warning | What it means |
+|---|---|
+| `sets.WS.HighBuff.ACC is never read: nest the stance first, as sets.WS.ACC.HighBuff` | A buff level and an offense mode nest with the mode first |
+| `sets.WS.MidBuff is never read: MidBuff reads only a weaponskill's own MidBuff child` | Put `MidBuff` gear under a weaponskill's own set, or leave it in `sets.WS` |
+
+**Pet sets:**
+
+| Warning | What it means |
+|---|---|
+| `sets.Pet_Midcast.Arcuballista is put on too late: the automaton decides its weaponskill before it readies. Put its gear in sets.Pet_WS.` | See [Pet sets](#pet-sets). An automaton nuke's set is named the same way, with `sets.Idle.Pet.Engaged` as the place for its gear |
+
+A misspelled name in other places prints nothing — see [Buff sets](#buff-sets). If a buff set seems to do nothing, check its spelling, and watch the info message on the next spell or weaponskill: every buff set it wore is named there.
 
 ### Gear is not swapping
 
 1. `//gs c debug` and watch the debug box.
-2. If `is_Busy` is stuck on, an action never reported completion — it clears itself within a couple of seconds.
+2. If `is_Busy` is stuck on, an action never reported completion. It clears itself once GearSwap gives up on the action, and a chat message says so — see [A message says an action sent no end](#a-message-says-an-action-sent-no-end).
 3. If `is_Moving` is stuck on, you may be on a mount or in an area where position updates are unreliable.
 4. Read the hold map on the debug box, or the rig under the LATTICE style: if the slot carries a letter or a color, something is holding it.
 5. `//gs c enableall` releases every slot the weapon lock is not holding and dresses you again.
@@ -1884,19 +2156,19 @@ Under a Hoxne mode, `enableall` frees range and ammo only until the mode takes t
 
 If the Hoxne Ampulla is sitting in your ammo slot after a reload, wait a few seconds — the engine detects a stranded Ampulla shortly after loading and puts your normal gear back on its own. `//gs c hoxneinfo` shows what it is doing.
 
-### The status box shows a hold I did not ask for
+### The status box shows an unexpected hold
 
 The `HLD` row names every hold standing. `DIS` is `gs c disable`, `NKD` / `WPO` / `PRC` are the three strip holds, and `CAP` / `DYN` / `JUB` are the carried-item locks. Each ends with its own command's `off`, or with `gs c enableall`.
 
 ### An item is not equipping
 
-The engine can only equip items you own. Check the spelling exactly as the item appears in game, and confirm it is in inventory or a wardrobe — not in storage, a satchel or a sack.
+The engine equips only items in the inventory or a wardrobe. Check the spelling exactly as the item appears in game, and confirm it is in inventory or a wardrobe — not in storage, a satchel or a sack.
 
 If the item's name contains a command word — `gs c use hoxne ampulla` — the command still uses the item: the whole name after `use` is treated as the item's name.
 
 ### An enchanted item is not being used
 
-`gs c use` names the reason it stopped, so read the chat line first — it will tell you whether the item is missing, unusable by your job, or on cooldown. If it printed `Equipping and using [...]` and then nothing happened, run `gs c enchinfo <item>` and check the `-> engine sees:` line described under [Diagnostics](#diagnostics).
+`gs c use` names the reason it stopped, so read its chat message first — it says whether the item is missing, unusable by the job, or on cooldown. If it printed `Equipping and using [...]` and then nothing happened, run `gs c enchinfo <item>` and check the `-> engine sees:` line described under [Diagnostics](#diagnostics).
 
 A few things are worth knowing:
 
@@ -1904,9 +2176,32 @@ A few things are worth knowing:
 - **Timings restart every time the item is re-equipped**, so anything that swaps that slot mid-wait starts the clock again.
 - **A song or Geomancy cast clears your ammo slot.** If you are running Hoxne `ON-Allow Critical`, that is why the Ampulla disappears during a song and returns afterward.
 
+### A message says an action sent no end
+
+```
+[Valor Minuet IV] sent no end: actions were held 11.0 s.
+```
+
+The game never confirmed that action's end, so the engine refused new actions until GearSwap itself gave up on it. The limit depends on the action:
+
+- a spell or an item: its listed cast or use time × 1.1, plus 2 seconds, rounded up;
+- a shot: 10 seconds;
+- an ability or a weaponskill: 3 seconds;
+- a pet command: 5 seconds.
+
+Any precast delay the job file adds is added on top. Then the gear is rebuilt and actions go through again. An occasional one means the game's report of that action's end was lost, and nothing needs fixing.
+
+### An action is refused while a pet's move is in flight
+
+```
+Can't use Cure IV while Garuda's Predator Claws is in flight.
+```
+
+A commanded pet move refuses new actions until it ends, so the move keeps its set on — see [Pet sets](#pet-sets). Set `PetMoveHold = false` in the job file to let actions through at once, over the pet's set.
+
 ### A ranged attack is canceled with "No round named"
 
-The built set for that action names no ammunition. The line says what was wrong with the ammo slot:
+The built set for that action names no ammunition. The message says what was wrong with the ammo slot:
 
 ```
 No round named for Last Stand: ammo is undeclared in the built set. Canceling.
@@ -1924,9 +2219,9 @@ Check whether Hoxne is set to `ON-Locked`, and switch to `ON-Allow Critical`, wh
 
 ### Settings are not saving
 
-Settings live in each character's own file, `Windower4/addons/GearSwap/data/<CharacterName>/settings.xml` — see [The settings file](#the-settings-file). Read the line a save prints:
+Settings live in each character's own file, `Windower4/addons/GearSwap/data/<CharacterName>/settings.xml` — see [The settings file](#the-settings-file). Read the message a save prints:
 
-| Line | What it means |
+| Message | What it means |
 |---|---|
 | `Cannot save while zoning - try again in a moment.` | Wait until you are fully loaded, then `//gs c save` |
 | `Settings not saved: logged out; they are reloaded at the next login.` | Nothing saves at the character select screen. Log in first |
@@ -1942,21 +2237,26 @@ The box uses square and triangle characters that exist in Consolas, Lucida Conso
 
 ### A startup message mentions a retired feature
 
-Two notices can appear as your job file loads:
+These notices can appear as your job file loads:
 
 ```
 Auto Buff was removed: this job file still defines check_buff_JA or check_buff_SP and nothing calls them. They can be deleted.
 Auto Tank and Runes were removed: this job file still names one, so the mode is still shown but now drives nothing.
+This job file is out of date: it reads the pet list Physical_BPs_TP, which the engine keeps only for job files written before 2.2. Updating to the 2.2 or later sample job files is recommended.
+sets.Midcast.BP is never read: its gear goes in sets.Pet_Command.BloodPact.
+sets.Ready is never read: its gear goes in sets.Pet_Command.Ready.
 ```
 
-Both are advisory, and neither stops anything working.
+All are advisory, and none stops anything working.
 
-- **Auto Buff:** delete `check_buff_JA` and `check_buff_SP`, and any `Buff_Delay` or `Tank_Delay` variable that fed them. Self-buffing is a job for the automation tools most players already run.
+- **Auto Buff:** delete `check_buff_JA` and `check_buff_SP`, and any `Buff_Delay` or `Tank_Delay` variable that fed them. Self-buffing is left to other addons.
 - **Auto Tank and Runes:** `UI_Name` and `UI_Name2` are generic job-mode slots. Either clear the name, or point the slot at something your own file acts on — see [JobMode and JobMode2](#jobmode-and-jobmode2).
+- **An out-of-date pet file:** its hooks sort pet moves with lists the engine keeps only for older files. Move that gear into the [pet sets](#pet-sets) and delete the code, or start from the 2.2 sample for the job — see [Job files written before 2.2](#job-files-written-before-22).
+- **`sets.Midcast.BP` or `sets.Ready`:** move a command's delay gear to the set the message names, and a move's potency gear to the pet move sets — see [Pet sets](#pet-sets).
 
 ### Nothing loads at all
 
-Confirm the `RahvinGS` folder is directly inside `GearSwap/data/`, and your job file is in your character's folder (`data/<CharacterName>/`) or in `data/`, named as [How GearSwap finds your job file](#how-gearswap-finds-your-job-file) lists. Then `//gs reload` and watch for errors in the Windower console. `Cannot find the include file` in an error means GearSwap did not find `RahvinGS` where the include lines expect it.
+Confirm the `RahvinGS` folder is directly inside `GearSwap/data/`, and your job file is in your character's folder (`data/<CharacterName>/`) or in `data/`, named as [How GearSwap finds your job file](#how-gearswap-finds-your-job-file) lists. Then `//gs reload` and watch for errors in the Windower console, which opens with Windower's console key, Insert unless changed in Windower's profile settings. `Cannot find the include file` in an error means GearSwap did not find `RahvinGS` where the include lines expect it.
 
 ### The wrong job file loads
 
@@ -1993,27 +2293,109 @@ Inside that folder it takes the first of these names that exists, shown here for
 
 ### An edit to the job file changes nothing
 
-GearSwap reads your job file when it loads it, so an edit takes effect only once the file loads again. Save the file, then type `//gs reload`. If a Lua error appears instead, see the next entry.
+GearSwap reads the job file when it loads it, so an edit takes effect only once the file loads again. Save the file, then type `//gs reload`, which reloads the job file. After replacing the `RahvinGS` folder, reload GearSwap itself with `//lua r gearswap`. If a Lua error appears instead, see the next entry.
 
 ### A Lua error names the job file and a line
 
-A typo in the job file stops it loading, and GearSwap reports a Lua error naming the file and a line number; open the Windower console if nothing shows in chat. That line, or the one above it, usually holds the typo — most often a missing comma between two pieces of gear, or a missing closing brace `}`. Fix it, save, and type `//gs reload`.
+A typo in the job file stops it loading, and GearSwap reports a Lua error naming the file and a line number; open the Windower console if nothing shows in chat. That line, or the one above it, usually holds the typo — most often a missing comma between two pieces of gear, a missing closing brace `}`, or a name with a space or a hyphen written after a dot, as `sets.WS.Savage Blade`, which needs brackets and quotes: `sets.WS['Savage Blade']`. Fix it, save, and type `//gs reload`.
+
+---
+
+# Updating from an earlier version
+
+From 2.1, follow [Updating from 2.1](#updating-from-21). From 2.0, work through the Notices of 2.1 and 2.2 in [PATCH NOTES.md](PATCH%20NOTES.md), then follow Updating from 2.1. From Mirdain-Include 1.5.x, or from this suite's 1.6.0 to 1.7.3, see [Upgrading from Mirdain-Include](#upgrading-from-mirdain-include).
+
+## Updating from 2.1
+
+1. Replace the `RahvinGS` folder in `data/` with the new one, then reload GearSwap with `//lua r gearswap`. Type `//gs c version` to check for `[2.2]`. The character folders, with their job files and settings, are not touched. Anything edited inside `RahvinGS` is replaced, so personal gear entries belong in the job file — see [Adding your own entries](#adding-your-own-entries).
+2. Change once to each job in use, and read the messages the engine prints in chat as the file loads. A pet job file from before 2.2 is named there, with what to change — see [A startup message mentions a retired feature](#a-startup-message-mentions-a-retired-feature).
+
+Characters on 2.1 and 2.2 share spell-received gear and roll totals, so the characters can be updated one at a time.
+
+Job files written for 2.1 load and play with no edits, though they miss much of what 2.2 adds — see [Job files written before 2.2](#job-files-written-before-22). These points behave differently from 2.1:
+
+- **Pet jobs.** `sets.Midcast.BP` and `sets.Ready` are never read. Put a command's delay gear in `sets.Pet_Command.BloodPact` or `sets.Pet_Command.Ready`, and a move's potency gear in the pet move sets, such as `sets.Pet_Midcast.Magical`. See [Pet sets](#pet-sets).
+- **Tables under a midcast set.** A table under a family set such as `sets.Midcast.Nuke`, or under a spell's own set, is a [midcast child](#midcast-children) when its name is an offense mode, `Self`, `Others`, `Burst` or a spell's name, and it is worn when the cast matches. Directly under `sets.Midcast`, an offense mode, `Self` or `Others` works the same way. Rename one kept there for another purpose. `sets.Midcast.ACC` goes on in ACC mode under every spell, and a warning at load points it out when it holds gear.
+- **Bursts with no burst set.** A file with no `sets.Midcast.Burst` bursts in `sets.Midcast.Nuke` and its `Burst` child. See [Setting up burst gear](#setting-up-burst-gear).
+- **`sets.DualWield`** goes on only with a one-handed main that is not a hand-to-hand weapon, and `sets.Weapons.Shield` skips hand-to-hand weapons too.
+- **Double-Up** wears `sets.JA['Double-Up']` where the file declares it, even empty, and `sets.PhantomRoll` otherwise. Delete an empty `sets.JA['Double-Up']` to keep the roll set.
+- **Alt+F12** is the [Buff Level](#bufflevel) key, and binding it replaces any other Windower bind on that key. Move it with `gs c keybind bufflevel <key>`, or free it with `gs c keybind bufflevel none`.
+- **`//gs disable <slot>` and `//gs enable <slot>`** run `gs c disable` and `gs c enable`. See [The disable hold](#the-disable-hold).
+
+Per-release detail is in [PATCH NOTES.md](PATCH%20NOTES.md).
+
+## Job files written before 2.2
+
+A job file written for 2.1 or for Mirdain-Include still loads and plays. It misses most of what 2.2 adds, and some of its code works against the engine. Open the 2.2 sample for the job beside it, and move the gear into the sample's layout:
+
+- **Hooks that return gear override the engine.** Gear returned by `precast_custom`, `midcast_custom` or `aftercast_custom` goes on over every set the engine chose, so each slot a hook fills beats the buff sets, burst sets and midcast children for that action. Mirdain-era files carry their buff, burst and mode logic in these hooks. Move that logic into sets, and keep the hooks for rules no set can express. See [Customization hooks](#13-customization-hooks).
+- **Copies made with `set_combine` put base pieces back.** A set built as a copy of its parent, such as `sets.WS.ACC = set_combine(sets.WS, { ... })`, goes on after the engine has merged the parent and every set between, so the parent's pieces land over the sets between. Give such a set only the pieces it changes: `sets.WS.ACC = { ... }`. The 2.2 samples are written this way wherever the engine merges sets between a parent and its child: the resting, Sublimation and pet idle sets, the weaponskill mode sets, and the enhancing and enfeebling families.
+- **A file's own blue magic lists replace the engine's.** Mirdain's BLU, PLD and RUN files declare their own, which leave some spells out, such as Searing Tempest, so those wear no family set. Delete them to use the engine's — see [Blue magic categories](#blue-magic-categories).
+- **Pet files sort moves in code.** A Beastmaster or Summoner file from 2.1 or Mirdain reads pet lists the engine keeps only for such files, and a chat message at load names each list it reads. The [pet sets](#pet-sets) do the same work with no code.
+- **Old set names read as nothing.** See [Spellings the engine does not read](#spellings-the-engine-does-not-read).
+
+The 2.2 samples carry a set for everything the job and its common support jobs can use, most of them empty. Fill the ones that matter, and delete the lines of those that do not: with `gs c warn` on, an empty set the engine picks for an action says so in chat — see [A set warning in chat](#a-set-warning-in-chat).
+
+## Upgrading from Mirdain-Include
+
+This covers everyone arriving from **Mirdain-Include 1.5.x** and from **any 1.6.x or 1.7.x version of this suite**, up to and including 1.7.3. Gear sets, modes and macros carry over; the shape on disk is what changes, and a handful of job-file edits go with it.
+
+### The upgrade itself
+
+1. Delete `Mirdain-Include.lua` and `GearSets-Include.lua` from `Windower4/addons/GearSwap/data/`.
+2. Copy the whole `RahvinGS` folder into that same `data/` folder.
+3. Point each job file at the new engine. Replace the include line or lines at the top, `include('Mirdain-Include')` and, where the file has it, `include('GearSets-Include')`, with these two:
+
+   ```lua
+   include('RahvinGS/GearSets-Include')
+   include('RahvinGS/Rahvin-Engine')
+   ```
+
+   The refreshed samples carry them already.
+4. Move each character's job files into a folder of its own, as the [clean install](#clean-install) describes. A job file left in `data/` still loads, so this can wait.
+5. Reload GearSwap with `//lua r gearswap`, then type `//gs c version` and check the answer.
+
+> **Running several characters? Upgrade them all in one sitting.** The messages your characters send each other for spell-received gear carry an internal tag tied to the suite name, and versions on either side of the rename ignore each other's messages — no error, just silence. Until every character is upgraded, spell-received gear stops arriving between mixed versions.
+
+### What happens to `settings.xml`
+
+Nothing has to be deleted. The first time each character loads this engine, it creates that character's own `data/<CharacterName>/settings.xml` as a copy of its settings in your existing `data/settings.xml`, and leaves the old file as it was. On that first load the display settings return to their defaults, so the status box opens in LATTICE, stacked, and the box positions you dragged are kept. One message per group says so:
+
+```
+Display settings reset to defaults (version 2); box positions kept
+Halo settings reset to defaults (version 1)
+```
+
+Your chat switches and the spell-received failsafe window carry through untouched. To change the look, see [Display styles](#display-styles); to start from a blank file, see [The settings file](#the-settings-file).
+
+### What to change in your own job file
+
+The job-file edits each release asks for are listed in the Notices of [PATCH NOTES.md](PATCH%20NOTES.md): read those of every release after yours, 2.2's included. Four places in this manual cover what upgraded files most often miss:
+
+- what an older file misses or works against — see [Job files written before 2.2](#job-files-written-before-22);
+- the retired features and old pet code a file may still carry, which the engine names as it loads — see [A startup message mentions a retired feature](#a-startup-message-mentions-a-retired-feature);
+- set paths the engine does not read — see [Spellings the engine does not read](#spellings-the-engine-does-not-read);
+- a mode with no set of its own, and a ranged action whose set names no round — see [Core sets](#core-sets) and [Ammunition](#ammunition).
+
+All 22 sample files ship refreshed for 2.2. A Mirdain-era file keeps loading, but its hooks and copies work against much of the engine, so moving its gear into the sample for the job is the better path.
+
+After the upgrade, run **`//gs c checksets`**. It names every set you declared and left empty, which is the fastest way to find something the move disturbed.
 
 ---
 
 # Performance
 
-Rahvin GearSwap is measured, not asserted. A simulated Dynamis Divergence fight — six clients played the way a six-box party plays, inside an 18-player alliance against a full mob wave — runs three engines over identical timelines from a fixed seed, at each engine's own shipped defaults:
+Rahvin GearSwap is measured, not asserted. A simulated Dynamis Divergence fight — six clients played the way a six-box party plays, fighting one wave inside an 18-player alliance — runs three engines on identical input and identical gear, each at its own defaults plus the modes the party plays:
 
 | Engine | What it is |
 |---|---|
 | **Mirdain-Include 1.5.12** | The original include as its author shipped it |
 | **Selindrile** | Another author's suite, at a pinned upstream commit |
-| **Rahvin GearSwap 2.0** | This engine |
+| **Rahvin GearSwap 2.1** | This engine, as released before 2.2 |
 
-The comparison covers CPU cost per client and across the party, the most expensive single frame against a 60 fps budget, allocation rate and resident memory, per-cast and per-event costs, the received-spell race, and chat volume in each of the diagnostic states you can select.
+The comparison covers CPU cost per client and across the party, the worst frame per client against its frame budget, memory allocated and held, the cost of one action and of background events, the received-spell race, and chat volume.
 
-The current report measures 2.0 and is live at [Rahvin GS 2.0 Suite Comparison](https://rahvincode.github.io/Gearswap/). The 2.1 report is published after release.
+The current report measures 2.1 and is live as the [Divergence Three-Suite Report](https://rahvincode.github.io/Gearswap/). The 2.2 report is published after release.
 
 ---
 

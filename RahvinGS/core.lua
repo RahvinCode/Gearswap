@@ -18,28 +18,34 @@
 -- COMPONENT: core -- sections 7-9 and 11: libraries, settings, constants, data and utilities
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 7  - Libraries and settings .... the four libraries, the saved settings file,
---                                           and the two on-screen boxes
---   Section 8  - Shared constants .......... the constants and lookup tables other
---                                           components read
---   Section 9  - Spell and ability data .... which incoming action calls for which set
---   Section 11 - Core utilities ............ the chat channels, the clock, the item and party
---                                           helpers, the elemental bonus chooser, and the
---                                           multibox cast announce
+--   Section 7  - Libraries and settings .... the libraries, the saved settings file, and
+--                                           the two on-screen boxes
+--   Section 8  - Shared constants .......... the constants and lookup tables the engine
+--                                           reads
+--   Section 9  - Spell and ability data .... the spells and abilities spell-received
+--                                           tracking announces, and the set each calls for
+--   Section 11 - Core utilities ............ the chat channels, the clock, the cast-time
+--                                           estimate, the busy window's limit, the
+--                                           multibox cast announce, the buff prediction,
+--                                           the stratagem count, the item and party
+--                                           helpers, and the elemental bonus chooser
 --
--- This file holds what the rest of the engine reads. It registers no event and runs no
--- subsystem of its own.
+-- This file holds what the rest of the engine reads. It registers no event. The one
+-- subsystem it holds, the buff prediction, runs only when another component calls it.
 --
--- GLOBALS  print, and the five chat channels written through it: log, info, warn, notice and
+-- GLOBALS  print, and the chat channels written through it: log, info, warn, notice and
 --          gear_report. GearSwap gives the job file and every file it includes one shared
 --          environment, so this print replaces Lua's for the engine and the job file alike.
 --          It reads its first argument as a chat mode. debug is not a global. It is a
 --          file-local that shadows Lua's debug table here and in every component that
 --          imports it.
--- STATE    The live settings table, and the multibox announce debt: the flag
+-- STATE    The live settings table. The multibox announce debt, the completion this
+--          character owes the others after it announces a cast: the flag
 --          E.outgoing_cast_active, which state.lua declares, and the deadline beside it.
---          While the debt stands, other characters may be holding gear for a cast this
---          character announced.
+--          While the debt stands, other characters may be holding gear for that cast. The
+--          buff prediction's record, the buffs written into GearSwap's list before GearSwap
+--          lists them itself. Only this file's functions write the record, and every
+--          component reads it through the one table it binds at construction.
 -- EXPORTS  The settings table and what its load reported, the two boxes, the config,
 --          resource and extdata libraries, the shared constants and data tables, and the
 --          helper functions, all as E fields.
@@ -51,7 +57,7 @@
 -- requires: rahvings/state
 return function(E)
     -- The API handles state.lua caches, bound once so no call below reaches through E. The
-    -- two other windower.ffxi calls in this file, for the client language and the stratagem
+    -- other windower.ffxi calls in this file, for the client language and the stratagem
     -- recasts, have no cached handle and call windower.ffxi directly.
     local get_mob_by_id, get_party, send_ipc = E.get_mob_by_id, E.get_party, E.send_ipc
 
@@ -61,13 +67,13 @@ return function(E)
     -- The libraries the engine uses, the settings that persist across reloads, and the two
     -- on-screen boxes those settings describe.
 
-    -- The four libraries the engine uses. config reads and writes the settings file, res
-    -- holds the game's resource tables, socket supplies a wall clock, and extdata decodes
-    -- the per-item data that holds enchantment charges and timers.
+    -- The libraries the engine uses. config reads and writes the settings file, res holds
+    -- the game's resource tables, socket supplies a wall clock, and extdata decodes the
+    -- per-item data that holds enchantment charges and timers.
     --
     -- require here is GearSwap's include, not Lua's. It returns the table already loaded
-    -- under that name in package.loaded. GearSwap has loaded all four before any job file
-    -- runs, as well as the files and xml libraries the settings load uses below, so each
+    -- under that name in package.loaded. GearSwap has loaded each of these before any job
+    -- file runs, and the files and xml libraries the settings load uses below too, so every
     -- call returns the addon's own copy.
     local config = require('config')
     local res = require('resources')
@@ -75,8 +81,9 @@ return function(E)
     local extdata = require('extdata')
 
     -- What the settings file holds on a first run, and the shape config.load merges a saved
-    -- file into. The six booleans are the toggles commands.lua flips. delay is the multibox
-    -- announce window in seconds, and the spell-received failsafe times against it too.
+    -- file into. The top-level booleans are the toggles commands.lua flips. delay is the
+    -- multibox announce window in seconds, and the spell-received failsafe times against it
+    -- too.
     --
     -- Every setting needs a key here. The config library lowercases each tag it parses and
     -- maps it back onto a default's spelling, so a key absent from this table lands under a
@@ -97,14 +104,14 @@ return function(E)
         warn = true,
         gear_reporting = false,
         -- The lattice style's panel: the body behind the text, the strip behind the header
-        -- line, and the border with its width. pad is how far the panel reaches past the
-        -- text at the sides, and pad_bottom how far below it. At the top, the strip meets
-        -- the border. Colors are red, green, blue and alpha, as the boxes' own are.
+        -- line, and the border with its width. pad is how far the panel reaches past the box
+        -- at each side, and pad_bottom how far below it, both in pixels. At the top, the strip
+        -- meets the border. Colors are red, green, blue and alpha, as the boxes' own are.
         --
         -- The rig is a four-by-four grid of gear slots, drawn in the stacked view only. It
         -- sits in the cols text columns the layout keeps clear at the right of every mode
         -- row, beside a gutter column. gap is the space between cells, and inset is the
-        -- recess's margin around the grid.
+        -- recess's margin around the grid, both in pixels.
         --
         -- A held slot's hue follows its layer, and a layer that already has a color on the
         -- box keeps it here. A strip hold takes the orange of its token, the disable hold
@@ -179,11 +186,12 @@ return function(E)
         -- no key. A value is in Windower's spelling: f1 to f12, with ^ for Ctrl, ! for Alt or
         -- ~ for Shift in front. Only keybind_apply reads them, and it validates each value
         -- before binding it. The keys are quoted strings because hoxne is also an exported
-        -- name.
+        -- name. commands.lua's mode table holds the same defaults, for gs c keybind default
+        -- and for a saved value that is not a key, so a changed default goes in both.
         Keybinds = {
             ['offensemode'] = 'f12', ['treasurehunter'] = 'f11', ['weaponlock'] = 'f10',
             ['weaponmode'] = 'f9', ['jobmode'] = '^f12', ['jobmode2'] = '^f11',
-            ['hoxne'] = '^f10', ['spellreceived'] = '^f9',
+            ['hoxne'] = '^f10', ['spellreceived'] = '^f9', ['bufflevel'] = '!f12',
         },
         -- One stamp per versioned silo, per character: the version of that silo the
         -- character last loaded, under the character's lowercased name.
@@ -205,7 +213,9 @@ return function(E)
         channels  = { 'debug', 'info', 'warn', 'gear_reporting' },
         timing    = { 'delay' },
         -- Unversioned, so a player's keys survive every engine update. A changed default
-        -- here does not reach a file that already carries the block.
+        -- here does not reach a file that already carries the block. A mode added to the
+        -- block does, at its default, because the config library starts from a copy of
+        -- the defaults and merges only the keys the saved file carries.
         keybinds  = { 'Keybinds' },
         stamps    = { 'Settings_Version' },
     }
@@ -390,8 +400,9 @@ return function(E)
     ------------------------------------------------------------------------------------------------
     -- SECTION 8 - SHARED CONSTANTS AND LOOKUP TABLES
     ------------------------------------------------------------------------------------------------
-    -- The constants and lookup tables other components read. Each is exported at the end of
-    -- this file and bound in its reader's import block.
+    -- The constants and lookup tables the engine reads. Most are exported at the end of this
+    -- file and bound in their reader's import block. Those only this file's elemental bonus
+    -- chooser and buff prediction read stay private.
 
     -- Action classification -----------------------------------------------------------------------
 
@@ -408,10 +419,11 @@ return function(E)
         ['Trust']        = true,
     }
 
-    -- Spell types long enough to need a busy window. precast sizes the window from the
-    -- listed cast time, and aftercast leaves a 2.5 second tail. It holds the same types as
-    -- the table above but answers a different question, so a type added to one is not
-    -- added to the other.
+    -- Spell types whose aftercast leaves a 2.5 second busy tail, and whose end ends every
+    -- standing buff prediction. It holds the same types as the table above but answers a
+    -- different question, so a type added to one is not added to the other. The burst
+    -- checks ask only these types too, Geomancy excepted, because only they carry a spell's
+    -- id for expected_cast_seconds to read.
     local RecastTimers                        = {
         ['WhiteMagic']   = true,
         ['BlackMagic']   = true,
@@ -423,20 +435,17 @@ return function(E)
         ['Trust']        = true,
     }
 
-    -- Buff and action-type names, so the comparison sites read as words. The two buff ids
-    -- are numbers because spellreceived.lua compares them with the id a buff event carries.
-    -- The six incapacitation buffs are names, because hooks.lua indexes buffactive with
-    -- them. TYPE_JA, TYPE_WS and TYPE_SCH match spell.type, and TYPE_MS matches
-    -- spell.action_type.
-    local BUFF_ACCESSION                      = 366
-    local BUFF_DIVINE_SEAL                    = 78
+    -- Buff and action-type names, so the comparison sites read as words. The incapacitation
+    -- buffs are names, because hooks.lua indexes buffactive with them. TYPE_JA, TYPE_WS and
+    -- TYPE_SCH match spell.type, and TYPE_MS matches spell.action_type.
     local BUFF_SLEEP, BUFF_STUN, BUFF_KO      = 'Sleep', 'Stun', 'KO'
     local BUFF_PETRI, BUFF_CHARM, BUFF_TERROR = 'Petrification', 'Charm', 'Terror'
     local TYPE_JA, TYPE_WS, TYPE_MS, TYPE_SCH = 'JobAbility', 'WeaponSkill', 'Magic', 'Scholar'
 
     -- Action categories that count as tagging a mob for Treasure Hunter: 1 melee, 2 ranged
     -- attack, 3 weapon skill, 4 spell, 6 job ability, 11 monster TP move and 14 unblinkable
-    -- job ability. th.lua stamps the target with the clock on any of them, so a mob still
+    -- job ability. While the Treasure Hunter mode is anything but None, th.lua stamps the
+    -- target of this character's own action in any of them with the clock, so a mob still
     -- being fought never ages out of the tagged table. A category absent here refreshes no
     -- tag.
     local TaggingCategories                   = S { 1, 2, 3, 4, 6, 11, 14 }
@@ -465,14 +474,34 @@ return function(E)
     -- sets.Midcast.Utsusemi, and counts the ninja tools at precast.
     local UtsusemiSpell                       = S { 'Utsusemi: Ichi', 'Utsusemi: Ni', 'Utsusemi: San' }
 
-    -- The Dynamis Divergence zones. On entering one, the zone handler points the player at
-    -- the neck lock. That lock mode's claim is what holds a Dynamis neck on, and no release
-    -- path treats any slot specially inside these zones.
+    -- The enhancing families whose tier-one spell has the family set's own name. builders.lua's
+    -- named-set test in the white magic branch passes over these names, so Refresh, Regen and
+    -- Phalanx take the enhancing ladder as their higher tiers do: the enhancing set, its Others
+    -- set when cast on someone else, then the family set.
+    local ENHANCING_FAMILY_SPELL              = { Refresh = true, Regen = true, Phalanx = true }
+
+    -- The phrase a shot's info line gives an offense mode that has a ranged set of its own,
+    -- keyed by the mode. Any other mode with a set, such as one a job file adds, is named on
+    -- the line instead, by builders.lua's ranged branch.
+    local RA_MODE_PHRASE                      = {
+        ['ACC']       = 'Ranged Attack with Accuracy',
+        ['PDL']       = 'Ranged Attack with Physical Damage Limit',
+        ['SB']        = 'Ranged Attack with Subtle Blow',
+        ['MEVA']      = 'Ranged Attack with Magic Evasion',
+        ['DT']        = 'Ranged Attack with Damage Taken',
+        ['PDT']       = 'Ranged Attack with Physical Damage Taken',
+        ['CRIT']      = 'Ranged Attack with Critical Hit',
+        ['True Shot'] = 'Ranged Attack with True Shot',
+    }
+
+    -- The Dynamis Divergence zones. On entering one, the zone handler prints a line pointing
+    -- the player at gs c dynamisrp, the neck lock. That lock mode's claim is what holds a
+    -- Dynamis neck on, and no release path treats any slot specially inside these zones.
     local Divergence_Zones                    = S { "Dynamis - San d'Oria [D]", "Dynamis - Bastok [D]", "Dynamis - Windurst [D]", "Dynamis - Jeuno [D]" }
 
     -- Jobs for which Silence is worth a Remedy. spellreceived.lua tests the main job and the
-    -- sub job against it, so a listed sub job qualifies. Paralysis spends a Remedy on any
-    -- job, and Silence only on these.
+    -- sub job against it, so a listed sub job qualifies. With AutoItem on, Paralysis spends
+    -- a Remedy on any job, and Silence only on these.
     local Mage_Job                            = S { 'BLM', 'RDM', 'WHM', 'BRD', 'BLU', 'GEO', 'SCH', 'NIN', 'PLD', 'RUN', 'DRK', 'SMN' }
 
     -- The town zones. monitor.lua binds this list, and nothing in the engine reads it.
@@ -485,78 +514,113 @@ return function(E)
     -- cannot change without a client restart.
     local Language                            = windower.ffxi.get_info().language:lower()
 
-    -- Skillchains keyed by add-effect message id: 288 to 301 are chain damage, 385 to 398
-    -- chain healing, and 767 to 770 the Umbra and Radiance chains. run_burst records the
-    -- elements, and the gear builders use them to dress a nuke that lands inside the burst
-    -- window. Only elements is read. id repeats the key, and english names the chain.
-    --
-    -- The rows must cover those three ranges exactly. run_burst tests the id against the
-    -- ranges, then indexes this table and reads .elements with no nil guard, so an id the
-    -- range test admits without a row here throws inside an event handler.
-    local skillchains                         = {
-        [288] = { id = 288, english = 'Light', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
-        [289] = { id = 289, english = 'Darkness', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
-        [290] = { id = 290, english = 'Gravitation', elements = { 'Dark', 'Earth' } },
-        [291] = { id = 291, english = 'Fragmentation', elements = { 'Lightning', 'Wind' } },
-        [292] = { id = 292, english = 'Distortion', elements = { 'Ice', 'Water' } },
-        [293] = { id = 293, english = 'Fusion', elements = { 'Light', 'Fire' } },
-        [294] = { id = 294, english = 'Compression', elements = { 'Dark' } },
-        [295] = { id = 295, english = 'Liquefaction', elements = { 'Fire' } },
-        [296] = { id = 296, english = 'Induration', elements = { 'Ice' } },
-        [297] = { id = 297, english = 'Reverberation', elements = { 'Water' } },
-        [298] = { id = 298, english = 'Transfixion', elements = { 'Light' } },
-        [299] = { id = 299, english = 'Scission', elements = { 'Earth' } },
-        [300] = { id = 300, english = 'Detonation', elements = { 'Wind' } },
-        [301] = { id = 301, english = 'Impaction', elements = { 'Lightning' } },
-        [385] = { id = 385, english = 'Light', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
-        [386] = { id = 386, english = 'Darkness', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
-        [387] = { id = 387, english = 'Gravitation', elements = { 'Dark', 'Earth' } },
-        [388] = { id = 388, english = 'Fragmentation', elements = { 'Lightning', 'Wind' } },
-        [389] = { id = 389, english = 'Distortion', elements = { 'Ice', 'Water' } },
-        [390] = { id = 390, english = 'Fusion', elements = { 'Light', 'Fire' } },
-        [391] = { id = 391, english = 'Compression', elements = { 'Dark' } },
-        [392] = { id = 392, english = 'Liquefaction', elements = { 'Fire' } },
-        [393] = { id = 393, english = 'Induration', elements = { 'Ice' } },
-        [394] = { id = 394, english = 'Reverberation', elements = { 'Water' } },
-        [395] = { id = 395, english = 'Transfixion', elements = { 'Light' } },
-        [396] = { id = 396, english = 'Scission', elements = { 'Earth' } },
-        [397] = { id = 397, english = 'Detonation', elements = { 'Wind' } },
-        [398] = { id = 398, english = 'Impaction', elements = { 'Lightning' } },
-        [767] = { id = 767, english = 'Radiance', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
-        [768] = { id = 768, english = 'Umbra', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
-        [769] = { id = 769, english = 'Radiance', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
-        [770] = { id = 770, english = 'Umbra', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
-    }
-
     -- Action types whose precast gear is their final gear. builders.lua returns from the
     -- midcast build at once for these. equip.lua counts a precast for one of them as the
     -- phase that names the set in the merge report, since no later phase will.
     local PRECAST_FINAL                       = {
-        WeaponSkill = true,
-        JobAbility  = true,
-        Item        = true,
-        Scholar     = true,
-        Ward        = true,
-        Rune        = true,
-        Effusion    = true,
-        CorsairRoll = true,
-        CorsairShot = true,
-        Waltz       = true,
-        Jig         = true,
-        Samba       = true,
-        Step        = true,
-        Flourish1   = true,
-        Flourish2   = true,
-        Flourish3   = true,
+        WeaponSkill   = true,
+        JobAbility    = true,
+        Item          = true,
+        Scholar       = true,
+        Ward          = true,
+        Rune          = true,
+        Effusion      = true,
+        CorsairRoll   = true,
+        CorsairShot   = true,
+        Waltz         = true,
+        Jig           = true,
+        Samba         = true,
+        Step          = true,
+        Flourish1     = true,
+        Flourish2     = true,
+        Flourish3     = true,
+        BloodPactRage = true,
+        BloodPactWard = true,
+        Monster       = true,
+        PetCommand    = true,
+    }
+
+    -- The action types a master gives a pet: a blood pact, a Ready move's command, which
+    -- GearSwap types Monster, and every other pet command, such as Fight, Sic, Smiting
+    -- Breath or Deploy. None has a cast time, so each is in PRECAST_FINAL too. builders.lua
+    -- dresses one at precast over the idle or engaged build: sets.Pet_Command, then the
+    -- command's family set, then its own set, with no spell layer. hooks.lua reads it to
+    -- tell the master's own pet command from a cast of the master's in flight.
+    local PET_COMMAND_TYPES                   = {
+        BloodPactRage = true,
+        BloodPactWard = true,
+        Monster       = true,
+        PetCommand    = true,
+    }
+
+    -- The jobs that keep a pet of their own. On these the second job mode is the pet mode,
+    -- read by builders.lua for the children of the pet sets and of the offense mode's set.
+    -- Off them it stays the job file's own mode.
+    local PET_JOBS                            = {
+        SMN = true,
+        BST = true,
+        DRG = true,
+        PUP = true,
+        GEO = true,
+    }
+
+    -- The spirits, by the name GearSwap gives the pet, one word each. A spirit casts its own
+    -- spells, and hooks.lua dresses nothing for them. A spirit's gear is worn the whole time
+    -- instead, in the child set the pet mode's value names, such as
+    -- sets.Idle.Pet.Engaged.Spirit.
+    local SPIRITS                             = {
+        FireSpirit    = true,
+        IceSpirit     = true,
+        AirSpirit     = true,
+        EarthSpirit   = true,
+        ThunderSpirit = true,
+        WaterSpirit   = true,
+        LightSpirit   = true,
+        DarkSpirit    = true,
+    }
+
+    -- How long a pet's move may hold the master's actions and rebuilds when none of the
+    -- events that end it arrives, in seconds from its readying. The master's own next
+    -- action, movement or status change compares against it, at that event alone.
+    local PET_MOVE_STALE                      = 3
+
+    -- The pet commands of type PetCommand that make the pet act. Every pact and every Ready
+    -- move's command does too. A move the pet readies within PET_COMMAND_WINDOW seconds of
+    -- one is the master's own, which hooks.lua holds. Any other move is the pet's own doing.
+    local PET_MOVE_COMMANDS                   = {
+        ['Sic']              = true,
+        ['Smiting Breath']   = true,
+        ['Restoring Breath'] = true,
+    }
+    local PET_COMMAND_WINDOW                  = 2
+
+    -- The family set under sets.Pet_Command that a pet command wears, by its type, then by
+    -- its name for a command of type PetCommand. Sic shares the Ready moves' timer and their
+    -- delay gear, and the maneuvers all read the same gear.
+    local PET_COMMAND_FAMILY                  = {
+        BloodPactRage = 'BloodPact',
+        BloodPactWard = 'BloodPact',
+        Monster       = 'Ready',
+    }
+    local PET_COMMAND_FAMILY_BY_NAME          = {
+        ['Sic']              = 'Ready',
+        ['Fire Maneuver']    = 'Maneuver',
+        ['Ice Maneuver']     = 'Maneuver',
+        ['Wind Maneuver']    = 'Maneuver',
+        ['Earth Maneuver']   = 'Maneuver',
+        ['Thunder Maneuver'] = 'Maneuver',
+        ['Water Maneuver']   = 'Maneuver',
+        ['Light Maneuver']   = 'Maneuver',
+        ['Dark Maneuver']    = 'Maneuver',
     }
 
     -- Equipment slots -----------------------------------------------------------------------------
 
     -- Every spelling of a slot, folded onto one name. A job file may write ear1, lear,
-    -- learring or left_ear for the same slot. merge_into canonicalizes through this table
+    -- learring or left_ear for the same slot. merge_into folds each key through this table
     -- before assigning, so the last spelling wins instead of four keys surviving side by
-    -- side. Slot ownership canonicalizes too, or a held left_ear would not match a request
-    -- for ear1.
+    -- side. Slot ownership folds them too, or a held left_ear would not match a request for
+    -- ear1.
     --
     -- The keys match GearSwap's own slot_map exactly. A key missing here is a slot the
     -- engine silently drops from a set GearSwap would have equipped.
@@ -594,14 +658,14 @@ return function(E)
     -- The tables the elemental bonus chooser and builders.lua's per-cast inputs read: the
     -- day, weather and distance mechanics as numbers, each stated once.
 
-    -- Element name to id, under both of each element's names. GearSwap's refresh.lua, at
-    -- lines 387 and 455, writes world.day_element and world.weather_element in the language
-    -- GearSwap's own setting holds. That is English until a job file calls
-    -- set_language('japanese'), which switches them mid-session, so the table maps the
-    -- English and the Japanese names alike and follows the setting without reading it. A
-    -- spell needs no lookup, because spell.element_id carries the number. Clear weather is
-    -- 'None', id 15. The only spells whose element is 15 are the element-less ones, Meteor
-    -- among them, which the chooser's caller refuses by id.
+    -- Element name to id, under both of each element's names. GearSwap's refresh.lua writes
+    -- world.day_element and world.weather_element in the language GearSwap's own setting
+    -- holds. That is English until a job file calls set_language('japanese'), which switches
+    -- them mid-session, so the table maps the English and the Japanese names alike and
+    -- follows the setting without reading it. A spell needs no lookup, because
+    -- spell.element_id carries the number. Clear weather is 'None', id 15. The only spells
+    -- whose element is 15 are the element-less ones, Meteor among them, which the chooser's
+    -- caller refuses by id.
     local function element_ids()
         local ids = {}
         for id, entry in pairs(res.elements) do
@@ -667,7 +731,7 @@ return function(E)
     local CAP_PCT                             = 40
 
     -- Each candidate's resource row, for the wearability test that runs before its bag read.
-    -- GearSwap's equip_processing.lua, at lines 196 to 207, drops an item on four tests, and
+    -- GearSwap's unpack_equip_list, in equip_processing.lua, drops an item on four tests, and
     -- these pieces can fail two of them: the job mask and the level. A piece GearSwap would
     -- drop must never displace the job file's own. Twilight Cape is the one piece not every
     -- job can wear, and the rest are listed so one code path serves every candidate.
@@ -686,11 +750,183 @@ return function(E)
         ['Zodiac Ring']     = res.items[15858],
     }
 
+    -- Skillchains and magic bursts ----------------------------------------------------------------
+    -- The tables run_burst records and ends a monster's burst window with, one record per
+    -- monster, and the midcast build predicts a burst from.
+
+    -- Skillchains keyed by add-effect message id: 288 to 301 are chain damage, 385 to 398
+    -- chain healing, and 767 to 770 the Umbra and Radiance chains. run_burst finds a chain
+    -- with one index on the message id, so an id with no row here is no chain. id repeats
+    -- the key, english names the chain for the debug log, and elements names the elements a
+    -- magic burst on it can match.
+    local skillchains                         = {
+        [288] = { id = 288, english = 'Light', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
+        [289] = { id = 289, english = 'Darkness', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
+        [290] = { id = 290, english = 'Gravitation', elements = { 'Dark', 'Earth' } },
+        [291] = { id = 291, english = 'Fragmentation', elements = { 'Lightning', 'Wind' } },
+        [292] = { id = 292, english = 'Distortion', elements = { 'Ice', 'Water' } },
+        [293] = { id = 293, english = 'Fusion', elements = { 'Light', 'Fire' } },
+        [294] = { id = 294, english = 'Compression', elements = { 'Dark' } },
+        [295] = { id = 295, english = 'Liquefaction', elements = { 'Fire' } },
+        [296] = { id = 296, english = 'Induration', elements = { 'Ice' } },
+        [297] = { id = 297, english = 'Reverberation', elements = { 'Water' } },
+        [298] = { id = 298, english = 'Transfixion', elements = { 'Light' } },
+        [299] = { id = 299, english = 'Scission', elements = { 'Earth' } },
+        [300] = { id = 300, english = 'Detonation', elements = { 'Wind' } },
+        [301] = { id = 301, english = 'Impaction', elements = { 'Lightning' } },
+        [385] = { id = 385, english = 'Light', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
+        [386] = { id = 386, english = 'Darkness', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
+        [387] = { id = 387, english = 'Gravitation', elements = { 'Dark', 'Earth' } },
+        [388] = { id = 388, english = 'Fragmentation', elements = { 'Lightning', 'Wind' } },
+        [389] = { id = 389, english = 'Distortion', elements = { 'Ice', 'Water' } },
+        [390] = { id = 390, english = 'Fusion', elements = { 'Light', 'Fire' } },
+        [391] = { id = 391, english = 'Compression', elements = { 'Dark' } },
+        [392] = { id = 392, english = 'Liquefaction', elements = { 'Fire' } },
+        [393] = { id = 393, english = 'Induration', elements = { 'Ice' } },
+        [394] = { id = 394, english = 'Reverberation', elements = { 'Water' } },
+        [395] = { id = 395, english = 'Transfixion', elements = { 'Light' } },
+        [396] = { id = 396, english = 'Scission', elements = { 'Earth' } },
+        [397] = { id = 397, english = 'Detonation', elements = { 'Wind' } },
+        [398] = { id = 398, english = 'Impaction', elements = { 'Lightning' } },
+        [767] = { id = 767, english = 'Radiance', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
+        [768] = { id = 768, english = 'Umbra', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
+        [769] = { id = 769, english = 'Radiance', elements = { 'Light', 'Lightning', 'Wind', 'Fire' } },
+        [770] = { id = 770, english = 'Umbra', elements = { 'Dark', 'Ice', 'Water', 'Earth' } },
+    }
+
+    -- Give each chain its elements as a set keyed by element id, built once here, which a
+    -- spell's element_id indexes directly. A chain's record holds its chain's set rather than
+    -- a copy. A name ELEMENT_ID lacks is left out of the set, so that element never bursts
+    -- on the chain. Returns every element some chain carries, CHAIN_ELEMENT, the set a
+    -- cast's element must be in for a chain to re-dress it.
+    local function chain_element_ids(chains)
+        local any = {}
+        for _, chain in pairs(chains) do
+            local ids = {}
+            for i = 1, #chain.elements do
+                local id = ELEMENT_ID[chain.elements[i]]
+                if id then
+                    ids[id] = true
+                    any[id] = true
+                end
+            end
+            chain.element_ids = ids
+        end
+        return any
+    end
+    local CHAIN_ELEMENT                       = chain_element_ids(skillchains)
+
+    -- The magic burst window, in seconds from the chain's packet, by the chain's step on its
+    -- monster. A monster's first chain, made by the second weaponskill, is step 2, and each
+    -- chain continued inside the window is one step more. Every step past the table's last
+    -- row gets BURST_WINDOW_FLOOR. A chain a helix closes gets HELIX_WINDOW_BONUS more.
+    local BURST_WINDOW                        = { [2] = 9, [3] = 8, [4] = 7, [5] = 6 }
+    local BURST_WINDOW_FLOOR                  = 5
+    local HELIX_WINDOW_BONUS                  = 2
+
+    -- How much later than expected_cast_seconds a spell lands, in seconds. The burst
+    -- prediction adds it, and so does the re-dress record's predicted landing, so a cast is
+    -- judged at its landing.
+    local BURST_LANDING_LEAD                  = 0.6
+
+    -- The actions that end a monster's burst window when they carry a skillchain property,
+    -- land, and make no chain, by action category, each with the resource its id is read
+    -- from: a weaponskill, an NPC's or a pet's TP move, and an avatar's blood pact.
+    local BURST_ENDER_RESOURCE                = { [3] = 'weapon_skills', [11] = 'monster_abilities', [13] = 'job_abilities' }
+
+    -- The game's messages for a move that lands no hit: a weaponskill or a TP move that
+    -- misses (188), an ability that misses (158, 324, 658), and shadows that take the hit
+    -- (31). Such a move leaves a burst window open. A move that lands any hit carries a
+    -- damage message instead, even a multi-hit weaponskill some of whose hits miss.
+    local SKILL_MISS_MESSAGE                  = { [31] = true, [158] = true, [188] = true, [324] = true, [658] = true }
+
+    -- The helix spells by id, found by the word every helix's English name contains. A helix
+    -- that closes a chain arrives as a spell's finish, with the spell's id as its param.
+    local function helix_spell_ids()
+        local ids = {}
+        for id, row in pairs(res.spells) do
+            if row.en and row.en:find('helix', 1, true) then ids[id] = true end
+        end
+        return ids
+    end
+    local HELIX_SPELL                         = helix_spell_ids()
+
+    -- A spell's damage messages: a hit (2) and a magic burst's hit (252). A physical blue
+    -- spell under Chain Affinity or Azure Lore, or a spell Immanence carries, that lands one
+    -- on a monster ends that monster's burst window. Any other message, a resist or shadows
+    -- taking the hit among them, leaves the window open.
+    local SPELL_DAMAGE_MESSAGE                = { [2] = true, [252] = true }
+
+    -- The two Blue Mage abilities that let a physical blue spell end a burst window, by job
+    -- ability id, each with how long another Blue Mage's use of it is held, in seconds. Chain
+    -- Affinity (94) lasts 30 seconds, and that Blue Mage's next physical spell uses it up.
+    -- Azure Lore (93) lasts 30 seconds, or 40 with the relic hands. Another character cannot
+    -- see which hands are worn, so the longer is held, and no spell uses it up. A use counts
+    -- only when its packet carries ABILITY_USED_MESSAGE, the game's line for an ability used.
+    local BLUE_AFFINITY_HOLD                  = { [94] = 30, [93] = 40 }
+    local CHAIN_AFFINITY_ID                   = 94
+    local ABILITY_USED_MESSAGE                = 100
+
+    -- The physical blue spells by id. Under Chain Affinity or Azure Lore one that hits ends a
+    -- burst window, and under Burst Affinity alone one never bursts. Built once, while the
+    -- job file includes the engine, from interface.lua's BluePhysical as the engine ships it.
+    -- So a job file's own BluePhysical sorts its gear and never changes which spells end a
+    -- window or can burst.
+    local function blue_physical_ids()
+        local ids = {}
+        for id, row in pairs(res.spells) do
+            if row.type == 'BlueMagic' and row.en and BluePhysical:contains(row.en) then ids[id] = true end
+        end
+        return ids
+    end
+    local BLUE_PHYSICAL                       = blue_physical_ids()
+
+    -- Immanence, the Scholar stratagem that lets an elemental spell close a skillchain, by job
+    -- ability id, and how long another Scholar's use of it is held, in seconds, which is its
+    -- duration. That Scholar's next spell Immanence carries uses it up. A use counts only when
+    -- its packet carries ABILITY_USED_MESSAGE.
+    local IMMANENCE_ID                        = 317
+    local IMMANENCE_HOLD                      = 60
+
+    -- The spells Immanence carries into a skillchain, by id: the Elemental Magic spells a
+    -- Scholar (job 20) learns, all of them single-target. Only these end a burst window under
+    -- Immanence, and only these use up the note of another Scholar's Immanence. Built once
+    -- from the resource.
+    local function immanence_spell_ids()
+        local ids = {}
+        for id, row in pairs(res.spells) do
+            if row.skill == ELEMENTAL_MAGIC_SKILL and row.levels and row.levels[20] then ids[id] = true end
+        end
+        return ids
+    end
+    local IMMANENCE_SPELL                     = immanence_spell_ids()
+
+    -- The least time, in seconds, between a re-dress out of a burst set and the cast's
+    -- predicted landing for the game to read the gear it puts on. A window that ends with
+    -- less of the cast left leaves the cast in its burst set.
+    local BURST_REDRESS_GAP                   = 0.6
+
+    -- How long a predicted buff waits for GearSwap's list to show the real one, in seconds
+    -- from the result that predicted it. It is set past the slowest wait seen in play.
+    local BUFF_PREDICTION_SECONDS             = 2
+    -- The messages of a result entry that gives this character a buff its number names: a
+    -- spell on its first target (230), the same spell on each other target (266), and an
+    -- ability (319).
+    local BUFF_GAIN_MESSAGE                   = { [230] = true, [266] = true, [319] = true }
+    -- The messages of an entry that receives a Phantom Roll, on its first target (420) and on
+    -- each other (421), and of a Double-Up that raises it (424). Their number is the roll's
+    -- total, so the buff is named by the roll. A bust, or a roll that takes no effect, carries
+    -- another message and gives nothing.
+    local ROLL_GAIN_MESSAGE                   = { [420] = true, [421] = true, [424] = true }
+    -- The message of an entry that loses its roll to a Double-Up's bust. The action names the
+    -- roll, as a Double-Up that raises it does.
+    local ROLL_BUST_MESSAGE                   = 426
+
     ------------------------------------------------------------------------------------------------
     -- SECTION 9 - SPELL AND ABILITY DATA
     ------------------------------------------------------------------------------------------------
-    -- The two tables the multibox spell-received system runs on. They say whether an action
-    -- is tracked at all, which set it calls for, and who besides the named target receives it.
+    -- The two tables multibox spell-received tracking runs on. They say whether an action is
+    -- tracked at all, which set it calls for, and who besides the named target receives it.
 
     -- Tracked spells by spell id, and the gate on the whole feature: a spell absent here is
     -- never announced and never dresses a receiver. equip names the received set through
@@ -759,13 +995,13 @@ return function(E)
     -- majesty and divine flags are absent, since no ability has an equivalent. accession is
     -- carried on every row and read by nothing.
     --
-    -- Four cancel paths depend on what this table holds. An announced action leaves other
-    -- characters holding slots until a completion arrives, and four paths cancel an action
-    -- without sending one. They are the ON-Locked refusal in the precast hook and the three
-    -- ammunition cancels, for no round named, none carried, and too few carried. They are
-    -- safe because nothing they cancel is tracked: Tomahawk, Angon, ranged attacks, ranged
-    -- weapon skills and Bounty Shot. A tracked entry for any of those would leave the other
-    -- characters holding gear until their own failsafe expires.
+    -- Some cancel paths depend on what this table holds. An announced action leaves other
+    -- characters holding slots until a completion arrives, and these paths cancel an action
+    -- without sending one: the ON-Locked refusal in the precast hook, and the ammunition
+    -- cancels for no round named, none carried, and too few carried. They are safe because
+    -- nothing they cancel is tracked: Tomahawk, Angon, ranged attacks, ranged weapon skills
+    -- and Bounty Shot. A tracked entry for any of those would leave the other characters
+    -- holding gear until their own failsafe expires.
     local ability_info                        = {
         [190] = { name = "Curing Waltz", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false },
         [191] = { name = "Curing Waltz II", category = 'track_waltz', equip = "waltz_set", aoe = false, accession = false },
@@ -786,9 +1022,10 @@ return function(E)
     ------------------------------------------------------------------------------------------------
     -- SECTION 11 - CORE UTILITIES
     ------------------------------------------------------------------------------------------------
-    -- The helpers with no subsystem of their own: the chat channels, the clock, the questions
-    -- the engine asks about carried gear and the party, and the announce that tells the
-    -- other characters a cast is on its way.
+    -- The shared helpers: the chat channels, the clock, the cast-time estimate and the busy
+    -- window's limit, the announce that tells the other characters a cast is on its way, the
+    -- buff prediction, the questions the engine asks about the party, the stratagem charges
+    -- and carried gear, and the elemental bonus chooser.
 
     -- Chat output ---------------------------------------------------------------------------------
 
@@ -802,9 +1039,9 @@ return function(E)
         return table.concat(parts)
     end
 
-    -- The three gated channels, each with its own chat mode. log traces the engine's work
-    -- for a maintainer and is gated by the debug setting. info is ordinary feedback and warn
-    -- is a problem the player should act on, and each has a toggle of its own.
+    -- The everyday channels, each with its own chat mode. log traces the engine's work for a
+    -- maintainer and is gated by the debug setting. info is ordinary feedback and warn is a
+    -- problem the player should act on, and each has a toggle of its own.
     --
     -- A chat mode belongs to its channel. Writing 8, 80, 121, 123, 207 or 221 into a raw
     -- add_to_chat anywhere else goes around the channel that owns it. The confirmation for
@@ -837,8 +1074,8 @@ return function(E)
         if settings.gear_reporting then print(207, join(...)) end
     end
 
-    -- The writer under all five channels. It takes a chat mode and a value, dispatches on
-    -- the value's type, and walks a table one entry per line, four levels deep. Long lines
+    -- The writer under the channels above. It takes a chat mode and a value, writes the
+    -- value by its type, and walks a table one entry per line, four levels deep. Long lines
     -- are not wrapped here. The game breaks them itself, wherever they fall.
     --
     -- This replaces Lua's print. GearSwap gives the job file and every file it includes one
@@ -911,6 +1148,42 @@ return function(E)
     -- deadline no other client reads stays on os.clock.
     local function get_time()
         return math.floor(socket.gettime() * 1000)
+    end
+
+    -- How long a spell takes to cast, in seconds, as the engine estimates it: a fifth of its
+    -- listed cast time, which assumes 80% fast cast. Under Chainspell or Nightingale a cast
+    -- finishes in about a second whatever its listed time, so the estimate is one second. The
+    -- burst prediction reads it, and so does the re-dress record for the cast's predicted
+    -- landing. Only a type in RecastTimers may ask, because only those types carry a spell's
+    -- id.
+    local function expected_cast_seconds(spell)
+        if buffactive['Chainspell'] or buffactive['Nightingale'] then return 1 end
+        return res.spells[spell.id].cast_time * .2
+    end
+
+    -- How long GearSwap keeps a command whose end never arrives, in seconds. Its registry
+    -- drops the command at this age, calls no aftercast for it, and stops reporting it in
+    -- flight. The busy window stands this long for an action whose end is lost.
+    --
+    -- A spell, or an item whose resource row lists a use time, is kept its listed time
+    -- x 1.1 + 2 seconds, whatever Nightingale or Chainspell does to the cast. A pet command
+    -- is kept 5 seconds. Anything else is kept what GearSwap's own table gives its action
+    -- type, a ranged shot 10 seconds and a job ability or weaponskill 3, and 3 when the table
+    -- names none. A job file's precast delay is added, as GearSwap adds it. These are the
+    -- figures GearSwap's registry sweep uses. The sweep compares them with an age in whole
+    -- seconds, so the limit is rounded up to the whole second at which the sweep drops the
+    -- command. Until then the action can still end, and the window stands.
+    local function lost_end_seconds(spell, delay)
+        local limit
+        if spell.cast_time then
+            limit = spell.cast_time * 1.1 + 2
+        elseif spell.prefix == '/pet' then
+            limit = 5
+        else
+            local ages = type(gearswap) == 'table' and gearswap.delay_map_to_action_type
+            limit = type(ages) == 'table' and ages[spell.action_type] or 3
+        end
+        return math.ceil(limit + (delay or 0))
     end
 
     -- Spell-received announces -------------------------------------------------------------------
@@ -1050,6 +1323,266 @@ return function(E)
         send_ipc(message)
     end
 
+    -- The buff prediction -------------------------------------------------------------------------
+
+    -- GearSwap lists a buff a moment after the result that gives it, and an action sent in
+    -- that gap reads a list without it. A prediction writes the buff into GearSwap's own list,
+    -- buffactive, from that result until the real buff arrives: its lowercased English name and
+    -- its id, the two keys GearSwap lists a buff under, wherever the list lacks them. GearSwap
+    -- rebuilds the list from the game's own before most of its events, so the engine writes the
+    -- predictions again as the first act of every hook it runs for an action, a buff, a status,
+    -- a pet or a command, and of the idle and engaged build. Those hooks, and the job file's
+    -- hooks each of them calls, then read the predictions. Inside the raw action event, the
+    -- burst checks that read a Blue Mage's affinity or a Scholar's Immanence off this
+    -- character's own list write them just before that read. Any other raw event handler
+    -- that reads the list, and the job file's Cycle_Timer, reads it as GearSwap left it.
+    --
+    -- A prediction starts from a result: this character's own job ability that reaches it, or
+    -- this character's entry in another player's spell or ability. A buff the list already
+    -- holds is never predicted. A prediction ends when Windower reports the buff gained or
+    -- lost, when this character's next spell, shot or weaponskill ends, at a zone change, for a
+    -- roll at the bust that takes it away, or BUFF_PREDICTION_SECONDS after its result. The
+    -- deadline is checked at each write, never on a timer, and a prediction that reaches it
+    -- prints one info line. Every end but the buff's arrival takes the written entries back out
+    -- of the list, unless the game's own list holds the buff.
+
+    -- The standing predictions, by the buff's lowercased English name, and how many. Every
+    -- write site reads n first and does nothing more while it is zero. The table is never
+    -- replaced, so each component binds it once.
+    local buff_prediction = { n = 0, by_name = {} }
+
+    -- Every id each lowercased English buff name carries, built the first time a name is
+    -- looked up.
+    local buff_ids_by_name
+
+    -- The ids a lowercased buff name carries, or nil for a name no buff carries.
+    local function buff_ids_of(name)
+        if not buff_ids_by_name then
+            buff_ids_by_name = {}
+            for id, row in pairs(res.buffs) do
+                if type(row) == 'table' and row.en then
+                    local key = row.en:lower()
+                    local ids = buff_ids_by_name[key]
+                    if not ids then
+                        ids = {}
+                        buff_ids_by_name[key] = ids
+                    end
+                    ids[#ids + 1] = id
+                end
+            end
+        end
+        return buff_ids_by_name[name]
+    end
+
+    -- Whether the game's own list holds a buff of the prediction's name. GearSwap keeps that
+    -- list in player.buffs, ids only, and no prediction is ever written there.
+    local function buff_held(rec)
+        local held, all = player.buffs, rec.all
+        if not held then return false end
+        for _, id in pairs(held) do
+            for i = 1, #all do
+                if all[i] == id then return true end
+            end
+        end
+        return false
+    end
+
+    -- Write one prediction into GearSwap's list: its name and each of its ids, wherever the
+    -- list lacks one. An entry the list holds is left as GearSwap counted it.
+    local function write_prediction(rec)
+        if buffactive[rec.name] == nil then buffactive[rec.name] = 1 end
+        local ids = rec.ids
+        for i = 1, #ids do
+            if buffactive[ids[i]] == nil then buffactive[ids[i]] = 1 end
+        end
+    end
+
+    -- End one prediction. unwrite takes its entries back out of GearSwap's list, unless the
+    -- game's own list holds the buff, so no reader finds a prediction that has ended. The
+    -- buff's arrival leaves them, since GearSwap lists the buff itself from then on.
+    local function drop_prediction(rec, unwrite)
+        local by_name = buff_prediction.by_name
+        if by_name[rec.name] ~= rec then return end
+        by_name[rec.name] = nil
+        buff_prediction.n = buff_prediction.n - 1
+        if unwrite and not buff_held(rec) then
+            buffactive[rec.name] = nil
+            local ids = rec.ids
+            for i = 1, #ids do buffactive[ids[i]] = nil end
+        end
+    end
+
+    -- Start a prediction, unless GearSwap's list holds the buff's name already or a prediction
+    -- of it stands. Given id, the buff a result names, it writes that id and the buff's name.
+    -- Given a name instead, a buff named by its ability, lowercased, it writes the name and
+    -- every id the name carries, since the result does not say which one the game will list.
+    -- from names the action, for the line a lapse prints. The prediction is written at once,
+    -- so the rest of the event that starts it reads it.
+    local function predict_buff(id, name, from)
+        local ids
+        if id then
+            local row = res.buffs[id]
+            if not (row and row.en) then return end
+            name, ids = row.en:lower(), { id }
+        else
+            ids = name and buff_ids_of(name)
+            if not ids then return end
+        end
+        if buffactive[name] ~= nil or buff_prediction.by_name[name] then return end
+        local all = buff_ids_of(name)
+        local rec = { name = name, ids = ids, all = all, label = res.buffs[all[1]].en, from = from,
+            ends = os.clock() + BUFF_PREDICTION_SECONDS, ending = false }
+        buff_prediction.by_name[name] = rec
+        buff_prediction.n = buff_prediction.n + 1
+        write_prediction(rec)
+        log('Predicting ', rec.label, ' from ', tostring(from), ' until the buff list shows it')
+    end
+
+    -- Write every standing prediction into GearSwap's list. One past its deadline ends here
+    -- instead and prints its line. at_hook is true when GearSwap called the engine for this
+    -- event. Then a prediction an action's end has marked ends here with no info line, since
+    -- the raw action event of that end has passed or is not coming. The burst checks inside
+    -- the raw action event pass false, because the result they read may be the one that
+    -- ends the prediction. Assigning nil to an existing key during a pairs walk is defined in
+    -- Lua 5.1, so an ended prediction is dropped where it is found.
+    local function write_buff_predictions(at_hook)
+        local now = os.clock()
+        for _, rec in pairs(buff_prediction.by_name) do
+            if at_hook and rec.ending then
+                drop_prediction(rec, true)
+                log('Prediction of ', rec.label, ' ended with your action')
+            elseif now >= rec.ends then
+                drop_prediction(rec, true)
+                info('[' .. tostring(rec.from) .. '] ' .. rec.label .. ' did not reach your buff list within '
+                    .. BUFF_PREDICTION_SECONDS .. ' s of its result: no longer predicted.')
+            else
+                write_prediction(rec)
+            end
+        end
+    end
+
+    -- Windower reported a buff gained or lost, so the prediction of that buff's name ends. A
+    -- gain leaves the written entries, which GearSwap's list now backs.
+    local function end_buff_prediction(id, gained)
+        local row = res.buffs[id]
+        local rec = row and row.en and buff_prediction.by_name[row.en:lower()]
+        if not rec then return end
+        drop_prediction(rec, not gained)
+        log('Prediction of ', rec.label, gained and ' ended: the buff arrived' or ' ended: the buff was lost')
+    end
+
+    -- This character's spell, shot or weaponskill ended, at its aftercast, and every standing
+    -- prediction ends with it. GearSwap's aftercast runs ahead of the raw action event of the
+    -- same result, so each is only marked here, and the raw handler, which reads the list for
+    -- that result, ends it after its reads.
+    local function mark_buff_predictions_ending()
+        for _, rec in pairs(buff_prediction.by_name) do rec.ending = true end
+    end
+
+    -- At the raw action event of this character's own result, the predictions its aftercast
+    -- marked end, as any other end does.
+    local function end_ending_buff_predictions()
+        for _, rec in pairs(buff_prediction.by_name) do
+            if rec.ending then drop_prediction(rec, true) end
+        end
+    end
+
+    -- A zone change ends every prediction.
+    local function end_all_buff_predictions()
+        for _, rec in pairs(buff_prediction.by_name) do drop_prediction(rec, true) end
+    end
+
+    -- Whether a set keyed by a buff, or picked on it by the engine, is dressed on a
+    -- prediction: one of the buff's name stands and the game's own list does not hold it. buff
+    -- is a name in any casing or an id. The report asks only while a prediction stands.
+    local function buff_shown_predicted(buff)
+        local name = buff
+        if type(buff) == 'number' then
+            local row = res.buffs[buff]
+            name = row and row.en
+        end
+        if type(name) ~= 'string' then return false end
+        local rec = buff_prediction.by_name[name:lower()]
+        return rec ~= nil and not buff_held(rec)
+    end
+
+    -- The buff a job ability's result gives. First the buff the result's number names, when
+    -- that buff is the ability's own: named like the ability, or the one the ability's
+    -- resource row lists. Otherwise, unless by_number, a buff named like the ability, by its
+    -- lowercased name, since the result does not say which id. Otherwise the row's buff.
+    -- Returns the id, or nil and the name, or nil alone.
+    local function ability_buff(ability_id, number, by_number)
+        local row = res.job_abilities[ability_id]
+        if not (row and row.en) then return nil end
+        local named = number and res.buffs[number]
+        if named and named.en and (named.en:lower() == row.en:lower() or row.status == number) then
+            return number
+        end
+        if by_number then return nil end
+        local name = row.en:lower()
+        if buff_ids_of(name) then return nil, name end
+        if row.status and res.buffs[row.status] then return row.status end
+        return nil
+    end
+
+    -- Start or end a prediction from a spell's or a job ability's result, handed over by the
+    -- raw action event. A bust that takes a roll from this character ends that roll's
+    -- prediction. On this character's own job ability, its own entry carrying the game's line
+    -- for an ability used or for a roll received starts one for the buff ability_buff names.
+    -- When the ability was aimed at this character, its aftercast has already predicted any
+    -- buff the result's number names. On another player's spell or ability, this character's
+    -- entry giving a buff by its number, or a roll by the ability, starts one. Only a player's
+    -- action starts one, never a monster's, a pet's or a trust's, and the actor is looked up
+    -- only once this character's entry gives a buff.
+    local function predict_from_action(data)
+        local me = player.id
+        local targets = data.targets
+        local entry
+        for i = 1, #targets do
+            if targets[i].id == me then
+                entry = targets[i]
+                break
+            end
+        end
+        local action = entry and entry.actions and entry.actions[1]
+        if not action then return end
+        local message = action.message
+        local actor, category = data.actor_id, data.category
+        -- A bust takes the roll away from this character, and a roll the game never listed sends
+        -- no loss, so the roll's prediction ends here, at once and with no info line, whoever
+        -- busted.
+        if category == 6 and message == ROLL_BUST_MESSAGE then
+            local id, name = ability_buff(data.param, nil)
+            local row = id and res.buffs[id]
+            local rec = buff_prediction.by_name[row and row.en and row.en:lower() or name or '']
+            if rec then
+                drop_prediction(rec, true)
+                log('Prediction of ', rec.label, ' ended: the roll busted')
+            end
+            return
+        end
+        if actor == me then
+            if category == 4 or not (message == ABILITY_USED_MESSAGE or ROLL_GAIN_MESSAGE[message]) then return end
+            local id, name = ability_buff(data.param, action.param)
+            if id or name then predict_buff(id, name, res.job_abilities[data.param].en) end
+            return
+        end
+        local id, name
+        if BUFF_GAIN_MESSAGE[message] then
+            id = action.param
+            if not res.buffs[id] then return end
+        elseif category ~= 4 and ROLL_GAIN_MESSAGE[message] then
+            id, name = ability_buff(data.param, action.param)
+            if not (id or name) then return end
+        else
+            return
+        end
+        local mob = get_mob_by_id(actor)
+        if not mob or mob.is_npc then return end
+        local row = category == 4 and res.spells[data.param] or res.job_abilities[data.param]
+        predict_buff(id, name, row and row.en)
+    end
+
     -- Recast helpers ------------------------------------------------------------------------------
 
     -- How many Scholar stratagem charges are in hand, and how many seconds until the next one
@@ -1143,10 +1676,9 @@ return function(E)
         end
     end
 
-    -- The main job's level as the drop test at line 199 of GearSwap's equip_processing.lua
-    -- reads it: the job's real level from player.jobs, never the synced one. main_job_level
-    -- is the fallback when that table is absent. Both wearability tests below read the level
-    -- here.
+    -- The main job's level as the level test in GearSwap's unpack_equip_list reads it: the
+    -- job's real level from player.jobs, never the synced one. main_job_level is the fallback
+    -- when that table is absent. Both wearability tests below read the level here.
     local function main_job_level()
         return (player.jobs and player.jobs[player.main_job]) or player.main_job_level
     end
@@ -1256,10 +1788,10 @@ return function(E)
     end
 
     -- Whether the main job can wear this candidate, by the first two drop tests in GearSwap's
-    -- equip_processing.lua: the job mask and the job's level. A piece GearSwap would drop
-    -- never displaces the job file's own. Unlike unwearable_reason it builds no message,
-    -- since it runs on every elemental cast and weapon skill, and the cape fails the job
-    -- mask on most melee jobs.
+    -- unpack_equip_list: the job mask and the job's level. A piece GearSwap would drop never
+    -- displaces the job file's own. Unlike unwearable_reason it builds no message, since it
+    -- runs on every elemental cast and weapon skill, and the cape fails the job mask on most
+    -- melee jobs.
     local function candidate_wearable(name)
         local row = CANDIDATE_ROW[name]
         local job_level = main_job_level()
@@ -1403,8 +1935,6 @@ return function(E)
     E.gs_debug = gs_debug
     E.HasRecastTimer = HasRecastTimer
     E.RecastTimers = RecastTimers
-    E.BUFF_ACCESSION = BUFF_ACCESSION
-    E.BUFF_DIVINE_SEAL = BUFF_DIVINE_SEAL
     E.BUFF_SLEEP = BUFF_SLEEP
     E.BUFF_STUN = BUFF_STUN
     E.BUFF_KO = BUFF_KO
@@ -1419,12 +1949,39 @@ return function(E)
     E.DeathMessages = DeathMessages
     E.Storms = Storms
     E.UtsusemiSpell = UtsusemiSpell
+    E.ENHANCING_FAMILY_SPELL = ENHANCING_FAMILY_SPELL
+    E.RA_MODE_PHRASE = RA_MODE_PHRASE
     E.Divergence_Zones = Divergence_Zones
     E.Mage_Job = Mage_Job
     E.Cities = Cities
     E.Language = Language
     E.skillchains = skillchains
+    E.BURST_WINDOW = BURST_WINDOW
+    E.BURST_WINDOW_FLOOR = BURST_WINDOW_FLOOR
+    E.HELIX_WINDOW_BONUS = HELIX_WINDOW_BONUS
+    E.BURST_LANDING_LEAD = BURST_LANDING_LEAD
+    E.BURST_ENDER_RESOURCE = BURST_ENDER_RESOURCE
+    E.SKILL_MISS_MESSAGE = SKILL_MISS_MESSAGE
+    E.HELIX_SPELL = HELIX_SPELL
+    E.CHAIN_ELEMENT = CHAIN_ELEMENT
+    E.SPELL_DAMAGE_MESSAGE = SPELL_DAMAGE_MESSAGE
+    E.BLUE_AFFINITY_HOLD = BLUE_AFFINITY_HOLD
+    E.CHAIN_AFFINITY_ID = CHAIN_AFFINITY_ID
+    E.ABILITY_USED_MESSAGE = ABILITY_USED_MESSAGE
+    E.BLUE_PHYSICAL = BLUE_PHYSICAL
+    E.IMMANENCE_ID = IMMANENCE_ID
+    E.IMMANENCE_HOLD = IMMANENCE_HOLD
+    E.IMMANENCE_SPELL = IMMANENCE_SPELL
+    E.BURST_REDRESS_GAP = BURST_REDRESS_GAP
     E.PRECAST_FINAL = PRECAST_FINAL
+    E.PET_COMMAND_TYPES = PET_COMMAND_TYPES
+    E.PET_JOBS = PET_JOBS
+    E.SPIRITS = SPIRITS
+    E.PET_MOVE_STALE = PET_MOVE_STALE
+    E.PET_MOVE_COMMANDS = PET_MOVE_COMMANDS
+    E.PET_COMMAND_WINDOW = PET_COMMAND_WINDOW
+    E.PET_COMMAND_FAMILY = PET_COMMAND_FAMILY
+    E.PET_COMMAND_FAMILY_BY_NAME = PET_COMMAND_FAMILY_BY_NAME
     E.CANON_SLOT = CANON_SLOT
     -- The elemental tables builders.lua reads for its per-cast inputs, the three ids its
     -- guards compare, and the sash's name, which its info line tests. NONE_ID marks the
@@ -1444,6 +2001,8 @@ return function(E)
     E.ability_info = ability_info
     E.debug = debug
     E.get_time = get_time
+    E.expected_cast_seconds = expected_cast_seconds
+    E.lost_end_seconds = lost_end_seconds
     E.finish_outgoing_cast = finish_outgoing_cast
     E.outgoing_cast_busy = outgoing_cast_busy
     E.count_keys = count_keys
@@ -1454,8 +2013,22 @@ return function(E)
     E.unwearable_reason = unwearable_reason
     E.have_item_count = have_item_count
     E.elemental_choose = elemental_choose
+    -- The buff prediction: its record, which every write site reads, the start and the write
+    -- the hooks and the builders call, the exits, the report's question, the aftercast's
+    -- lookup of the buff a job ability gives, and the result reader th.lua's action handler
+    -- hands spells and abilities to.
+    E.buff_prediction = buff_prediction
+    E.predict_buff = predict_buff
+    E.write_buff_predictions = write_buff_predictions
+    E.end_buff_prediction = end_buff_prediction
+    E.mark_buff_predictions_ending = mark_buff_predictions_ending
+    E.end_ending_buff_predictions = end_ending_buff_predictions
+    E.end_all_buff_predictions = end_all_buff_predictions
+    E.buff_shown_predicted = buff_shown_predicted
+    E.ability_buff = ability_buff
+    E.predict_from_action = predict_from_action
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

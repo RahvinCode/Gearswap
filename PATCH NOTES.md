@@ -3,12 +3,12 @@
 Release-by-release detail for Rahvin GearSwap, and for the Mirdain-era releases it grew from.
 
 The [README](README.md) describes what the engine does **now**. This file records
-**what changed and when**, newest first, and keeps every release. Check your running
+**what changed and when**, newest first, and keeps every release. Check the running
 version in game with `//gs c version`.
 
-Each release is broken into the same four headings, so you can scan for what matters:
+Each release is broken into the same four headings, so a reader can scan for what matters:
 
-- **Notices** — changes that need something from you before they take effect.
+- **Notices** — changes that need something from the player before they take effect.
 - **New and Changed Features** — what the release adds or does differently.
 - **Optimizations** — the same behavior, cheaper.
 - **Bug Fixes** — things that now work as intended.
@@ -22,6 +22,7 @@ revisions and sample job files alike — was conceived and programmed by **Rahvi
 
 | Version | Summary |
 |---|---|
+| [2.2](#22) | Magic bursts timed to the landing on every monster; midcast sets by mode, target, spell and burst; the buff level; pet commands and pet moves dressed apart; songs that keep their instrument; every sample job file refreshed |
 | [2.1](#21) | Buff sets worn while a buff is up, day and weather gear chosen by what it adds, weapons kept in hand through every weaponskill, your own mode keys, one settings file per character |
 | [2.0](#20) | Rahvin GearSwap: new name, new folder; four display styles and the slot rig; the weapon lock on F10; the disable and strip holds; the capacity cape and Dynamis neck locks; a much larger gear library |
 
@@ -39,6 +40,192 @@ Rahvin**; 2.0 above follows 1.7.3 directly.
 | [1.6.4](#164) | 196 blue magic spells classified; item-search bag list corrected |
 | [1.6.0 – 1.6.3](#160--163) | The initial enhancement work over Mirdain 1.5.x |
 | [1.5.12](#1512) | Mirdain's original |
+
+---
+
+## 2.2
+
+I'm proud to present Rahvin GearSwap 2.2.0 This patch focuses heavily on sophisticated magic burst detection, midcast modes, buff-detection and general feature enhancements. It also includes a complete overhaul of pet jobs and a full sample job file refresh to showcase the new set possibilities. Please take a look at the notices, especially regarding legacy Mirdain files (they still work, but you will be missing out on, or counteracting significant portions of the engine for many jobs). I promise you, the new set possibilities are worth the time and effort for you to convert to the new samples. I'm very interested to hear feedback on how everyone is further customizing their sets or finding that the samples are not teaching or covering prominent gameplay needs. Highlights of the patch are listed below, with a link to the full patch notes (PATCH NOTES.md) and the release download on my GitHub. Enjoy and let me hear your feedback.
+
+**Update Highlights**
+
+- **Magic bursts detected and gear asserted for all spell types.** Every monster keeps its own burst window, opened by anyone's skillchain. A spell is dressed for a burst when it will land inside the window, or mid-cast, the moment a matching chain lands, and removed for regular casting gear if the window closes mid-flight.
+- **Midcast child sets.** Every casting set can carry target-specific children for an offense mode in `Self` or `Others`, a set specific for the spell's name, or gear specific for bursting with `Burst`.
+- **Buff Level on Alt+F12.** A new switch, `MidBuff` or `HighBuff`, tells the engine how heavily buffed the character is, apart from the offense mode. At `HighBuff`, every weaponskill adds its `HighBuff` set over its usual gear, in any offense mode. The samples keep their physical damage limit gear there, and drop the PDL offense mode.
+- **Pet jobs rebuilt.** Sets for the pet command (Ready, Blood Pact by master, etc) and for the pet's midcast (Blood Pact Rage, Automaton Cast, etc), by family and category, the automaton's weaponskill set, sets for a fighting pet, and an automated pet mode chooser that's updated by which pet is active.
+- **Songs keep their instrument** from start to finish to avoid clobbering with ammo pieces from precast and midcast sets, and `sets.Midcast.Songs` is now available, to provide a seaparate midcast mode that is the base set for all songs and can be further refined by song-family sets.
+- **Buffs count as up a moment before the game lists them**, so an action pressed right after a buff already wears its sets.  Using an ability, receiving a roll or spell cast, and other buff-bestowing events are now predicted from the cast before it lands, and confirmed or denied by aftercast and the game's buff listing to prevent interrupted or failed events from keeping the prediction.  You can now do things link Saboteur directly into an enfeeble and gain the benefit rather than missing a cast due to the game's lagging buff status packet.
+- **Every sample job file refreshed**, with a set for everything the job and its common support jobs can use. Stubbed out sets for all of the new functionality, tailored to each job's needs, is now available in every sample job file. Comments with explanations of sets are also now present to help guide you.
+- **A larger gear library**: Over 5,000 entries, now with every Beastmaster jug, pet food, oil, animator and avatar ammo.
+
+**Refinement Highlights**
+
+- **Every action keeps its gear until it finishes.** Spells, shots, abilities and item uses hold their gear until the game reports them done, and buff or status changes wait for that moment. If the report never comes, the engine lets new actions through once GearSwap gives up on the old one, and prints a chat message saying so. This means that actions such as a mob dying during midcast keeps it's gear on rather than asserting your idle set while still casting a friendly-targeted spell.
+- **A commanded pet move holds new actions** until it ends, so the move keeps its set. A move the pet makes on its own holds nothing. For instance, blood pact pet midcast gear is held until the pet aftercast when initiated by the user, but wyvern breath midcast can be overwritten by a weaponskill or other character action when the pet midcast happens without your command. Lots of depth to this, so take a look at the README if you're a pet job fan.
+- **`//gs disable` and `//gs enable` run the engine's disable hold**, and a disabled slot keeps gear put on it by hand. No more confusion regarding gs c enable/disable versus gs enable/disable.  I've hijacked the native function to do our bidding.
+- **Tier-one Refresh, Regen and Phalanx** wear the enhancing set under their own, as their higher tiers do.
+- **Double-Up wears its own set** where a job file declares one and will not automatically wear Phantom Roll sets on every Double-Up. Save your TP, pirates. 
+- **New warnings at load** point out sets the engine cannot use as written. Watch the chat messages at job change or first load for any notices regarding unusable sets declared in your job file. See the README and new Sample Job Files for a full list of available sets.
+
+**Optimization and Bug Fix Highlights**
+
+- **Pet commands swap fewer slots**: only those their own sets name.
+- **Dual Wield gear stays off a two-handed or hand-to-hand weapon.**
+- **Call Beast and Bestial Loyalty always put on the jug.**
+- **No false `not found!` warnings** for sets the engine supplies.
+- **The LATTICE panel frames the whole status box after a reload.**
+
+**[Download Rahvin GS 2.2](https://github.com/RahvinCode/Gearswap/releases/tag/2.2.0)**
+
+### **Full Patch Notes for 2.2**
+
+### Notices
+
+- **Older job files still work, and work against much of the engine.** A job file written for 2.1, or for Mirdain-Include, loads and plays. Its hooks' gear goes on over the engine's buff, burst and mode sets, its `set_combine` copies put base pieces back over the sets layered between, and a Mirdain file's own blue magic lists replace the engine's. Open the 2.2 sample for the job and move the gear into its layout. [Job files written before 2.2](https://github.com/RahvinCode/Gearswap/blob/master/README.md#job-files-written-before-22), in the README, walks through it.
+- **Rewrite `set_combine` copies as plain tables.** In a file built from a 2.1 sample, rewrite each copy among `sets.Idle.Resting`, `sets.Idle.Sublimation`, `sets.Idle.Pet`, the weaponskill mode sets, and the enhancing and enfeebling families as `{ ... }` with only its own pieces, as the 2.2 samples are written.
+- **Pet job files.** `sets.Midcast.BP` and `sets.Ready` are never read. A command's delay gear goes in `sets.Pet_Command.BloodPact` or `sets.Pet_Command.Ready`, and a move's gear in the pet move sets. A Summoner or Beastmaster file that sorts moves in its own code, with the pet lists of 2.1 and earlier, keeps working, and a chat message at load says the file is out of date. A message at load also names each retired set the file declares.
+- **Tables inside midcast sets are worn by name.** A table placed inside a family set such as `sets.Midcast.Cure`, or inside a spell's own set, goes on automatically when its name matches the cast: an offense mode, as `sets.Midcast.Nuke.ACC` in ACC mode, `Self` or `Others`, `Burst`, or a spell, as `sets.Midcast.Nuke['Fire VI']`. Directly inside `sets.Midcast`, an offense mode, `Self` or `Others` works the same way. Rename any such table a job file keeps for its own code, or it is worn on every matching cast. `sets.Midcast.ACC` goes on under every spell in ACC mode, and a warning at load points it out when it holds gear.
+- **Alt+F12 is bound to Buff Level**, replacing any other Windower bind on it. `gs c keybind bufflevel none` frees it.
+- **Double-Up wears `sets.JA['Double-Up']`** where a file declares it, even empty, in `sets.PhantomRoll`'s place. Delete an empty declaration to keep the roll set.
+- **`//gs disable <slot>` and `//gs enable <slot>`** run `gs c disable` and `gs c enable`, and answer with the engine's messages.
+
+**Copying a 2.2 sample file:**
+
+- **Every set is there, most of them empty.** Each sample declares a set for everything its job and common support jobs can use, with a comment saying when the engine wears it. `gs c checksets` lists the empty ones, and with `gs c warn` on, an empty set the engine picks for an action says so, until it holds gear or its line is deleted.
+- **The PDL mode is gone.** Its weaponskill gear sits in the `HighBuff` sets, worn at Buff Level `HighBuff`, and the engaged and shot PDL sets are removed. A file's own PDL mode still works.
+- **New casting modes.** The BLM, BLU, GEO, NIN, RDM and SCH samples offer `MB`, and BLM, GEO, RDM and SCH offer `Occult`, with idle and engaged sets that start as copies of the DT sets.
+- **Starting values sit at the top.** Each sample declares its weapon lock, its Buff Level and its job modes with a `:set()` call, so the values the file loads with can be changed there.
+- **Renamed and moved sets.** `sets.Precast.Enmity` is `sets.Enmity` in the PUP, SAM and WAR samples. PLD and RUN wear magic evasion through `sets.Midcast.MEVA` and its children, on spells only, and BST, PUP and BLU keep Warder's Charm in `sets.WS.MEVA`, with no job-file code for either. The BRD sample keeps the gear every song shares in `sets.Midcast.Songs`. DRK's Dread Spikes gear is in `sets.Midcast['Dread Spikes']`, DRG's breath sets follow the pet move categories, and BST's jug mode `AcuexFamiliar` is `FluffyBredo`.
+
+### New and Changed Features
+
+**Magic bursts**
+
+- **A burst window per monster.** A skillchain on one monster leaves every other monster's window alone.
+- **Chains from anyone.** Players, trusts, jug pets, automatons and avatars' blood pacts all open windows, on any monster.
+- **Timed to the landing.** A monster's first chain opens a 9 second window, each chain continued inside it a second less down to 5, and a chain a helix closes 2 seconds more. A cast is judged for the moment it is expected to land: a fifth of its listed cast time, which assumes 80% fast cast, plus 0.6 seconds.
+- **Any spell aimed at a monster can burst** when the chain carries its element. The exceptions: a Geomancy spell, blue magic without Burst Affinity or Azure Lore, a physical blue spell under Burst Affinity alone, an elemental spell cast under Immanence, and a spell aimed at anything but a monster.
+- **What ends a window early**, with the full rules in the README's [How a burst window works](https://github.com/RahvinCode/Gearswap/blob/master/README.md#how-a-burst-window-works):
+  - a weaponskill, TP move or blood pact with a skillchain property that lands without making a chain;
+  - a physical blue spell that hits under Chain Affinity or Azure Lore;
+  - a Scholar's single-target elemental spell under Immanence that deals damage without making a chain;
+  - zoning, which clears every window.
+- **Burst sets for every family.** A burst wears the `Burst` child of each set it merges, such as `sets.Midcast.Nuke.Burst`, `sets.Helix.Burst` or `sets.Midcast['Death'].Burst`. A file with no `sets.Midcast.Burst` bursts in `sets.Midcast.Nuke` and its `Burst` child. Blue magic takes its category's child, such as `sets.Midcast.BlueMagic.Nuke.Burst`.
+- **Burst gear mid-cast.** A chain carrying the cast's element puts a spell in flight into its burst gear. A move that ends the window early, or a chain without the element, takes the gear back off while 0.6 seconds or more of the cast remains, and says so: `[Thunder VI] Burst window ended: burst set taken off`. Each change prints the cast's info message again.
+- **`[spell] Burst Detected!`** prints for every cast dressed for a burst, with `gs c info` on.
+
+**Midcast children**
+
+- **Casting sets that follow the cast.** Under `sets.Midcast`, any family set and any spell's own set, a child keyed by an offense mode, `Self`, `Others`, a spell's name or `Burst` goes on right after its parent when the cast matches: `sets.Midcast.Nuke.Occult`, `sets.Midcast.Cure.Self`, `sets.Midcast.Nuke['Fire VI']`, `sets.Midcast.Nuke.Burst`.
+- **Up to three keys, in any order**, as `sets.Midcast.Burst['Thundara III'].Occult`.
+- **`sets.Midcast.ACC`** is worn in ACC mode under every spell.
+- **Warnings at load** point out a miscased key, a child written under a buff set, a spell's name that its family set would override, an offense mode named `Burst`, `Self` or `Others`, and a `sets.Midcast.BlueMagic.Burst`, which no blue spell wears.
+
+**Buff Level**
+
+- **A switch for how heavily buffed the character is**, `MidBuff` or `HighBuff`, separate from the offense mode. Alt+F12 or `gs c bufflevel` cycles it, a `BUF` row on the status box shows it, and only weaponskills read it.
+- **At `HighBuff`**, a weaponskill wears its own `HighBuff` set, or `sets.WS.HighBuff` where it has none, then the set for its mode and level together, such as `sets.WS['Savage Blade'].ACC.HighBuff`. At `MidBuff`, only a weaponskill's own `MidBuff` set is read.
+- **A warning at load** points out a buff level set no weaponskill reads.
+
+**Actions in flight**
+
+- **Every action keeps its gear until it ends.** From precast to the action's end, a buff, a status change, a disengage, a mode or lock command, a hold's release, a received cast's end or a Treasure Hunter retarget waits, and the action's end dresses for the new state. A job file's own buff and status hooks still run on time, and gear they return mid-action is not worn.
+- **A new action is refused while one is under way**, a shot, an ability or an item use as much as a spell, under Nightingale and Chainspell too. A sleep, stun, terror, petrification or charm that stops a cast, a cancel in precast, and a zone change each let the next action through at once.
+- **When an action's end never arrives**, the engine lets new actions through once GearSwap gives up on it, and prints a chat message: `[Valor Minuet IV] sent no end: actions were held 11.0 s.`
+- **Using an item on an NPC does not hold the next action.**
+
+**Buffs counted early**
+
+- **A buff counts as up as soon as the game reports the action that gives it**, a moment before it reaches the buff list: the buffs of the character's own job abilities, rolls and Double-Up included, and every buff another player's spell or ability gives the character. Buff sets, the engine's own buff checks and a job file's `buffactive` checks all see it.
+- **The info message marks it** `[Used, predicted]`, and the gear trace `[Filled, predicted]`. A buff the game never lists is dropped two seconds later, with a chat message saying so.
+
+**Songs**
+
+- **The instrument stays for the whole song.** From the song's midcast, or its precast under Nightingale and for Honor March and Aria of Passion, the instrument holds range and the ammo slot stays empty until the song ends. Received gear cannot take range or ammo during the song, and the rig shows both slots held.
+- **`sets.Midcast.Songs`** holds the gear every song but a dummy song shares, under the song's own, enfeebling and family sets, and under Nightingale too.
+
+**Pet Job Changes**
+
+*Every pet job*
+
+- **Commands and moves dressed apart.** A pet command wears `sets.Pet_Command`, its family (`BloodPact`, `Ready` with Sic, or `Maneuver`) and its own set, over the idle or engaged gear and with no fast-cast or midcast sets. The pet's move wears `sets.Pet_Midcast`, its family (`BloodPact`, `Ready` or `Wyvern`), its category (`Physical`, `Magical`, `Hybrid`, `Multi`, `Debuff`, `Buff`, `Healing` or `Breath`) with the category's offense-mode child, then `TPBonus` and its own set, from the readying to the finish.
+- **A commanded move holds new actions** until the move ends. If the pet readies nothing, the hold ends after two seconds, and if the move's end never arrives, three seconds after the readying. A refused action names the move, as `Can't use Cure IV while Garuda's Predator Claws is in flight.`, and buff, status and movement changes wait for it. `PetMoveHold = false` turns the hold off. A move the pet makes on its own holds nothing.
+- **Gear while the pet fights.** `sets.Idle.Pet.Engaged` goes on over `sets.Idle.Pet` while the pet fights and the character stands idle, and each change in the pet's status rebuilds the gear.
+- **A pet mode on JobMode2.** Its value names a child of the pet sets and, while a pet is out, of the offense mode's engaged set. Under `Auto`, the job file's `Pet_Modes` picks the value for the pet out, shown as `Auto (Tank)`.
+- **Buff sets work under `sets.Pet_Command`**, such as `sets.Pet_Command.Ready.Unleash`.
+- **Two kinds of move wear no set**: a spirit's own spells and the automaton's weaponskills. A move readied during the character's own cast goes without its set, and its info message says so.
+
+*BST*
+
+- **Ready moves** wear `sets.Pet_Midcast.Ready` and their category, and every move of a jug or charmed pet takes the Ready family. A Ready command or Sic wears `sets.Pet_Command.Ready`.
+- **The sample's pet mode**, `Tank` or `DD`, adds Gleti's Gauntlets or Incarnation Sash over its TP set while the pet is out.
+
+*SMN*
+
+- **Blood pacts** take their delay gear from `sets.Pet_Command.BloodPact`, and their damage gear from `sets.Pet_Midcast.BloodPact`, its categories and `TPBonus`. Under Astral Conduit a pact swaps no gear at the command.
+- **Spirits** wear their gear while they fight, through the pet mode's `Spirit` child, since their own spells wear no set.
+- **The sample's pet mode** follows the avatar out: its `Carbuncle` and `Cait Sith` children carry Asteria Mitts +1 and Lamassu Mitts +1.
+
+*PUP*
+
+- **`sets.Pet_WS`** goes on from the automaton's TP, at `PetWSThreshold` (600 by default) or more, under the Pet WS mode on the first job mode: `Idle`, `Always` or `Off`. It takes children by frame and by offense mode, and the weaponskill's info message says whether the set was on.
+- **Maneuvers** wear `sets.Pet_Command.Maneuver`.
+- **The pet mode** reads the automaton's attachments, then its frame and head, from `Pet_Modes`. The sample's `Melee` child adds Shulmanu Collar over its TP set.
+- **A set named for an automaton weaponskill or nuke under `sets.Pet_Midcast`** draws a warning at load, since the game reads that gear before the set could go on.
+- **The oil's key is `gear.automatonOilPlusThree`**, and the 2.1 key, `gear.canOfAutomatonOilPlusThree`, still works.
+
+*DRG and GEO*
+
+- **Wyvern moves** wear `sets.Pet_Midcast.Wyvern`, the elemental breaths `Breath` and the healing breaths `Healing`. Smiting Breath and Restoring Breath hold new actions like any commanded move.
+- **On a Geomancer, JobMode2 is the pet mode too**, naming children of `sets.Idle.Pet` for the luopan. The sample keeps its luopan gear code in its hooks, as an example of what a hook is for.
+
+**Holds, keys and commands**
+
+- **`//gs disable <slot>` and `//gs enable <slot>`** run the engine's disable hold and answer with its messages. The bare words still switch the whole job file off and on.
+- **A disabled slot keeps a piece put on it** from the equipment menu or an `/equipset`, and a piece the game removes stays off until the slot is released.
+- **Enabling a slot another hold has** names that hold, as `Disable: main is held by the weapon lock`, and `gs c enable` also opens a slot GearSwap's own disable shut while no engine hold has it.
+- **`gs c help`** lists `bufflevel`, and `gs c keybind default` resets all nine keys.
+- **`gs c checksets`** leaves out `sets.Midcast.Skill` and `sets.Midcast.SummoningMagic`, which nothing reads.
+
+**Spells and abilities**
+
+- **Tier-one Refresh, Regen and Phalanx** wear the enhancing set under their own, as their higher tiers do.
+- **Double-Up** wears `sets.JA['Double-Up']` where a file declares it, and `sets.PhantomRoll` otherwise.
+- **A shot in an offense mode with no wording of its own** shows `Ranged Attack in <mode> mode` in its info message.
+
+**Display**
+
+- **A `BUF` row** shows the buff level in every style.
+- **A pet job set to `Auto`** shows the role it chose, as `Auto (Tank)`.
+- **A song's instrument and its empty ammo slot** show red on the rig, as the cast in progress.
+
+**Gear library**
+
+- **5,060 entries**: every Beastmaster jug, the pet foods from Alpha to Theta, Pet Poultice and Pet Roborant, the automaton oils and animators, the avatar ammo, Astral Pot, Demonry Core, Esper Stone and Esper Stone +1, Voluspa Tathlum, two Visucius's Mantles (`gear.pupDexDA` and `gear.pupSTP`) and `gear.rostam`.
+
+**Sample job files**
+
+- **Refreshed for every job**: a set for everything the job and its common support jobs can use, empty where the sample has no gear, each with a comment saying when the engine wears it. A set that would replace one the engine supplies is written commented out.
+- **Casting modes and children.** `ACC`, `Occult` and `MB` children on the casting sets where a job uses them, and commented `DT` and `MEVA` children on every spell family set.
+- **More empty sets ready to fill**: Aftermath sets for every job whose mythic, empyrean or aeonic weapon has an Aftermath that gear can help, casters included; precast Impact sets on WHM, RDM, DRK, SMN, SCH and GEO; a `sets.Weapons['Light Bonus']` in every sample that cures, empty in all but WHM's; a set for each weapon mode's signature weaponskill; commented `sets.WS.DT` and `sets.WS.MEVA`.
+- **Support jobs.** Each sample declares empty sets for what its common support jobs use, such as Curaga under /WHM or Utsusemi under /NIN, and Dark Knight joins the support jobs of BLM, WHM, SCH and GEO, for Absorb-TP.
+- **The engine's blue magic lists** serve PLD and RUN, which drop their own.
+- **Settings nothing reads are gone**: `Organizer`, and NIN's `elemental_ws` and `Cycle_Time`. A job file that still sets them loads and plays as before.
+
+### Bug Fixes
+
+- **Dual Wield gear stays off a two-handed or hand-to-hand weapon**, and the shield set stays off a hand-to-hand weapon.
+- **Call Beast and Bestial Loyalty put on the jug** even when the call has no set of its own.
+- **No false `not found!` warning** for a set the engine supplies, when resting or asleep before the first action, or after a job file rebuilds its sets, as the RNG sample does when its ammunition changes.
+- **Paralysis and silence print nothing while `AutoItem` is off.**
+- **A Geomancer's handbell reaches the midcast** even when range was bare before the cast.
+- **The LATTICE panel frames the whole status box after a reload**, once the box has drawn.
+- **A failed Accession or Divine Seal spreads nothing.**
+- **The Impact cloak and Yagrush go on for the spells alone**, never for the Impact blood pact or an item.
+- **The spell named Burst wears the nuke set** and bursts like any other nuke.
+- **The Utsusemi low-tool warning speaks** even when the spell has a precast set of its own.
+- **`AvatarList` matches the spirits and Siren**, spelled as GearSwap names them, such as `FireSpirit`.
+- **The BLU sample's key list at load names its Mode key.**
 
 ---
 

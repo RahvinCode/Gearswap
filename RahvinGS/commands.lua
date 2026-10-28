@@ -18,27 +18,28 @@
 -- COMPONENT: commands -- section 21: the self commands
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 21 - Everything reachable through 'gs c ...', in six parts:
+--   Section 21 - Everything reachable through 'gs c ...', in these parts:
 --     Argument handling ... command_arg, and the mode validator every mode command shares
---     The keybinds ........ the table of the eight key-bound modes, the keyspec grammar every
+--     The keybinds ........ the table of the key-bound modes, the keyspec grammar every
 --                           key passes through, the registry of the keys this load holds, and
 --                           the bind, release and key-list functions that lifecycle.lua calls
 --                           at load and unload and the keybind command calls on a change
 --     The argument table .. which commands take an argument, and so match on their first word
 --     The handlers ........ one per command, keyed by the exact command each answers
 --     The dispatcher ...... self_command, and the fall-through into the job file
---     Native words ........ the advisory line for GearSwap's own //gs disable and //gs enable
+--     Native words ........ GearSwap's own //gs disable <slot> and //gs enable <slot>, run as
+--                           gs c disable and gs c enable
 --
--- The commands serve three audiences:
+-- Where the commands come from:
 --     Typed by the player ... most of them: toggles, diagnostics and item shortcuts
---     Bound to a key ........ the eight modes lifecycle.lua binds, through keybind_apply, to
---                             the keys in settings.Keybinds. By default OffenseMode,
+--     Bound to a key ........ the modes lifecycle.lua binds, through keybind_apply, to the
+--                             keys in settings.Keybinds. By default OffenseMode,
 --                             TreasureHunter, WeaponLock and WeaponMode take F12 down to F9,
---                             and JobMode, JobMode2, Hoxne and SpellReceived take the same
---                             four keys with Ctrl.
---     Sent by the engine .... update auto, enchrepair, hoxnerelock and hoxnerelease. A raw
---                             event handler cannot equip, so it sends one of these, and the
---                             equip lands inside the wrapped command.
+--                             JobMode, JobMode2, Hoxne and SpellReceived take the same
+--                             four keys with Ctrl, and BuffLevel takes Alt+F12.
+--     Sent by the engine .... update auto, enchrepair, hoxnerelock, hoxnerelease and
+--                             burstredress. A raw event handler cannot equip, so it sends
+--                             one of these, and the equip lands inside the wrapped command.
 -- The key bindings send mixed case, such as 'gs c OffenseMode'. They resolve because the
 -- dispatcher lowercases a command before it looks anything up.
 --
@@ -53,22 +54,26 @@
 --          the gear rebuild, and then return true, so it runs once. Changing which commands
 --          reach the hook changes job-file behavior with no error anywhere. The shipped RNG
 --          file calls its ammunition routine from that hook on every command that reaches it.
--- EXPORTS  native_disable_notice, which the root registers on the addon command event, and
---          the keybind functions keybind_apply, keybind_release and keybind_list, which
+-- EXPORTS  intercept_native_words and restore_native_words, which put the native console
+--          words' interception into GearSwap's own table at the root and take it out at
+--          unload, and the keybind functions keybind_apply, keybind_release and keybind_list, which
 --          lifecycle.lua calls at load and unload. The mode table keybind_modes, the key
 --          registry keybinds_bound and the keyspec grammar are exported beside them:
---          keyspec_parse, keyspec_human and keyspec_valid_setting. self_command is a
---          global, which GearSwap looks up by name when a 'gs c' command arrives. The
---          dispatch table and its handlers stay private to this file.
+--          keyspec_parse, keyspec_human and keyspec_valid_setting. merge_move_layers, what a
+--          pet's move owes the update auto rebuild, which hooks.lua's aftercast and buff
+--          change also pay when each is the rebuild that waited.
+--          self_command is a global, which GearSwap looks up by name when a 'gs c' command
+--          arrives. The dispatch table and its handlers stay private to this file.
 -- LOADS    After every component it binds from, and before lifecycle.lua, which binds its
 --          keybind functions. equip_set_command belongs to the root, which loads last, so it
 --          is resolved when a command runs.
 
--- requires: rahvings/core, rahvings/equip, rahvings/enchant, rahvings/hoxne, rahvings/builders, rahvings/spellreceived, rahvings/display
+-- requires: rahvings/core, rahvings/equip, rahvings/enchant, rahvings/hoxne, rahvings/builders, rahvings/hooks, rahvings/spellreceived, rahvings/display
 return function(E)
     -- The exports this file uses, bound once at construction. The shared mutable fields are
-    -- never bound here. ench_active and lock_range are read through E at every touch,
-    -- because a local copy would not be the one the other components read and write.
+    -- never bound here. ench_active, lock_range, pet_move and burst_pending are read through
+    -- E at every touch, because a local copy would not be the one the other components read
+    -- and write.
     --
     -- The requires line names only the components these bindings come from. The globals the
     -- handlers call, such as equip, use_enchantment and the display box updates, are
@@ -89,13 +94,17 @@ return function(E)
     local display_styles, set_display_style = E.display_styles, E.set_display_style
     local display_visible, min_value_cells = E.display_visible, E.min_value_cells
     local display_logged_out = E.display_logged_out
+    local dress_midcast, pet_move_holds, rebuild_waits = E.dress_midcast, E.pet_move_holds, E.rebuild_waits
+    local merge_into, pet_mode_shown = E.merge_into, E.pet_mode_shown
+    local BURST_REDRESS_GAP, action_tag = E.BURST_REDRESS_GAP, E.action_tag
+    local buff_prediction, write_buff_predictions = E.buff_prediction, E.write_buff_predictions
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 21 - SELF COMMANDS
     ------------------------------------------------------------------------------------------------
-    -- Everything reachable through 'gs c ...': what a player types, what the eight key
-    -- bindings send, and the four commands the engine sends itself so that an equip lands
-    -- inside a wrapped event.
+    -- Everything reachable through 'gs c ...': what a player types, what the key bindings
+    -- send, and the commands the engine sends itself so that an equip lands inside a
+    -- wrapped event.
 
     -- Argument handling ---------------------------------------------------------------------------
 
@@ -167,12 +176,16 @@ return function(E)
 
     -- The keybinds --------------------------------------------------------------------------------
 
-    -- The eight key-bound modes in key-list order. Each row holds the command word, which is
-    -- also the key under settings.Keybinds, the label chat prints, the line of the key list
-    -- the row sits on, the shipped default in Windower's spelling, and the command the key
-    -- sends. The two job-mode rows also name, as ui, the job-file global that carries their
-    -- label. That name is read at print time, and the label here stands in when it is empty.
-    -- The sent command is mixed case, and the dispatcher lowercases it.
+    -- The key-bound modes, in the order they bind and release. The key list prints them one
+    -- line at a time, each line's rows in this order. Each row holds the command word, which
+    -- is also the key under settings.Keybinds, the label chat prints, the line of the key
+    -- list the row sits on, the shipped default in Windower's spelling, and the command the
+    -- key sends. The two job-mode rows also name, as ui, the job-file global that carries
+    -- their label. That name is read at print time, and the label here stands in when it is
+    -- empty. The sent command is mixed case, and the dispatcher lowercases it. A key two rows
+    -- name goes to the earlier row, so the buff level sits last, and a player who had already
+    -- given its key to another mode keeps that bind. The defaults repeat core.lua's settings
+    -- defaults, so a changed default goes in both.
     local keybind_modes = {
         { word = 'offensemode',    label = 'Stance',                    line = 1, default = 'f12',  command = 'gs c OffenseMode' },
         { word = 'weaponmode',     label = 'Weapon Mode',               line = 1, default = 'f9',   command = 'gs c WeaponMode' },
@@ -182,6 +195,7 @@ return function(E)
         { word = 'jobmode2',       label = 'Job Mode 2', ui = 'UI_Name2', line = 2, default = '^f11', command = 'gs c JobMode2' },
         { word = 'hoxne',          label = 'Hoxne Ampulla',             line = 2, default = '^f10', command = 'gs c Hoxne' },
         { word = 'spellreceived',  label = 'Spell Received (Multibox)', line = 2, default = '^f9',  command = 'gs c SpellReceived' },
+        { word = 'bufflevel',      label = 'Buff Level',                line = 1, default = '!f12', command = 'gs c BuffLevel' },
     }
 
     -- The job file's name for a job-mode row, which is empty when the file left the mode
@@ -253,7 +267,7 @@ return function(E)
     -- is the new character's block before the old file unloads.
     local bound = {}
 
-    -- Bind every mode's key from settings.Keybinds, in key-list order, in three passes.
+    -- Bind every mode's key from settings.Keybinds, in keybind_modes' order, in three passes.
     --
     -- The first pass resolves what each row wants. A value that is not a keyspec falls back
     -- to the row's default, with one line, and is not written back. A key an earlier row
@@ -298,7 +312,7 @@ return function(E)
         end
     end
 
-    -- Release every key this load bound, in key-list order, and forget it. Reads the
+    -- Release every key this load bound, in keybind_modes' order, and forget it. Reads the
     -- registry only.
     local function keybind_release()
         for _, row in ipairs(keybind_modes) do
@@ -365,6 +379,7 @@ return function(E)
     local command_takes_arg = {
         ["abysseaproc"] = true,
         ["aptitude"] = true,
+        ["bufflevel"] = true,
         ["capacity"] = true,
         ["debug"] = true,
         ["display"] = true,
@@ -409,15 +424,47 @@ return function(E)
     -- returning true silently takes that command away from every job file.
     local command_handlers = {}
 
-    -- Throttle on the [Empty] warning below, so a broken set list does not fill the log.
+    -- The os.clock time before which the [Empty] warning below stays quiet, so a broken set
+    -- list does not fill the log.
     local empty_set_gate = 0
 
+    -- What a pet's move owes the rebuild below. A move the pet's finish packet, its swing or
+    -- a zone change ended is closed, since each asked for a rebuild. A held move's record,
+    -- which reaches here only once its hold has ended, has nothing to close. Either way the
+    -- layer a held status or buff change kept on the record goes on, then the layer the job
+    -- file's pet_aftercast_custom or aftercast_custom gave when GearSwap ended the move after
+    -- the action handler had. A move still in flight owes nothing. hooks.lua's aftercast and
+    -- buff change pay the same when either is the rebuild that waited for a cast, and read
+    -- it from E.
+    local function merge_move_layers(built_set, move)
+        if not (move and (move.ended or move.held)) then return end
+        if move.ended then E.pet_move = nil end
+        if move.layer then merge_into(built_set, move.layer) end
+        if move.after_layer then merge_into(built_set, move.after_layer) end
+    end
+
     -- Rebuild the set the current modes call for, and wear it. equip_set_command sends this
-    -- command, and lifecycle.lua sends it at the end of a job change. A raw event handler
-    -- cannot equip, so code running inside one calls equip_set_command, and the equip lands
-    -- here, inside a wrapped command.
+    -- command, and lifecycle.lua's jobsetup, which a job file calls at load, sends it at the
+    -- end of its setup. A raw event handler cannot equip, so code running inside one calls
+    -- equip_set_command, and the equip lands here, inside a wrapped command.
+    --
+    -- A held pet's move makes it wait, whatever sent it, such as movement, a first Treasure
+    -- Hunter tag, an item's completion, a received spell or a sub job change. A zone change,
+    -- the pet's swing and its finish packet end the move before they send, so their rebuild
+    -- never waits on the hold, and it closes the move's record. A hold gone stale ends here
+    -- instead of waiting, and the rebuild pays what the move owes it.
+    --
+    -- The cast proper in flight makes it wait too, so the rebuild that a mode or lock
+    -- command, a received cast's end, its failsafe or a hold's release sends cannot pull a
+    -- cast's gear or a song's instrument off mid-cast. A lock command's own take of its slot
+    -- is not this rebuild, and still happens at once. The cast's aftercast is the rebuild
+    -- that waited.
     command_handlers["update auto"] = function(cmd, command)
+        local move = E.pet_move
+        if move and pet_move_holds(true) then return true end
+        if rebuild_waits() then return true end
         local built_set = build_current_set()
+        merge_move_layers(built_set, move)
         -- An empty result means no chosen set carries any gear, which is nearly always a job
         -- file mistake. Sleep is the one deliberate empty set, so it is excluded, and the
         -- warning repeats at most every 30 seconds.
@@ -636,7 +683,7 @@ return function(E)
         return true
     end
 
-    -- Treasure Hunter mode, default key F11. It is the first of the eight mode commands, and
+    -- Treasure Hunter mode, default key F11. It is the first of the mode commands, and
     -- shows the shape they share: bare cycles to the next value, and an argument sets one
     -- exactly. A rejected argument returns true without touching the mode, so a typo changes
     -- nothing and does not reach the job file either.
@@ -655,8 +702,8 @@ return function(E)
         return true
     end
 
-    -- Multibox received-gear tracking, default key Ctrl+F9. The same shape as the mode
-    -- command above, plus a release of everything the feature is holding.
+    -- Spell-received tracking, default key Ctrl+F9. The same shape as the mode command above,
+    -- plus a release of everything the feature is holding.
     command_handlers["spellreceived"] = function(cmd, command)
         if command == "spellreceived" then
             state.SpellReceived:cycle()
@@ -676,9 +723,9 @@ return function(E)
         return true
     end
 
-    -- Three of the four engine-internal commands. update auto, at the top of the table, is
-    -- the fourth. A player does not type these. Each is sent by a raw event handler that
-    -- needs an equip, and exists so that the equip lands here, inside a wrapped command.
+    -- The engine-internal commands, besides update auto at the top of the table. A player
+    -- does not type these. Each is sent by a raw event handler that needs an equip, and
+    -- exists so that the equip lands here, inside a wrapped command.
     --
     -- Re-take the Ampulla. hoxne.lua sends it from its tick, and when a Sleep hold on range
     -- or ammo lets go. It does nothing if a borrow window opened while the command was in
@@ -692,9 +739,10 @@ return function(E)
         return true
     end
 
-    -- Give a stranded Ampulla back. A reload resets the mode to OFF but cannot unequip, so
-    -- the Ampulla stays worn with nothing left that believes it owns the slot. The Hoxne
-    -- tick sends this until the release reports done.
+    -- Give a stranded Ampulla back. A load or a zone turns the mode OFF without being able to
+    -- unequip, so the Ampulla can stay worn with nothing left that believes it owns the slot.
+    -- The Hoxne tick sends this every two seconds while release attempts remain, and the
+    -- switch to OFF arms them too when its own first try is not enough.
     command_handlers["hoxnerelease"] = function(cmd, command)
         if state.Hoxne.value == 'OFF' then
             if hoxne_release_step() == 'done' then hoxne.release_tries = 0 end
@@ -711,6 +759,42 @@ return function(E)
             enable(st.slot)
             gs_equip({ [st.slot] = st.name })
             disable(st.slot)
+        end
+        return true
+    end
+
+    -- Re-dress a cast already in flight into its burst gear or out of it. Sent by
+    -- monitor.lua's run_burst when a chain lands on the monster the cast is aimed at, or that
+    -- monster's window ends, and the cast's burst changes. It acts only on a record run_burst
+    -- marked. A record written by a cast that began after the marked one ended stays for a
+    -- change of its own. The mark is cleared first, so a repeated command does nothing.
+    --
+    -- The re-dress runs only while GearSwap's midaction still names that same cast, and a
+    -- record whose cast has ended is cleared. That also covers a cast GearSwap dropped with
+    -- no aftercast, as it does when a stun or sleep ends it. The midcast dress runs with the
+    -- burst the mark names, forced, because the chain or the window's end decided it, and a
+    -- blue cast's Burst Affinity, which the cast itself uses up, may already be gone. Into
+    -- burst gear it runs however little of the cast is left, and the midcast build prints the
+    -- Burst Detected line. Out of it, it runs only while the cast's predicted landing is
+    -- BURST_REDRESS_GAP or more away, since gear put on later than that does not count.
+    -- Either way out, the info channel says the window ended and whether the burst set came
+    -- off, so a cast left in burst gear is never mistaken for a burst.
+    command_handlers["burstredress"] = function(cmd, command)
+        local pending = E.burst_pending
+        if pending and pending.redress ~= nil then
+            local bursts = pending.redress
+            pending.redress = nil
+            local in_flight, spell = midaction()
+            if not (in_flight and spell == pending.spell) then
+                E.burst_pending = nil
+            elseif bursts then
+                dress_midcast(pending.spell, true)
+            elseif pending.lands - os.clock() >= BURST_REDRESS_GAP then
+                info(action_tag(pending.spell) .. 'Burst window ended: burst set taken off')
+                dress_midcast(pending.spell, false)
+            else
+                info(action_tag(pending.spell) .. 'Burst window ended too late to take the burst set off')
+            end
         end
         return true
     end
@@ -855,9 +939,8 @@ return function(E)
         return lock_mode('jubilee', command_arg(cmd))
     end
 
-    -- Hoxne Ampulla mode, default key Ctrl+F10. Switching this mode is the only command that
-    -- both takes a slot and gives it back, and every step is answered before the next one
-    -- is tried.
+    -- Hoxne Ampulla mode, default key Ctrl+F10. Switching it on takes range and ammo for the
+    -- Ampulla, and switching it off gives them back. Each outcome prints its own line.
     command_handlers["hoxne"] = function(cmd, command)
         -- The disable and strip holds both outrank the Ampulla. While either holds range or
         -- ammo, the mode cannot move in either direction. The held slots are named and the
@@ -1065,9 +1148,10 @@ return function(E)
         save_settings()
     end
 
-    -- Re-read the two-handed flag from the weapon the current mode names. The engine does
-    -- this itself at load and on every weapon-mode change. The command runs the same check
-    -- on demand, for when the flag and the worn weapon have drifted apart.
+    -- Re-read the two-handed and hand-to-hand flags from the weapon the current mode names.
+    -- The engine does this itself at load, after a sub job change and on every weapon-mode
+    -- change. The command runs the same check on demand, for when the flags and the worn
+    -- weapon have drifted apart.
     command_handlers["two_hand_check"] = function(cmd, command)
         two_hand_check()
     end
@@ -1092,11 +1176,13 @@ return function(E)
         end
     end
 
-    -- Tomahawk and Angon. The client refuses a typed /ja for either while the throwing item
-    -- is not worn, so these equip it first and use the ability once the equip has landed.
-    -- Every reason the ability could fail is answered before any gear moves. Moving gear for
-    -- an action that cannot fire would leave the wrong ammo in place for the whole watchdog
-    -- window.
+    -- Tomahawk and Angon. A typed /ja works as well. Under ON-Allow Critical, pretarget
+    -- equips the throwing item as soon as pretargetcheck passes the action, and in every
+    -- mode but ON-Locked the precast build forces it into the ammo slot after every merge.
+    -- These commands answer use_gated_ja's refusals before any gear moves, then equip the
+    -- item and use the ability once it is worn. Gear moved for an action that cannot fire
+    -- would leave the throwing item on: under ON-Allow Critical for the whole 20 second
+    -- watchdog, and under OFF until the next build. ON-Locked refuses both routes.
     command_handlers["tomahawk"] = function(cmd, command)
         use_gated_ja(150)
     end
@@ -1105,8 +1191,8 @@ return function(E)
         use_gated_ja(170)
     end
 
-    -- Six shortcuts for the enchanted items worth a name of their own. Each makes the same
-    -- call gs c use makes, with the item named here, so it need not be typed and cannot be
+    -- Shortcuts for the enchanted items worth a name of their own. Each makes the same call
+    -- gs c use makes, with the item named here, so it need not be typed and cannot be
     -- misspelled. 'warp club' is a two-word handler key. It resolves because the whole
     -- string is tried first, and 'warp' takes no argument, so it never claims a longer string.
     command_handlers["warp"] = function(cmd, command)
@@ -1133,8 +1219,8 @@ return function(E)
         use_enchantment("Trizek Ring")
     end
 
-    -- Offense mode, default key F12. The plainest of the eight, with no state to release and
-    -- no slot to take.
+    -- Offense mode, default key F12. The plainest of the mode commands, with no state to
+    -- release and no slot to take.
     command_handlers["offensemode"] = function(cmd, command)
         if command == 'offensemode' then
             state.OffenseMode:cycle()
@@ -1144,6 +1230,19 @@ return function(E)
         notice('Offense Mode: [' .. state.OffenseMode.value .. ']')
         display_box_update()
         equip_set_command()
+        return true
+    end
+
+    -- Buff level, default key Alt+F12. The offense mode's shape with no rebuild: only a
+    -- weaponskill's build reads the switch, and it reads it as it builds.
+    command_handlers["bufflevel"] = function(cmd, command)
+        if command == 'bufflevel' then
+            state.BuffLevel:cycle()
+        elseif not set_mode_arg(state.BuffLevel, 'Buff Level', 'BuffLevel', command_arg(cmd)) then
+            return true
+        end
+        notice('Buff Level: [' .. state.BuffLevel.value .. ']')
+        display_box_update()
         return true
     end
 
@@ -1209,7 +1308,8 @@ return function(E)
         elseif not set_mode_arg(state.JobMode2, label, 'JobMode2', command_arg(cmd)) then
             return true
         end
-        notice(label .. ': [' .. state.JobMode2.value .. ']')
+        -- On a pet job the pet mode under Auto is shown with the value Auto chose.
+        notice(label .. ': [' .. pet_mode_shown() .. ']')
         display_box_update()
         if self_command_custom then self_command_custom(command) end
         equip_set_command()
@@ -1259,7 +1359,7 @@ return function(E)
             if refuse_logged_out('Keybind') then return true end
             for _, row in ipairs(keybind_modes) do settings.Keybinds[row.word] = row.default end
             keybind_apply()
-            notice('All eight keys reset to their defaults.')
+            notice('All nine keys reset to their defaults.')
             save_settings()
             return true
         end
@@ -1328,6 +1428,7 @@ return function(E)
         { word = 'jobmode2',       group = 'modes',       args = '[<mode>]',                 purpose = "cycle the job file's second mode, or set it by name" },
         { word = 'hoxne',          group = 'modes',       args = '[<mode>]',                 purpose = 'cycle the Hoxne Ampulla mode, or set it by name' },
         { word = 'spellreceived',  group = 'modes',       args = '[<mode>]',                 purpose = 'cycle spell-received gear tracking, or set it by name' },
+        { word = 'bufflevel',      group = 'modes',       args = '[<mode>]',                 purpose = 'cycle the buff level, or set it by name' },
         { word = 'display',        group = 'display',     args = '[on|off]',                 purpose = 'show or hide the status box' },
         { word = 'displaymode',    group = 'display',     args = '[on|off]',                 purpose = 'switch the mode box between one line and several' },
         { word = 'displaystyle',   group = 'display',     args = '[<style>]',                purpose = 'cycle the renderer that draws the box, or choose one by name' },
@@ -1378,6 +1479,7 @@ return function(E)
         { word = 'enchrepair',     group = 'internal',    args = '',                         purpose = 'put an enchanted item back on mid-use' },
         { word = 'hoxnerelock',    group = 'internal',    args = '',                         purpose = 're-take the Ampulla' },
         { word = 'hoxnerelease',   group = 'internal',    args = '',                         purpose = 'give a stranded Ampulla back' },
+        { word = 'burstredress',   group = 'internal',    args = '',                         purpose = 'put a cast already in flight into its burst gear or out of it' },
     }
 
     -- The index groups in print order. Each prints under its own name with the first letter
@@ -1392,9 +1494,11 @@ return function(E)
 
     -- Print the grouped index, or one group's rows. The index prints one line per group, with
     -- the words two spaces apart and each mode word followed by the key the registry holds.
-    -- The modes take two lines, the key list's rows 1 to 4 and 5 to 8, and are not split
-    -- further. The first line can pass 100 characters when each of its four modes has a
-    -- distinct Shift key, the longest keys a player can bind.
+    -- The modes print in key-list order, one line of the key list after another, at most four
+    -- to a Modes line. A key-list line holding more goes on over a further Modes line after
+    -- its fourth mode, so the buff level, the fifth on the first line, prints on a line of its
+    -- own. A line of four can pass 100 characters when each mode has a distinct Shift key, the
+    -- longest keys a player can bind.
     --
     -- A group prints one line per row: the word, its argument form and its purpose, with a
     -- mode row ending in its key. The table's rows keep every such line within 100
@@ -1409,8 +1513,11 @@ return function(E)
                 local line = lines[row.line]
                 line[#line + 1] = row.word .. ' ' .. help_key(row.word)
             end
-            notice('Modes: ' .. table.concat(lines[1], '  '))
-            notice('Modes: ' .. table.concat(lines[2], '  '))
+            for _, words in ipairs(lines) do
+                for first = 1, #words, 4 do
+                    notice('Modes: ' .. table.concat(words, '  ', first, math.min(first + 3, #words)))
+                end
+            end
             for i = 2, #HELP_GROUPS do
                 local group, words = HELP_GROUPS[i], {}
                 for _, row in ipairs(help_table) do
@@ -1526,9 +1633,9 @@ return function(E)
     end
 
     -- The two releases, which are not interchangeable. enableall frees every slot the weapon
-    -- lock does not hold and turns the lock modes off, which makes it the manual override
-    -- when something is stuck. enablebymode frees only the slots no layer is claiming, and
-    -- leaves every claim standing.
+    -- lock does not hold, ending the disable and strip holds and turning the lock modes off,
+    -- which makes it the manual override when something is stuck. enablebymode frees only
+    -- the slots no layer is claiming, and leaves every claim standing.
     command_handlers["enableall"] = function(cmd, command)
         Unlock()
     end
@@ -1543,8 +1650,10 @@ return function(E)
     -- first word for the commands that take an argument, and never a substring, so an
     -- argument is never read as a command name. Anything unresolved, and anything a handler
     -- did not claim by returning true, goes to the job file's own hook. That is how a job
-    -- file adds commands of its own without the engine knowing about them.
+    -- file adds commands of its own without the engine knowing about them. The buff
+    -- prediction is written into GearSwap's list first, as every hook writes it.
     function self_command(cmd)
+        if buff_prediction.n > 0 then write_buff_predictions(true) end
         local command = cmd:lower():trim()
 
         local handler = command_handlers[command]
@@ -1561,32 +1670,68 @@ return function(E)
 
     -- The native console words -------------------------------------------------------------------
 
-    -- GearSwap's own '//gs disable <slot>' and '//gs enable <slot>' act on a slot at the
-    -- addon's level, where the engine cannot see it. No claim is registered, no refusal
-    -- names it, the status box shows nothing, and the next unlock re-enables the slot. This
-    -- answers with one line pointing at the words that are tracked. It runs after GearSwap's
-    -- own handler, so the native command has already acted, and the line only advises.
-    -- Nothing here refuses, re-takes or equips.
+    -- GearSwap's own '//gs disable <slot>' and '//gs enable <slot>' run gs c disable and
+    -- gs c enable instead of GearSwap's own disable and enable, since a slot the engine
+    -- holds acts as one GearSwap's own disable shuts. GearSwap's command handler calls
+    -- disenable by name from its global table, which a job file reaches as gearswap. So the
+    -- root puts this in its place at load, and the job file's unload puts GearSwap's own
+    -- back.
     --
-    -- A second word must follow. Bare '//gs disable' and '//gs enable' switch the whole user
-    -- file off and on rather than a slot, and there is no 'gs c' word to point those to. The
-    -- verb 'c' is the engine's own surface and answers for itself, which also keeps the
-    -- rebuild the engine sends itself silent.
-    local function native_disable_notice(first, second)
-        if second == nil or type(first) ~= 'string' then return end
-        local verb = first:lower()
-        if verb == 'disable' then
-            notice('Disable: //gs disable leaves the slot untracked -- use //gs c disable <slot>... instead.')
-        elseif verb == 'enable' then
-            notice('Disable: //gs enable is not tracked -- use //gs c enable <slot>..., or //gs c enableall for every slot.')
+    -- A slot word runs the gs c word the way GearSwap's own 'c' branch runs one. It refreshes
+    -- GearSwap's tables, then runs the self command inside an event of GearSwap's, so the
+    -- take reads what is worn now and any equip goes out. The job file's self_command_custom
+    -- sees an accepted word as it sees the gs c word. Each word is read as GearSwap reads it,
+    -- punctuation dropped and lowercased, and an unknown one is refused as the gs c word
+    -- refuses it. The bare words switch the whole user file off and on and have no gs c word,
+    -- so they go to GearSwap's own. So does every word while the user file is switched off,
+    -- when GearSwap runs no self command. The interception acts only while this engine's job
+    -- file is the one GearSwap has loaded, so one an unload failed to take out passes every
+    -- word to the function beneath it.
+    local native_disenable
+    local function intercepted_disenable(tab, funct, functname, pol)
+        local g = gearswap
+        local words = {}
+        for _, w in ipairs(tab or {}) do
+            local word = (tostring(w):gsub('[^%a_%d]', '')):lower()
+            if word ~= '' then words[#words + 1] = word end
         end
+        local mine = type(g.user_env) == 'table' and g.user_env.self_command == self_command
+        if not mine or words[1] == nil or g.gearswap_disabled
+            or (functname ~= 'disable' and functname ~= 'enable') then
+            return native_disenable(tab, funct, functname, pol)
+        end
+        g.refresh_globals()
+        g.equip_sets('self_command', nil, functname .. ' ' .. table.concat(words, ' '))
     end
 
-    -- The exports. The root registers native_disable_notice, and lifecycle.lua binds the keys
-    -- at load and releases them at unload through the three keybind functions. The mode
-    -- table, the key registry and the keyspec grammar are exported beside them. Every command
-    -- in this file is reached through self_command, which GearSwap looks up by name.
-    E.native_disable_notice = native_disable_notice
+    -- Put the interception in GearSwap's table, keeping GearSwap's own function, and take it
+    -- out again. GearSwap's table outlives the job file, so the unload must restore it.
+    -- Where GearSwap has no disenable, nothing is replaced and the native words stay
+    -- GearSwap's. A restore that finds another function in place leaves it alone.
+    local function intercept_native_words()
+        local g = gearswap
+        if type(g) ~= 'table' or type(g.disenable) ~= 'function' then return end
+        native_disenable = g.disenable
+        g.disenable = intercepted_disenable
+    end
+    local function restore_native_words()
+        local g = gearswap
+        if native_disenable and type(g) == 'table' and g.disenable == intercepted_disenable then
+            g.disenable = native_disenable
+        end
+        native_disenable = nil
+    end
+
+    -- The exports. The root installs the native words' interception and lifecycle.lua takes
+    -- it out at unload. lifecycle.lua also binds the keys and prints the key list at load,
+    -- and releases the keys at unload, through the three keybind functions. The mode table,
+    -- the key registry and the keyspec grammar are exported beside them. Every command in
+    -- this file is reached through self_command, which GearSwap looks up by name. What a
+    -- pet's move owes a rebuild is exported for hooks.lua's aftercast and buff change, which
+    -- load earlier and read it from E at the call.
+    E.merge_move_layers = merge_move_layers
+    E.intercept_native_words = intercept_native_words
+    E.restore_native_words = restore_native_words
     E.keybind_modes = keybind_modes
     E.keybinds_bound = bound
     E.keybind_apply = keybind_apply
@@ -1598,5 +1743,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

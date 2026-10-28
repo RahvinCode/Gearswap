@@ -28,8 +28,8 @@
 --          implementation and one set of refusals. display_styles and set_display_style, for
 --          the style command. display_visible, for the display toggle. display_unload, for
 --          the lifecycle teardown. display_logout, which the root registers on the logout
---          event, and display_logged_out, the latch it raises, which the commands component
---          reads. drag_settle, called by the monitor component's outgoing-chunk tick, and
+--          event, and display_logged_out, which reads the latch it raises, for the commands
+--          component. drag_settle, called by the monitor component's outgoing-chunk tick, and
 --          drag_flush, called by the teardown before the boxes are destroyed. min_value_cells,
 --          so the commands component reports the value-column floor as the box reads it.
 --          repaint_slot, the rig's one-cell recolor, called by the equip and spell-received
@@ -41,7 +41,7 @@
 --          client has settled. invalidate_layout, which the subjob change and the
 --          displaycells command call.
 -- LOADS    After monitor and before commands. It calls nothing that loads later. The equip,
---          enchant, spell-received, th and monitor components load before it and reach
+--          enchant, hooks, spell-received, th and monitor components load before it and reach
 --          display_box_update or debug_box_update as globals resolved at call time.
 --
 -- Both boxes are redrawn from paths that can run many times a second, so redrawing is kept
@@ -50,7 +50,7 @@
 -- its six values and its hold map with the last draw, returns when none moved, and writes
 -- its text object directly.
 
--- requires: rahvings/core, rahvings/equip, rahvings/spellreceived
+-- requires: rahvings/core, rahvings/equip, rahvings/builders, rahvings/spellreceived
 return function(E)
     -- Immutable dependencies, bound once at construction. The debug box reads the
     -- spell-received failsafe through the E.sr_failsafe_active() accessor, because that flag
@@ -71,11 +71,15 @@ return function(E)
     local locked, sleep_held, implement_held = E.locked, E.sleep_held, E.implement_held
     local slot_claim, CANON_SLOT = E.slot_claim, E.CANON_SLOT
 
+    -- The pet mode as the box shows it, and every form it can show under Auto, from the
+    -- builders, which own the pet mode.
+    local pet_mode_shown, pet_mode_forms = E.pet_mode_shown, E.pet_mode_forms
+
     ------------------------------------------------------------------------------------------------
     -- SECTION 20 - ON-SCREEN DISPLAY
     ------------------------------------------------------------------------------------------------
-    -- The status box, which is always available, and the debug box, which is hidden unless the
-    -- debug channel is on. Everything below divides into appearance constants, layout
+    -- The status box, shown unless the player hides it, and the debug box, shown only while
+    -- the debug channel is on. Everything below divides into appearance constants, layout
     -- measurement, and the code that draws the two boxes.
 
     -- Appearance ----------------------------------------------------------------------------------
@@ -153,8 +157,8 @@ return function(E)
     -- not count against the constructor's own locals, which Lua caps at 200 per function.
     do
         -- Names that would derive badly, or that a player expects abbreviated a particular
-        -- way. The last four give a readable label to the Auto Tank and Runes mode names,
-        -- which the engine does nothing with but a job file may offer.
+        -- way. The tank and rune entries give a readable label to the Auto Tank and Runes
+        -- mode names, which the engine does nothing with but a job file may offer.
         local UI_SHORT_ALIASES = {
             ['mode'] = 'MDE',
             ['pet'] = 'PET',
@@ -234,8 +238,10 @@ return function(E)
         return s
     end
 
-    -- A mode's current value as the box draws it.
+    -- A mode's current value as the box draws it. The second job mode is the pet mode on a
+    -- pet job, shown under Auto with the value Auto chose, as Auto (Tank).
     local function mode_value(f)
+        if f.mode == 'JobMode2' then return no_token(tostring(pet_mode_shown())) end
         return no_token(tostring(state[f.mode].value))
     end
 
@@ -254,19 +260,29 @@ return function(E)
                 local n = #no_token(tostring(v))
                 if n > w then w = n end
             end
+            -- The pet mode's column also fits every form it shows under Auto, so a pet change
+            -- never resizes the box.
+            if m == state.JobMode2 then
+                for _, form in ipairs(pet_mode_forms()) do
+                    local n = #no_token(form)
+                    if n > w then w = n end
+                end
+            end
         end
         return w
     end
 
     -- The rows the box shows, in order, and the width of the label column they share. Every
-    -- renderer starts here: the engine's fixed three, then whichever job-mode slots the file
-    -- named. Modes are held by name rather than by object, because a job file may replace a
-    -- state table whole, and a cached reference would then draw the old one.
+    -- renderer starts here: the engine's fixed rows, the stance, the weapon mode, the weapon
+    -- lock and the buff level, then whichever job-mode slots the file named. Modes are held
+    -- by name rather than by object, because a job file may replace a state table whole, and
+    -- a cached reference would then draw the old one.
     local function status_fields()
         local fields = {
             { label = 'STN', mode = 'OffenseMode' },
             { label = 'DPS', mode = 'WeaponMode' },
             { label = 'LCK', mode = 'WeaponLock' },
+            { label = 'BUF', mode = 'BuffLevel' },
         }
         if UI_Name ~= '' then
             fields[#fields + 1] = { label = status_label(UI_Short, UI_Name), mode = 'JobMode' }
@@ -478,9 +494,9 @@ return function(E)
     -- Which layer holding a slot gets a token on the status box, and what the token says. A
     -- layer with a mode name and no other place on the box gets a three-letter token behind
     -- an HLD anchor. A layer with a place of its own, Hoxne or the weapon lock, is colored
-    -- there instead. A transient layer with no mode name gets nothing here and shows on the
-    -- debug box. Every token is exactly three ASCII capitals, because the group's width is
-    -- computed from that and never measured.
+    -- there instead. A transient layer with no mode name gets nothing here, and shows on the
+    -- debug box and on LATTICE's grid. Every token is exactly three ASCII capitals, because the
+    -- group's width is computed from that and never measured.
     local STRIP_TOKEN = {
         naked = 'NKD',
         weaponsonly = 'WPO',
@@ -511,10 +527,10 @@ return function(E)
     -- leads, and it is drawn once however many slots the hold has.
     --
     -- Returning nothing when the walk emits nothing is the part that matters. locked_n counts
-    -- every slot a lock mode holds, and the table above names four. A mode holding any other
-    -- slot would pass the gate, emit no token, and leave the box showing a bare anchor for a
-    -- hold the reader cannot identify. The number of tokens the walk produced decides the
-    -- anchor, not the gate that let the walk run.
+    -- every slot a lock mode holds, but the table above has a token only for the slots it
+    -- names. A mode holding any other slot would pass the gate, emit no token, and leave the
+    -- box showing a bare anchor for a hold the reader cannot identify. The number of tokens
+    -- the walk produced decides the anchor, not the gate that let the walk run.
     local function hold_tokens()
         if not E.strip_shape and E.locked_n == 0 and E.disabled_n == 0 then return nil, 0 end
         local t = {}
@@ -785,11 +801,16 @@ return function(E)
     local last_fit = false    -- the placement last written: x, y, w, h, the line count, the grid width
     local last_lines = 1      -- lines in the string last painted, which decides the strip
     local refit_armed = false -- a deferred fit is scheduled and has not run yet
+    local refit_tries = 0     -- deferred fits in a row that found the box not yet drawn
+    local unrendered = false  -- the size an empty box reported when LATTICE entered: w, h
     local rig_fresh = false   -- the next color pass writes all sixteen, whatever the map says
     -- How long after a paint the panel is fitted, in seconds. The renderer reports a box's
     -- size from its last render, not from the text just written, so the fit waits until the
     -- box has rendered.
     local LATTICE_REFIT_DELAY = 0.05
+    -- How many deferred fits in a row may find the box not yet drawn before the fit stops
+    -- trying until the next paint that changes the text.
+    local LATTICE_REFIT_TRIES = 40
 
     -- The box's top-left in screen pixels. When the box is anchored to the right or bottom
     -- edge, the text library keeps its position relative to that edge and adds the screen
@@ -961,15 +982,20 @@ return function(E)
     -- written while the placement is the one last written. On the first placement, if the box
     -- is shown, the six are shown: the body in either view, and the strip and the four border
     -- edges only while the box has more than one line. Those five flip when the line count
-    -- crosses one. A one-line box is the body alone, with no band and no border.
+    -- crosses one. A one-line box is the body alone, with no band and no border. Returns
+    -- false, placing nothing, while the box has not drawn its first text.
     local function lattice_settle(x, y)
         -- The one path to the panel that does not come through the redraw: the fit deferred
         -- a frame arrives on its own schedule, which a logout in between does not cancel.
-        if logged_out then return end
+        if logged_out then return true end
         local w, h = gs_status:extents()
+        -- After a load the renderer goes on reporting the size the box had with no text for a
+        -- while after the first text is written. A panel sized from that is a small square at
+        -- the box's corner.
+        if unrendered and w == unrendered.w and h == unrendered.h then return false end
         local n = last_lines
         local f = last_fit
-        if f and f.x == x and f.y == y and f.w == w and f.h == h and f.n == n then return end
+        if f and f.x == x and f.y == y and f.w == w and f.h == h and f.n == n then return true end
         local side = lattice_place(x, y, w, h, n, not f or f.w ~= w or f.h ~= h or f.n ~= n)
         local prim = windower.prim
         if not f then
@@ -998,15 +1024,23 @@ return function(E)
             end
         end
         last_fit = { x = x, y = y, w = w, h = h, n = n, side = side }
+        return true
     end
 
     -- The deferred fit, a frame after a paint that changed the text, once the box has
-    -- rendered at its new size.
+    -- rendered at its new size. A box not yet drawn is tried again LATTICE_REFIT_DELAY later,
+    -- up to LATTICE_REFIT_TRIES times in a row, so the panel is never sized from the empty box.
     local function lattice_refit()
         refit_armed = false
         if not chassis then return end
         local x, y = lattice_box()
-        lattice_settle(x, y)
+        if lattice_settle(x, y) or refit_tries + 1 >= LATTICE_REFIT_TRIES then
+            refit_tries = 0
+            return
+        end
+        refit_tries = refit_tries + 1
+        refit_armed = true
+        coroutine.schedule(lattice_refit, LATTICE_REFIT_DELAY)
     end
 
     -- Color the sixteen from the hold map: the layer holding each slot, or the socket color
@@ -1120,6 +1154,11 @@ return function(E)
             chassis = true
         end
         last_fit = false
+        -- An empty box, as after a load, has drawn nothing yet, so the first fit waits until it
+        -- reports a size other than the one it reports now. A box already holding its text, as
+        -- on a style switch, has drawn.
+        local w, h = gs_status:extents()
+        unrendered = gs_status:text() == '' and { w = w, h = h } or false
         -- Sixteen primitives with no color yet, so the next pass writes all of them however
         -- long the map has stood still.
         rig_fresh = true
@@ -1575,7 +1614,7 @@ return function(E)
         end
         -- Tested above the zoning test, which is also false at character select and would
         -- answer with the wrong line. Nothing is written from the logout until the rebuild
-        -- after the next login. By then the live table is the file's global section, put
+        -- after the next login. In that time the live table is the file's global section, put
         -- there by the config library's own logout reload, and a write would put those values
         -- into this character's own section.
         if logged_out then
@@ -1603,6 +1642,7 @@ return function(E)
     -- Both registrations last as long as the engine and are never unregistered, unlike the
     -- two renderer drag handlers, which belong to the renderer standing and are dropped when
     -- the style changes. There is no release event to hang the save on, so it is timed.
+    -- DRAG_SETTLE_DELAY is that delay, in seconds.
     local DRAG_SETTLE_DELAY = 1.0
     local drag_dirty = false
     local drag_settle_at = 0
@@ -1783,15 +1823,14 @@ return function(E)
 
     -- Recolor the one rig cell drawing this slot, from whoever holds the slot now. The holds
     -- that put no token in the box, the cast's implement, received gear and the weapon lock,
-    -- call this for every slot they take or let go. They call it after the registry write,
-    -- and on a release after release_slot has handed the slot on, so the cell shows the new
-    -- holder, the layer underneath, or the socket. Any spelling of a slot is accepted.
+    -- do not repaint the box, so no color pass follows them. Each calls this for every slot it
+    -- takes or lets go, after the registry write, and on a release after release_slot has
+    -- handed the slot on, so the cell shows the new holder, the layer underneath, or the
+    -- socket. Any spelling of a slot is accepted.
     --
     -- Nothing is drawn unless the grid is on screen. While the panel stands with no grid
     -- showing, because the box is hidden, the view is one line, the rig is off or the
     -- character is logged out, the next color pass is told to write all sixteen instead.
-    -- These holds do not repaint the box, so no color pass follows them, and each writer of
-    -- the implement, weapon-lock and received-gear registries recolors the slots it changes.
     local function repaint_slot(slot)
         if not chassis then return end
         local rig = settings.Lattice.rig
@@ -1806,9 +1845,9 @@ return function(E)
         windower.prim.set_color(LATTICE_CELLS[k], c.alpha, c.red, c.green, c.blue)
     end
 
-    -- The legend the debug box draws the hold map with: the nine layers in the order
-    -- slot_claim tests them, which is the order of the rail, and the letter each draws on the
-    -- rail and in the map. Every layer slot_claim can answer is named here, and a holder the
+    -- The legend the debug box draws the hold map with: the layers in the order slot_claim
+    -- tests them, which is the order of the rail, and the letter each draws on the rail and in
+    -- the map. Every layer slot_claim can answer is named here, and a holder the
     -- legend does not name draws GLYPH.unknown.
     local LAYER_ORDER = { 'ench', 'disable', 'strip', 'hoxne', 'sleep', 'implement', 'spell', 'lock', 'weapon' }
     local LAYER_LETTER = {
@@ -1941,5 +1980,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

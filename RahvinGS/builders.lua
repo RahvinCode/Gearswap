@@ -18,8 +18,11 @@
 -- COMPONENT: builders -- section 15: the gear set builders
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 15 - Turning the job file's declared sets into one table of gear, in five parts:
---     Shared merges ....... the Aftermath ladder, the weapon mode, the set families
+--   Section 15 - Turning the job file's declared sets into one table of gear, in these parts:
+--     Shared merges ....... the Aftermath ladder, the weapon mode, the set families, a
+--                           cast's context and the ladder merge its midcast children follow
+--     Pet sets ............ the pet mode and its forms, the pet sets' children, and the
+--                           automaton's weaponskill set from its TP
 --     The four builders ... choose_set, precastequip, midcastequip, aftercastequip
 --     Conditional gear .... the element, day and weather bonus pieces
 --     Bard songs .......... weapons, instruments, and the song-family ladder
@@ -35,7 +38,8 @@
 -- interface.lua declares every set path and classification list this file reads without a
 -- test. A set the job file never wrote is then an empty placeholder that merges nothing,
 -- never a nil that throws. A path read here needs its placeholder there, or a test before
--- it is read.
+-- it is read. Each builder first calls ensure_placeholders, which puts back the
+-- placeholders a job file dropped by replacing a whole parent table.
 --
 -- The merge report is recorded here and printed elsewhere. Each builder opens it with
 -- merge_report_begin and marks where its branch starts and ends. merge_report_flush, which
@@ -44,17 +48,25 @@
 -- that line does not name it.
 --
 -- EXPORTS  build_current_set, which hooks, commands, spellreceived and th take, and
---          apply_weapon_mode, reassert_pair and wears_yagrush, which hooks take. It also
---          writes the two prediction flags, accession_predicted and divine_seal_predicted,
---          which the state component declares and hooks and spellreceived also touch.
--- GLOBALS  choose_set, precastequip, midcastequip, aftercastequip and
---          check_equipment_spells, which the action hooks call. elemental_check,
---          build_song_weapons, build_song_set, equip_song_gear, equip_pianissimo_gear,
---          do_bullet_checks and do_Utsu_checks are called only from this file. They are
---          globals so the builders above them can call them, since a global resolves when
---          it is called.
--- LOADS    After the enchanted item engine, whose verify_locked_slots it binds. It calls no
---          global from a file that loads after it.
+--          apply_weapon_mode, reassert_pair and wears_yagrush, which hooks take. Of the pet
+--          functions, hooks takes forget_pet and take_pet_ws_worn, th pet_tp_packet, display
+--          pet_mode_shown and pet_mode_forms, and commands pet_mode_shown. It also
+--          drops an expired record from burst_records when the burst prediction reads it,
+--          and writes burst_pending whenever it builds a midcast set.
+-- BUFF PICKS  Every set a builder picks because a buff is up merges through equip.lua's
+--          merge_on_buff with that buff, so the report marks it while the buff is only
+--          predicted. build_current_set writes core.lua's buff prediction into GearSwap's
+--          list as its first act.
+-- GLOBALS  precastequip, midcastequip, aftercastequip and check_equipment_spells, which the
+--          action hooks call, and choose_set, which build_current_set calls.
+--          elemental_check, build_song_weapons, build_song_set, equip_song_gear,
+--          equip_pianissimo_gear, do_bullet_checks and do_Utsu_checks are called only from
+--          this file. They are globals so the builders above them can call them, since a
+--          global resolves when it is called.
+-- LOADS    After the enchanted item engine, whose verify_locked_slots it binds.
+--          equip_set_command is a global from the root, which loads last, and resolves when
+--          called. The cast-in-flight test comes from hooks.lua, which loads after this file,
+--          so it is read from E at the call.
 
 -- requires: rahvings/state, rahvings/core, rahvings/equip, rahvings/enchant
 return function(E)
@@ -68,9 +80,13 @@ return function(E)
         E.ensure_placeholders
     local have_item, have_item_count                             = E.have_item, E.have_item_count
     local merge_into, merge_named, merge_report                  = E.merge_into, E.merge_named, E.merge_report
+    local merge_children                                         = E.merge_children
     local merge_report_begin, merge_report_branch_end            = E.merge_report_begin, E.merge_report_branch_end
     local merge_report_mark, mr_am, outgoing_cast_busy           = E.merge_report_mark, E.mr_am, E.outgoing_cast_busy
-    local set_has_gear, verify_locked_slots                      = E.set_has_gear, E.verify_locked_slots
+    local merge_report_floor, PET_COMMAND_TYPES                  = E.merge_report_floor, E.PET_COMMAND_TYPES
+    local PET_COMMAND_FAMILY, PET_COMMAND_FAMILY_BY_NAME         = E.PET_COMMAND_FAMILY, E.PET_COMMAND_FAMILY_BY_NAME
+    local set_has_gear, set_declared, verify_locked_slots        = E.set_has_gear, E.set_declared, E.verify_locked_slots
+    local sorted_keys, PET_JOBS                                  = E.sorted_keys, E.PET_JOBS
     local blank_instrument                                       = E.blank_instrument
     local lock_exempts, slot_claim                               = E.lock_exempts, E.slot_claim
     local ELEMENT_ID, BEATS, SASH_PCT, IRIDESCENCE, WEATHER_PCT  = E.ELEMENT_ID, E.BEATS, E.SASH_PCT,
@@ -78,6 +94,12 @@ return function(E)
     local LIGHT_ID, NONE_ID, ELEMENTAL_MAGIC_SKILL, SASH         = E.LIGHT_ID, E.NONE_ID,
         E.ELEMENTAL_MAGIC_SKILL, E.SASH
     local elemental_choose                                       = E.elemental_choose
+    local RecastTimers, expected_cast_seconds                    = E.RecastTimers, E.expected_cast_seconds
+    local CHAIN_ELEMENT, BURST_LANDING_LEAD, BLUE_PHYSICAL       = E.CHAIN_ELEMENT, E.BURST_LANDING_LEAD,
+        E.BLUE_PHYSICAL
+    local ENHANCING_FAMILY_SPELL, RA_MODE_PHRASE                 = E.ENHANCING_FAMILY_SPELL, E.RA_MODE_PHRASE
+    local buff_prediction, write_buff_predictions                = E.buff_prediction, E.write_buff_predictions
+    local merge_on_buff                                          = E.merge_on_buff
 
     -- Put an instrument in the range slot, unless the entry is blank. A bard file that omits
     -- one of section 2's Instrument keys reads the engine's empty placeholder, and an empty
@@ -135,15 +157,16 @@ return function(E)
                     -- refines that for one weapon. An engine placeholder counts as absent
                     -- and is not merged. The tier is returned when its set carries gear or a
                     -- child exists, never for an empty pair. mr_am brackets these merges so
-                    -- the report can name the tier apart from the branch.
+                    -- the report can name the tier apart from the branch. Both are picked on
+                    -- the tier's buff.
                     local child, dressed = set[mode], false
                     mr_am.from = E.mr_count + 1
                     if PLACEHOLDER_NAME[set] == nil then
-                        merge_report(built_set, set)
+                        merge_on_buff(built_set, set, tier.buff)
                         dressed = set_has_gear(set)
                     end
                     if child then
-                        merge_report(built_set, child)
+                        merge_on_buff(built_set, child, tier.buff)
                         dressed = true
                     end
                     mr_am.to = E.mr_count
@@ -218,16 +241,19 @@ return function(E)
             end
         end
         -- No offhand until both weapon traits are known. Each is nil from load until the
-        -- startup pass reads it, and the rebuild after that pass dresses the offhand.
+        -- startup pass reads it, and the rebuild after that pass dresses the offhand. Either
+        -- offhand goes with a one-handed main alone: a two-hander takes its grip from its own
+        -- weapon set, and a hand-to-hand weapon holds the sub slot.
         if E.TwoHand ~= nil and E.DualWield ~= nil then
-            if not E.TwoHand and not E.DualWield then
+            local one_handed = not E.TwoHand and not E.HandToHand
+            if one_handed and not E.DualWield then
                 if sets.Weapons.Shield then
                     offhand = sets.Weapons.Shield
                     merge_report(built_set, offhand)
                 elseif not quiet then
                     warn('sets.Weapons.Shield not found!')
                 end
-            elseif dual_wield_set and E.DualWield then
+            elseif one_handed and dual_wield_set and E.DualWield then
                 if sets.DualWield then
                     offhand = sets.DualWield
                     merge_report(built_set, offhand)
@@ -276,13 +302,313 @@ return function(E)
         end
     end
 
+    -- Whether a buff, or the lack of one, keeps a cast from bursting. Blue Magic bursts only
+    -- under Azure Lore, or under Burst Affinity when the spell is not a physical one. An
+    -- elemental spell cast under Immanence can close a skillchain but never bursts. Any
+    -- other cast needs no buff. Declared above its callers, predicts_burst and pending_burst.
+    local function cannot_burst(spell)
+        if spell.type == 'BlueMagic' then
+            if buffactive['Azure Lore'] then return false end
+            return not buffactive['Burst Affinity'] or BLUE_PHYSICAL[spell.id] == true
+        end
+        return spell.skill == 'Elemental Magic' and buffactive['Immanence'] ~= nil
+    end
+
+    -- Whether a cast's type is one the burst checks ask about: a type in RecastTimers, since
+    -- any other action's id is not a spell's, but never Geomancy, so an Indi- or Geo- spell
+    -- is never treated as bursting. Declared above its callers, predicts_burst and
+    -- pending_burst.
+    local function bursting_type(spell)
+        return RecastTimers[spell.type] ~= nil and spell.type ~= 'Geomancy'
+    end
+
+    -- Whether a cast is predicted to magic burst. Its target must be a monster carrying a
+    -- live chain record whose elements include the spell's, and the spell must be expected
+    -- to land before that window closes. The game judges a burst when the spell lands, so
+    -- the prediction does too: the clock now plus the shared cast estimate plus
+    -- BURST_LANDING_LEAD, the time a spell lands after that estimate ends. Any spell on that
+    -- monster can burst unless cannot_burst rules it out. Only a type bursting_type passes
+    -- is asked. An expired record found here is dropped. Declared above cast_context, its
+    -- one caller.
+    local function predicts_burst(spell)
+        if not bursting_type(spell) or spell.target.type ~= 'MONSTER' then return false end
+        local records = E.burst_records
+        local id = spell.target.id
+        local rec = records[id]
+        if not rec then return false end
+        local now = os.clock()
+        if rec.ends <= now then
+            records[id] = nil
+            return false
+        end
+        if not rec.elements[spell.element_id] then return false end
+        if cannot_burst(spell) then return false end
+        return now + expected_cast_seconds(spell) + BURST_LANDING_LEAD < rec.ends
+    end
+
+    -- The record of a cast that a chain or a window's end could still re-dress, or nil: a
+    -- type bursting_type passes, aimed at a monster, with an element some chain carries. A
+    -- cast not dressed for a burst must also be one cannot_burst allows.
+    --
+    -- It holds the cast, its target's id, its element id, burst, whether the cast is dressed
+    -- for one, and lands, the clock it is predicted to land at: the clock at its first
+    -- midcast plus the shared cast estimate plus BURST_LANDING_LEAD. A re-dress of the same
+    -- cast keeps the landing from old, the record it replaces. The burst re-dress command
+    -- reads lands to judge whether a burst set can still come off in time. Declared above
+    -- midcastequip, its one caller.
+    local function pending_burst(spell, dressed, old)
+        if not bursting_type(spell) or spell.target.type ~= 'MONSTER' then return nil end
+        local element = spell.element_id
+        if not CHAIN_ELEMENT[element] or (not dressed and cannot_burst(spell)) then return nil end
+        local lands
+        if old and old.spell == spell then
+            lands = old.lands
+        else
+            lands = os.clock() + expected_cast_seconds(spell) + BURST_LANDING_LEAD
+        end
+        return { spell = spell, target = spell.target.id, element = element, burst = dressed, lands = lands }
+    end
+
+    -- A cast's context, which chooses every midcast child: the offense mode, the target's
+    -- kind, the spell's name, and whether the cast bursts. Self is a cast on yourself. Any
+    -- other target is Others, an unresolved one included, and so is a cast on yourself
+    -- under Accession, which reaches the party. The burst is predicted, unless burst is
+    -- given. true forces it and false forces none, without a prediction: the re-dress of a
+    -- cast already in flight passes one, since the chain or the window's end that sent the
+    -- re-dress has decided it. One table serves every cast, since no build runs inside
+    -- another. Declared above precastequip, whose Nightingale branch reads it.
+    local cast_ctx = { mode = nil, target = nil, name = nil, burst = false }
+    local function cast_context(spell, burst)
+        cast_ctx.mode = state.OffenseMode.value
+        cast_ctx.target = (spell.target.type ~= 'SELF' or buffactive['Accession']) and 'Others' or 'Self'
+        cast_ctx.name = spell.english
+        if burst == nil then burst = predicts_burst(spell) end
+        cast_ctx.burst = burst == true
+        return cast_ctx
+    end
+
+    -- Merge one ladder set, then its midcast children for this cast. With a path the set
+    -- merges as merge_named merges it, and a missing one warns. Without one it merges as
+    -- merge_report does. where says how merge_children reads the set's own children.
+    local function merge_ladder(built_set, t, path, key, ctx, where)
+        local layer = t
+        if key ~= nil then layer = t and t[key] end
+        if path then
+            if not merge_named(built_set, t, path, key) then return end
+        else
+            merge_report(built_set, t)
+        end
+        if type(layer) == 'table' then merge_children(built_set, E.mr_count, ctx, where) end
+    end
+
+    -- The pet mode --------------------------------------------------------------------------------
+
+    -- On a pet job the second job mode is the pet mode. Its value names a child of each pet
+    -- set, and of the offense mode's set while a pet is out. A value picked by hand holds on
+    -- every pet. Under Auto the job file's Pet_Modes gives the value for the pet out: by the
+    -- pet's name, or for an automaton by an attachment listed under Attachments, then by its
+    -- frame and head. That value is read once per pet, and forgotten when the pet changes.
+    local auto_pet_mode, auto_pet_read = nil, false
+
+    -- Whether the automaton's TP last read at or over PetWSThreshold, from its status packets.
+    local pet_ws_ready = false
+
+    -- Whether a build carried sets.Pet_WS since the automaton's last weaponskill, which that
+    -- weaponskill's line reports, and whether the weaponskill has readied with its TP's fall
+    -- still to come.
+    local pet_ws_worn, pet_ws_readied = false, false
+
+    -- The value Pet_Modes gives the pet out, or nil. A Puppetmaster's attachments are tried in
+    -- the order of their names, so two listed with different values decide the same way on
+    -- every load. A value that is not a name, such as true written for an attachment, gives
+    -- no value.
+    local function auto_pet_value()
+        local modes = Pet_Modes
+        if type(modes) ~= 'table' then return nil end
+        if player.main_job == 'PUP' and pet.frame then
+            local by_attachment, fitted = modes.Attachments, pet.attachments
+            if type(by_attachment) == 'table' and type(fitted) == 'table' then
+                for _, name in ipairs(sorted_keys(by_attachment)) do
+                    local role = by_attachment[name]
+                    if fitted[name] and type(role) == 'string' then return role end
+                end
+            end
+            local by_head = modes[pet.frame]
+            local role = type(by_head) == 'table' and by_head[pet.head] or nil
+            return type(role) == 'string' and role or nil
+        end
+        local value = modes[pet.name]
+        return type(value) == 'string' and value or nil
+    end
+
+    -- The pet mode's value for the pet out, or nil: off a pet job, under Auto with no pet out,
+    -- and for a pet Pet_Modes gives no value.
+    local function pet_mode_value()
+        if not PET_JOBS[player.main_job] then return nil end
+        local value = state.JobMode2.value
+        if value ~= 'Auto' then return value end
+        if not pet.isvalid then return nil end
+        if not auto_pet_read then
+            auto_pet_mode, auto_pet_read = auto_pet_value(), true
+        end
+        return auto_pet_mode
+    end
+
+    -- Forget what was read of the last pet, the value Auto read, whether the automaton's TP
+    -- stood at the weaponskill threshold and whether its set went on, so the next pet's are read
+    -- afresh. pet_change calls it.
+    local function forget_pet()
+        auto_pet_mode, auto_pet_read, pet_ws_ready = nil, false, false
+        pet_ws_worn, pet_ws_readied = false, false
+    end
+
+    -- The pet mode as the status box and the key's notice show it: under Auto, the value Auto
+    -- chose beside it, as Auto (Tank), or Auto alone when it chose none.
+    local function pet_mode_shown()
+        local value = state.JobMode2.value
+        if value ~= 'Auto' then return value end
+        local chosen = pet_mode_value()
+        return chosen and ('Auto (' .. chosen .. ')') or 'Auto'
+    end
+
+    -- Every form the pet mode can show under Auto, so the status box measures its column once:
+    -- Auto beside each other value of the key's list and each value Pet_Modes holds. Empty off a
+    -- pet job, and for a list with no Auto.
+    local function pet_mode_forms()
+        local forms, seen = {}, {}
+        if not PET_JOBS[player.main_job] then return forms end
+        local has_auto = false
+        for _, v in ipairs(state.JobMode2) do
+            if v == 'Auto' then has_auto = true end
+        end
+        if not has_auto then return forms end
+        local function add(v)
+            if type(v) == 'string' and v ~= 'Auto' and not seen[v] then
+                seen[v] = true
+                forms[#forms + 1] = 'Auto (' .. v .. ')'
+            end
+        end
+        for _, v in ipairs(state.JobMode2) do add(v) end
+        if type(Pet_Modes) == 'table' then
+            for _, v in pairs(Pet_Modes) do
+                if type(v) == 'table' then
+                    for _, inner in pairs(v) do add(inner) end
+                else
+                    add(v)
+                end
+            end
+        end
+        return forms
+    end
+
+    -- The automaton's weaponskill set --------------------------------------------------------------
+
+    -- Read the automaton's TP from a pet status packet on a Puppetmaster, and ask for a rebuild
+    -- when it crosses PetWSThreshold either way, since GearSwap raises no event for the pet's
+    -- TP. The incoming chunk handler hands over packets 0x067 and 0x068. A 0x067 counts only
+    -- with message type 4, the low six bits of its fifth byte, and names its owner by index
+    -- at 0x0D. A 0x068 names its owner at 0x07. Both carry the TP at 0x11. The positions count
+    -- from 1, as byte and unpack count them, so each is one past the field's packet offset.
+    --
+    -- Nothing is read off a Puppetmaster, or while the Pet WS mode is neither Idle nor Always.
+    -- No rebuild is asked for a crossing under Idle while the master fights, since the set
+    -- stays off then, nor for one during a cast of the master's in flight, whose aftercast
+    -- rebuilds. Either way the next rebuild reads the flag. hooks.lua exports the in-flight
+    -- test and loads after this file, so it is read from E at the call.
+    --
+    -- The TP's fall below the threshold after a weaponskill's readying is that weaponskill's
+    -- spend, so it clears the set's mark, and a rebuild between the readying and the fall
+    -- carries no mark into the next weaponskill. A fall ahead of its readying leaves the mark
+    -- for the readying to read.
+    local function pet_tp_packet(id, data)
+        if player.main_job ~= 'PUP' then return end
+        local mode = state.JobMode.value
+        if mode ~= 'Idle' and mode ~= 'Always' then return end
+        local threshold = tonumber(PetWSThreshold)
+        if not threshold then return end
+        local owner
+        if id == 0x067 then
+            if data:byte(5) % 64 ~= 4 then return end
+            owner = data:unpack('H', 0x0D)
+        else
+            owner = data:unpack('H', 0x07)
+        end
+        if owner ~= player.index then return end
+        local ready = data:unpack('H', 0x11) >= threshold
+        if ready == pet_ws_ready then return end
+        pet_ws_ready = ready
+        if not ready and pet_ws_readied then pet_ws_worn, pet_ws_readied = false, false end
+        if (mode == 'Always' or player.status ~= 'Engaged') and not E.cast_proper_in_flight() then
+            equip_set_command()
+        end
+    end
+
+    -- Merge sets.Pet_WS while the automaton is ready and the Pet WS mode allows it: Idle while
+    -- the master idles, Always idle or engaged. Its child named for the frame goes over it, then
+    -- the one named for the offense mode. The set itself merges only where the job file
+    -- declared it, and its children either way, as a category's mode child is read under a
+    -- category the job file never declared. A build that reaches the set marks it worn, and
+    -- one the mode keeps it out of clears the mark. A build under the threshold leaves the
+    -- mark, since the TP's fall that pays for the weaponskill can arrive just before its
+    -- readying.
+    local function merge_pet_ws(built_set, engaged)
+        if not (pet_ws_ready and pet.isvalid) then return end
+        local mode = state.JobMode.value
+        if not (mode == 'Always' or mode == 'Idle' and not engaged) then
+            pet_ws_worn, pet_ws_readied = false, false
+            return
+        end
+        local ws = sets.Pet_WS
+        if type(ws) ~= 'table' then return end
+        pet_ws_worn = true
+        if set_declared(ws) then merge_named(built_set, ws, 'sets.Pet_WS') end
+        local frame, offense = pet.frame, state.OffenseMode.value
+        if frame and type(ws[frame]) == 'table' then merge_named(built_set, ws, 'sets.Pet_WS', frame) end
+        if type(ws[offense]) == 'table' then merge_named(built_set, ws, 'sets.Pet_WS', offense) end
+    end
+
+    -- Whether sets.Pet_WS went on for the automaton's weaponskill now readying, and whether its
+    -- TP last read at the threshold. pet_midcast asks at the readying. When the TP has already
+    -- fallen, the readying ends the weaponskill's cycle here. When it has not, the readying is
+    -- noted and the TP's fall ends the cycle. The fall is read only under Idle or Always, so
+    -- under any other mode the readying ends the cycle itself, even with the last reading at
+    -- the threshold.
+    local function take_pet_ws_worn()
+        local worn = pet_ws_worn
+        local mode = state.JobMode.value
+        if pet_ws_ready and (mode == 'Idle' or mode == 'Always') then
+            pet_ws_readied = true
+        else
+            pet_ws_worn = false
+        end
+        return worn, pet_ws_ready
+    end
+
+    -- The children of a set worn between a pet's moves, sets.Idle.Pet or sets.Idle.Pet.Engaged:
+    -- the one named for the offense mode, then the one named for the pet mode. Each merges only
+    -- where the job file declared it. A pet mode valued Engaged names no child, since under
+    -- sets.Idle.Pet that key is the set worn while the pet fights.
+    local function merge_pet_children(built_set, parent, path, pet_mode)
+        local mode = state.OffenseMode.value
+        if type(parent[mode]) == 'table' then merge_named(built_set, parent, path, mode) end
+        if pet_mode and pet_mode ~= mode and pet_mode ~= 'Engaged' and type(parent[pet_mode]) == 'table' then
+            merge_named(built_set, parent, path, pet_mode)
+        end
+    end
+
     -- The four builders ---------------------------------------------------------------------------
 
     -- Build what the character should wear while doing nothing in particular: the engaged
-    -- and idle builder. It runs more often than any other builder, on every buff, status and
-    -- pet change, on a movement change and on every gs c update auto, so it must stay cheap.
-    -- It prints only a warn for a set the job file lacks, and a debug line.
+    -- and idle builder. It runs more often than any other builder, after an action, on every
+    -- buff, status and pet change, on the pet's own status change and on every gs c update
+    -- auto, which a movement change sends, so it must stay cheap. Its own lines are a warn
+    -- for a set the job file lacks and a debug line. The slot sweep it runs first speaks when
+    -- a held item is no longer carried or can no longer be worn.
     function choose_set()
+        -- The placeholders a job file dropped come back first, so the first idle, resting or
+        -- engaged build after a load warns for none. Once they are in place this reads a few
+        -- tables and returns.
+        ensure_placeholders()
         merge_report_begin()
         -- Above the Sleep return, so a held slot that something took is reclaimed even while
         -- asleep.
@@ -298,6 +624,17 @@ return function(E)
                 merge_report_mark()
                 if sets.OffenseMode[state.OffenseMode.value] then
                     merge_named(built_set, sets.OffenseMode, 'sets.OffenseMode', state.OffenseMode.value)
+                    -- While a pet is out, the mode's child named for the pet mode, where the job
+                    -- file declared one, as sets.OffenseMode.TP.Tank. It merges right after the
+                    -- mode's set, so every later merge in this build goes over it, from the
+                    -- weapon mode and sets.Pet_WS to the buff children and Treasure Hunter.
+                    if pet.isvalid then
+                        local pet_mode, mode_set = pet_mode_value(), sets.OffenseMode[state.OffenseMode.value]
+                        if pet_mode and type(mode_set) == 'table' and type(mode_set[pet_mode]) == 'table' then
+                            local mode_path = 'sets.OffenseMode.' .. state.OffenseMode.value
+                            merge_named(built_set, mode_set, mode_path, pet_mode)
+                        end
+                    end
                     merge_report_branch_end()
                     -- Only the engaged build offers sets.DualWield.
                     apply_weapon_mode(built_set, true, false, false)
@@ -312,24 +649,31 @@ return function(E)
                         end
                     end
                     apply_aftermath(built_set, sets.OffenseMode)
-                    -- The buff children of sets.OffenseMode and of the mode child. They merge
-                    -- after the weapon mode and the Aftermath tier, and before Treasure
-                    -- Hunter, the ammunition and the pair. They sit inside the mode test, so
-                    -- a mode with no set skips them along with the weapon mode, the tier and
-                    -- Treasure Hunter.
+                    -- The automaton's weaponskill set, under the Pet WS mode's Always.
+                    merge_pet_ws(built_set, true)
+                    -- The buff children of sets.OffenseMode, the mode child and its pet-mode
+                    -- child. They merge after the weapon mode, the Aftermath tier and
+                    -- sets.Pet_WS, and before Treasure Hunter, the ammunition and the pair.
+                    -- They sit inside the mode test, so a mode with no set skips them along
+                    -- with the weapon mode, the tier, sets.Pet_WS and Treasure Hunter.
                     apply_buff_children(built_set, sets.OffenseMode, 'sets.OffenseMode')
-                    -- Treasure Hunter gear goes on while engaged in three cases. An untagged
-                    -- target always gets it, whatever the mode, since the next swing applies
-                    -- the tag. Otherwise it takes Full Time, or SATA with Sneak Attack, Trick
-                    -- Attack or Feint up.
+                    -- Treasure Hunter gear goes on while engaged for an untagged target,
+                    -- whatever the mode, since the next swing applies the tag. Otherwise it
+                    -- takes Full Time, or SATA with Sneak Attack, Trick Attack or Feint up.
                     if state.TreasureMode.value ~= 'None' then
                         if sets.TreasureHunter then
                             if not th_info.tagged_mobs[player.target.id] then
                                 merge_report(built_set, sets.TreasureHunter)
                             elseif state.TreasureMode.value == 'Full Time' then
                                 merge_report(built_set, sets.TreasureHunter)
-                            elseif state.TreasureMode.value == 'SATA' and (buffactive['Sneak Attack'] or buffactive['Trick Attack'] or buffactive['Feint']) then
-                                merge_report(built_set, sets.TreasureHunter)
+                            elseif state.TreasureMode.value == 'SATA' then
+                                if buffactive['Sneak Attack'] then
+                                    merge_on_buff(built_set, sets.TreasureHunter, 'Sneak Attack')
+                                elseif buffactive['Trick Attack'] then
+                                    merge_on_buff(built_set, sets.TreasureHunter, 'Trick Attack')
+                                elseif buffactive['Feint'] then
+                                    merge_on_buff(built_set, sets.TreasureHunter, 'Feint')
+                                end
                             end
                         else
                             warn('sets.TreasureHunter not found!')
@@ -343,8 +687,8 @@ return function(E)
             end
             -- Not engaged. The idle base and its offense-mode child, with the Resting set
             -- while resting, then the weapon mode and the overlays that may all apply at
-            -- once: a pet, Sublimation and movement. A later merge overwrites an earlier
-            -- one, so movement wins over the pet and Sublimation sets.
+            -- once: the pet sets, sets.Pet_WS, Sublimation and movement. A later merge
+            -- overwrites an earlier one, so movement wins over every overlay before it.
         else
             if sets.Idle then
                 merge_report(built_set, sets.Idle)
@@ -359,18 +703,32 @@ return function(E)
 
                 apply_weapon_mode(built_set, false, false, false)
 
+                -- A pet out wears sets.Idle.Pet and its child. While the pet fights,
+                -- sets.Idle.Pet.Engaged and its child go over them. Only the status Engaged
+                -- dresses the second set, so a pet GearSwap reports as Engaged dead takes the
+                -- first alone.
                 if pet.isvalid then
-                    merge_named(built_set, sets.Idle.Pet, 'sets.Idle.Pet')
+                    local pet_sets, pet_mode = sets.Idle.Pet, pet_mode_value()
+                    if merge_named(built_set, pet_sets, 'sets.Idle.Pet') then
+                        merge_pet_children(built_set, pet_sets, 'sets.Idle.Pet', pet_mode)
+                        if pet.status == 'Engaged' and set_declared(pet_sets.Engaged) then
+                            merge_named(built_set, pet_sets, 'sets.Idle.Pet', 'Engaged')
+                            merge_pet_children(built_set, pet_sets.Engaged, 'sets.Idle.Pet.Engaged', pet_mode)
+                        end
+                    end
                 end
+                -- The automaton's weaponskill set, over the pet sets.
+                merge_pet_ws(built_set, false)
                 -- Buff 187 is Sublimation: Activated, the charging state.
                 if buffactive[187] then
-                    merge_named(built_set, sets.Idle.Sublimation, 'sets.Idle.Sublimation')
+                    merge_on_buff(built_set, sets.Idle.Sublimation, 187, 'sets.Idle.Sublimation')
                 end
                 if E.is_moving then
                     merge_named(built_set, sets.Movement, 'sets.Movement')
                 end
-                -- The buff children of sets.Idle and of the children the branch merged. They
-                -- merge after every overlay above, and before the ammunition and the pair.
+                -- The buff children of sets.Idle, its offense-mode child and, while resting,
+                -- the Resting set. They merge after every overlay above, and before the
+                -- ammunition and the pair.
                 apply_buff_children(built_set, sets.Idle, 'sets.Idle')
             else
                 warn('sets.Idle not found!')
@@ -390,14 +748,62 @@ return function(E)
         return built_set
     end
 
+    -- The engaged or idle build with the job file's choose_set_custom layer over it.
+    -- choose_set is only the engine's half. This is what gs c update auto runs, and the
+    -- floor under a pet command's precast. Declared above precastequip, its first caller. It
+    -- writes the buff prediction into GearSwap's list first, because some of its callers do
+    -- not: the target change and the gain and lose buff handlers.
+    local function build_current_set()
+        if buff_prediction.n > 0 then write_buff_predictions(true) end
+        local built_set = choose_set()
+        if choose_set_custom then
+            merge_into(built_set, choose_set_custom())
+        else
+            warn('choose_set_custom() not found!')
+        end
+        return built_set
+    end
+
+    -- Merge a weaponskill's two buff-level layers, after its stance child: the child named
+    -- for the buff level, then the stance and the level together, nested stance first, as
+    -- ACC.HighBuff. own is the weaponskill's own set, or nil. Each layer is the own one where
+    -- own declares it, even empty, else the generic one under root, sets.WS or sets.WS.RA,
+    -- whose path is root_path. Under MidBuff no generic layer is read, and under TP no
+    -- generic pair, as TP reads no generic stance child.
+    --
+    -- The own layers are named in the report through the set index and the generic ones by
+    -- the path asked for, as the stance children are. Both are recorded merges, so the buff
+    -- children of each layer follow in merge order. Declared above precastequip, its one
+    -- caller.
+    local function merge_buff_level(built_set, own, root, root_path, stance)
+        local level = state.BuffLevel.value
+        if type(own) ~= 'table' then own = nil end
+        local generic = level ~= 'MidBuff' and type(root) == 'table'
+        if own and own[level] then
+            merge_report(built_set, own[level])
+        elseif generic and root[level] then
+            merge_named(built_set, root, root_path, level)
+        end
+        local own_stance = own and own[stance]
+        if type(own_stance) == 'table' and own_stance[level] then
+            merge_report(built_set, own_stance[level])
+        elseif generic and stance ~= 'TP' then
+            local root_stance = root[stance]
+            if type(root_stance) == 'table' and root_stance[level] then
+                merge_named(built_set, root_stance, root_path .. '.' .. stance, level)
+            end
+        end
+    end
+
     -- Build the gear for the start of an action: fast cast, ability gear or weaponskill gear.
     -- It also announces a tracked cast to the other characters when no announce is
     -- outstanding, and runs the consumable checks that can cancel an action.
     function precastequip(spell)
         log('precastequip Called')
         -- Put back the engine placeholders a job file removed by replacing a whole parent
-        -- table, so a branch below merges an empty set instead of finding nil. It runs once
-        -- per load, on the first build that calls it, and midcastequip calls it too.
+        -- table, so a branch below merges an empty set instead of finding nil. It repairs on
+        -- the first build after a load and after the file replaces a parent it filled. At any
+        -- other build it reads a few tables and returns.
         ensure_placeholders()
         merge_report_begin()
         if settings.debug then
@@ -406,15 +812,54 @@ return function(E)
                 " , spell.action_type = " ..
                 spell.action_type .. " , spell.english = " .. spell.english .. " , spell.name = " .. spell.name)
         end
-        -- While a pet is mid-action nothing is built, so the gear worn for the pet's action
-        -- stays on.
-        if pet.isvalid and pet_midaction() then return end
-        -- Idle is the floor under every branch, so a build that matches no branch still
-        -- dresses the character.
-        local built_set = {}
-        if sets.Idle then merge_report(built_set, sets.Idle) end
-        merge_report_mark()
-        if spell.type == 'WeaponSkill' then
+        -- A blood pact under Astral Conduit, which holds the pact recast at zero, builds
+        -- nothing. Nothing is swapped at the command, and the gear for the pact goes on when
+        -- the avatar readies it, in pet_midcast. The type is tested first, so every other
+        -- action under Astral Conduit dresses as usual.
+        if (spell.type == 'BloodPactRage' or spell.type == 'BloodPactWard') and buffactive['Astral Conduit'] then
+            return
+        end
+        -- The floor under every branch, so a build that matches no branch still dresses the
+        -- character. A pet command stands on the idle or engaged build the master's aftercast
+        -- restores, so only its command set's slots change at the command. Every other
+        -- action stands on sets.Idle.
+        local pet_command = PET_COMMAND_TYPES[spell.type]
+        local built_set
+        if pet_command then
+            built_set = build_current_set()
+            merge_report_floor()
+        else
+            built_set = {}
+            if sets.Idle then merge_report(built_set, sets.Idle) end
+            merge_report_mark()
+        end
+        -- A pet command wears its own sets, the gear the game reads at the command, such as
+        -- delay gear, which counts only there. sets.Pet_Command goes on where it carries gear,
+        -- then the command's family set: BloodPact for a pact, Ready for a Ready move's command
+        -- or Sic, Maneuver for a maneuver. Then the set named for the command, so a pact named
+        -- like a spell has its set at sets.Pet_Command[name], never at the sets.Midcast key the
+        -- spell reads. A family set the job file never declared is skipped. None takes a
+        -- fast-cast or midcast spell layer, and the precast build is final.
+        if pet_command then
+            local commands = sets.Pet_Command
+            if type(commands) == 'table' then
+                if set_has_gear(commands) then merge_named(built_set, commands, 'sets.Pet_Command') end
+                local family = PET_COMMAND_FAMILY[spell.type]
+                    or spell.type == 'PetCommand' and PET_COMMAND_FAMILY_BY_NAME[spell.english]
+                if family and set_declared(commands[family]) then
+                    merge_named(built_set, commands, 'sets.Pet_Command', family)
+                end
+                if commands[spell.english] then
+                    merge_named(built_set, commands, 'sets.Pet_Command', spell.english)
+                end
+            end
+            -- The buff children of each command set merged above, such as
+            -- sets.Pet_Command.Ready.Unleash, as a weaponskill's sets take theirs. The floor
+            -- took its own when it was built. A key that names a pet command, a maneuver among
+            -- them, is that command's own set and never a buff child, even where a buff shares
+            -- its name.
+            apply_buff_children(built_set, nil, nil)
+        elseif spell.type == 'WeaponSkill' then
             if sets.WS then
                 merge_report(built_set, sets.WS)
                 -- The facts are kept here and the info line is assembled below, past the
@@ -427,7 +872,7 @@ return function(E)
 
                     -- A set named for this weaponskill is merged first. Its offense-mode child
                     -- refines it, or else the offense-mode child of sets.WS.RA does. TP is the
-                    -- default mode and has no child of its own.
+                    -- default mode, so no generic TP child is read.
                     if sets.WS[spell.english] then
                         merge_named(built_set, sets.WS, 'sets.WS', spell.english)
                         -- For example sets.WS['Last Stand'].PDL.
@@ -442,6 +887,10 @@ return function(E)
                             merge_named(built_set, sets.WS.RA, 'sets.WS.RA', state.OffenseMode.value)
                         end
                     end
+                    -- The buff level's child, then the stance and the level together, the
+                    -- generic ones under sets.WS.RA.
+                    merge_buff_level(built_set, sets.WS[spell.english], sets.WS.RA, 'sets.WS.RA',
+                        state.OffenseMode.value)
 
                     local am_tier = apply_aftermath(built_set, sets.WS.RA)
                     if am_tier then message = am_tier.ws_label end
@@ -451,7 +900,7 @@ return function(E)
                     -- record. No base is passed, since sets.WS is merged inside the branch and
                     -- the idle floor sits below the mark. They merge after the Aftermath tier
                     -- and before the Ammo table, so the mode's round beats a child's and the
-                    -- count below reads the round that will fire.
+                    -- count below reads the round this build names.
                     apply_buff_children(built_set, nil, nil)
 
                     if Ammo and Ammo[state.OffenseMode.value] then
@@ -460,8 +909,8 @@ return function(E)
                     end
 
                     -- Counted after the offense-mode round is merged, so the count reads the
-                    -- round that will fire. A refusal means neither the sets nor the Ammo
-                    -- table named one.
+                    -- round this build names. The check can cancel the action, when no round
+                    -- is named or too few are left.
                     do_bullet_checks(spell, built_set)
 
                     show_bullets = true
@@ -480,6 +929,10 @@ return function(E)
                             merge_named(built_set, sets.WS, 'sets.WS', state.OffenseMode.value)
                         end
                     end
+                    -- The buff level's child, then the stance and the level together, the
+                    -- generic ones under sets.WS.
+                    merge_buff_level(built_set, sets.WS[spell.english], sets.WS, 'sets.WS',
+                        state.OffenseMode.value)
 
                     local am_tier = apply_aftermath(built_set, sets.WS)
                     if am_tier then message = am_tier.ws_label end
@@ -516,11 +969,11 @@ return function(E)
                 if sets.Precast.RA then
                     merge_report(built_set, sets.Precast.RA)
                     if buffactive[265] then     -- Flurry
-                        merge_named(built_set, sets.Precast.RA.Flurry, 'sets.Precast.RA.Flurry')
+                        merge_on_buff(built_set, sets.Precast.RA.Flurry, 265, 'sets.Precast.RA.Flurry')
                     elseif buffactive[581] then -- Flurry II
-                        merge_named(built_set, sets.Precast.RA.Flurry_II, 'sets.Precast.RA.Flurry_II')
+                        merge_on_buff(built_set, sets.Precast.RA.Flurry_II, 581, 'sets.Precast.RA.Flurry_II')
                     elseif buffactive[228] then -- Embrava
-                        merge_named(built_set, sets.Precast.RA.Flurry_II, 'sets.Precast.RA.Flurry_II')
+                        merge_on_buff(built_set, sets.Precast.RA.Flurry_II, 228, 'sets.Precast.RA.Flurry_II')
                     end
 
                     if Ammo and Ammo[state.OffenseMode.value] then
@@ -534,37 +987,37 @@ return function(E)
                 warn('sets.Precast not found!')
             end
 
-            -- Called unconditionally, as at the other two call sites. do_bullet_checks refuses
-            -- an unnamed or emptied ammunition slot itself. A built set never carries a
-            -- `ranged` key, because merge_into maps every slot to its canonical name.
+            -- Called whether or not the sets above exist, since do_bullet_checks refuses an
+            -- unnamed or emptied ammunition slot itself. A guard here could not key on
+            -- built_set.ranged, because merge_into writes that slot as range, so a built set
+            -- never carries a ranged key.
             do_bullet_checks(spell, built_set)
-            -- Job abilities take sets.JA and, where the job file named one, its child. Three
-            -- need more: Double-Up takes sets.PhantomRoll instead of a child, the two jug-pet
-            -- calls add the sets.Jugs child for the job mode, and Bounty Shot spends a round.
+            -- Job abilities take sets.JA and, where the job file named one, its child. Some
+            -- need more. Double-Up takes its child in sets.PhantomRoll's place where the job
+            -- file declares one, even empty, and sets.PhantomRoll where it declares none. The
+            -- two jug-pet calls add the sets.Jugs child for the job mode, which puts the jug the
+            -- game needs in the ammo slot, whether or not their own child is declared. Bounty
+            -- Shot spends a round.
         elseif spell.type == 'JobAbility' then
             if sets.JA then
                 merge_report(built_set, sets.JA)
                 if spell.name == 'Double-Up' then
-                    merge_named(built_set, sets.PhantomRoll, 'sets.PhantomRoll')
+                    if sets.JA[spell.english] then
+                        merge_named(built_set, sets.JA, 'sets.JA', spell.english)
+                    else
+                        merge_named(built_set, sets.PhantomRoll, 'sets.PhantomRoll')
+                    end
                 elseif sets.JA[spell.english] then
                     merge_named(built_set, sets.JA, 'sets.JA', spell.english)
-                    if spell.name == 'Bestial Loyalty' or spell.name == 'Call Beast' then
-                        merge_named(built_set, sets.Jugs, 'sets.Jugs', state.JobMode.value)
-                    end
+                end
+                if spell.name == 'Bestial Loyalty' or spell.name == 'Call Beast' then
+                    merge_named(built_set, sets.Jugs, 'sets.Jugs', state.JobMode.value)
                 end
                 if spell.name == 'Bounty Shot' then
                     do_bullet_checks(spell, built_set)
                 end
             else
                 warn('sets.JA not found!')
-            end
-            -- Divine Seal is predicted here rather than waited for. Its buff is not readable
-            -- until the ability resolves, and a Cursna cast in that gap must already announce
-            -- itself as spreading. The spell-received component clears the flag when the buff
-            -- arrives or is lost.
-            if spell.name == "Divine Seal" and not E.divine_seal_predicted then
-                E.divine_seal_predicted = true
-                if settings.debug then debug("Divine Seal detected while tracking. Divine_Seal_Predicted = True") end
             end
             -- Items take idle gear, except Holy Water and Hallowed Water, which take
             -- sets.Holy_Water.
@@ -587,14 +1040,7 @@ return function(E)
             -- runs before that merge, and the Quick Draw pieces and the Waltz announce run
             -- after it.
         elseif PRECAST_SET_FAMILY[spell.type] then
-            if spell.type == 'Scholar' then
-                -- Predicted for the same reason as Divine Seal above: Accession widens the
-                -- next spell before its buff is readable.
-                if spell.name == "Accession" and not E.accession_predicted then
-                    E.accession_predicted = true
-                    if settings.debug then debug("Accession detected while tracking. Accession_Predicted = True") end
-                end
-            elseif spell.type == 'CorsairRoll' then
+            if spell.type == 'CorsairRoll' then
                 log('CorsairRoll')
             elseif spell.type == 'Jig' then
                 -- An active Sneak blocks the Sneak that Spectral Jig grants, so buff 71,
@@ -626,6 +1072,11 @@ return function(E)
             -- Everything left is a spell. The fast-cast set is its floor, and the branches
             -- below refine it for what is being cast.
         else
+            -- The ninja tool count runs for every Utsusemi cast, whichever precast set it
+            -- wears, so its warning comes before the cast.
+            if spell.type == 'Ninjutsu' and UtsusemiSpell:contains(spell.name) then
+                do_Utsu_checks(spell)
+            end
             if sets.Precast then
                 merge_report(built_set, sets.Precast)
                 if sets.Precast.FastCast then
@@ -644,17 +1095,17 @@ return function(E)
                     elseif Healing_Magic:contains(spell.name) then
                         merge_named(built_set, sets.Precast.Healing, 'sets.Precast.Healing')
                     elseif spell.type == 'Ninjutsu' and UtsusemiSpell:contains(spell.name) then
-                        -- The tool count runs at precast, so its warning comes before the cast.
-                        do_Utsu_checks(spell)
                         merge_named(built_set, sets.Precast.Utsusemi, 'sets.Precast.Utsusemi')
                     elseif spell.type == 'BlueMagic' then
                         merge_named(built_set, sets.Precast.BlueMagic, 'sets.Precast.BlueMagic')
                     elseif spell.type == 'BardSong' then
                         -- Under Nightingale a song's cast leaves no time for a midcast swap,
-                        -- so the whole midcast build is done here instead.
+                        -- so the whole midcast build is done here instead, midcast children
+                        -- included.
                         if buffactive['Nightingale'] then
-                            merge_named(built_set, sets.Midcast, 'sets.Midcast')
-                            build_song_set(spell, built_set)
+                            local ctx = cast_context(spell)
+                            merge_ladder(built_set, sets.Midcast, 'sets.Midcast', nil, ctx, 'root')
+                            build_song_set(spell, built_set, ctx)
                         else
                             merge_named(built_set, sets.Precast.Songs, 'sets.Precast.Songs')
                         end
@@ -668,8 +1119,8 @@ return function(E)
             -- The same announce for a tracked spell, sent only when no announce is
             -- outstanding, so one pretarget sent is not repeated. A spell spreads beyond its
             -- target if it always does, or if Accession, Majesty or Divine Seal is up for a
-            -- spell that effect widens. Accession and Divine Seal are also read from their
-            -- prediction flags, which cover the gap before the buff is readable.
+            -- spell that effect widens. A buff whose result has come and that GearSwap does
+            -- not list yet is read from its prediction, which precast wrote into the list.
             local s_info = spell_info[spell.id]
             if s_info and spell.target.name and state.SpellReceived.value ~= "OFF" and not outgoing_cast_busy() then
                 local active_buffs = buffactive
@@ -679,7 +1130,7 @@ return function(E)
                 -- Yagrush counts as Divine Seal when check_equipment_spells dresses it for
                 -- this cast, and only then.
                 local has_yagrush = (s_info.divine and wears_yagrush(spell))
-                local spreads = (s_info.aoe or ((E.accession_predicted or accession_active) and s_info.accession) or (majesty_active and s_info.majesty) or ((E.divine_seal_predicted or divine_veil_active or has_yagrush) and s_info.divine))
+                local spreads = (s_info.aoe or (accession_active and s_info.accession) or (majesty_active and s_info.majesty) or ((divine_veil_active or has_yagrush) and s_info.divine))
                 announce_tracked_cast('SPELL', 'precast', spell, spell.target.name, spreads)
             end
         end
@@ -726,34 +1177,34 @@ return function(E)
     end
 
     -- Merge the accuracy, potency or duration set that the job file's lists assign this
-    -- enfeebling spell, first match winning. A spell on none of the lists keeps the plain
-    -- enfeebling set.
+    -- enfeebling spell, first match winning, and its midcast children. A spell on none of
+    -- the lists keeps the plain enfeebling set.
     --
     -- Dark magic passes skip_acc, so a dark spell takes its accuracy set only from the
     -- Dark_Acc list, never from Enfeeble_Acc.
-    local function apply_enfeebling(built_set, spell, skip_acc)
+    local function apply_enfeebling(built_set, spell, skip_acc, ctx)
         if not skip_acc and Enfeeble_Acc:contains(spell.name) then
-            merge_named(built_set, sets.Midcast.Enfeebling.MACC, 'sets.Midcast.Enfeebling.MACC')
+            merge_ladder(built_set, sets.Midcast.Enfeebling.MACC, 'sets.Midcast.Enfeebling.MACC', nil, ctx)
         elseif Enfeeble_Potency:contains(spell.name) then
-            merge_named(built_set, sets.Midcast.Enfeebling.Potency, 'sets.Midcast.Enfeebling.Potency')
+            merge_ladder(built_set, sets.Midcast.Enfeebling.Potency, 'sets.Midcast.Enfeebling.Potency', nil, ctx)
         elseif Enfeeble_Duration:contains(spell.name) then
-            merge_named(built_set, sets.Midcast.Enfeebling.Duration, 'sets.Midcast.Enfeebling.Duration')
+            merge_ladder(built_set, sets.Midcast.Enfeebling.Duration, 'sets.Midcast.Enfeebling.Duration', nil, ctx)
         end
     end
 
     -- Build the gear worn while an action is in flight, which decides how strong it lands.
     -- It has a branch for each kind of action that reaches midcast, and most of them are
-    -- kinds of magic.
-    function midcastequip(spell)
+    -- kinds of magic. burst is given only for the re-dress of a cast already in flight:
+    -- true forces the burst, and false forces none.
+    function midcastequip(spell, burst)
         ensure_placeholders()
         merge_report_begin()
-        -- Abilities, items and weaponskills get no midcast build, because their precast
-        -- gear is final. PRECAST_FINAL lists those types.
+        -- Abilities, items, weaponskills and pet commands get no midcast build, because their
+        -- precast gear is final. PRECAST_FINAL lists those types.
         if PRECAST_FINAL[spell.type] then
             log('abort midcast')
             return
         end
-        if pet.isvalid and pet_midaction() then return end
 
         local built_set = {}
         -- Idle, then sets.Midcast, form the floor, so a cast that matches no branch below
@@ -761,12 +1212,27 @@ return function(E)
         if sets.Idle then merge_report(built_set, sets.Idle) end
         if sets.Midcast then
             merge_report(built_set, sets.Midcast)
+            local root = E.mr_count
             -- Spell interruption rate down, for every action except a ranged attack.
             if sets.Midcast.SIRD and spell.action_type ~= 'Ranged Attack' then
                 merge_report(built_set,
                     sets.Midcast.SIRD)
             end
             merge_report_mark()
+            -- The cast's context chooses every midcast child below. sets.Midcast's own
+            -- children are the branch's first layers, after SIRD, so every family set
+            -- overrides them. A shot reads none.
+            local ctx = cast_context(spell, burst)
+            -- A cast that could burst is kept, dressed for a burst or not, so a chain or a
+            -- window's end on its target before it lands can re-dress it. Every other build
+            -- clears the record, which also drops one a lost aftercast left.
+            E.burst_pending = pending_burst(spell, ctx.burst, E.burst_pending)
+            -- Every cast dressed for a burst says so, in every family, whether the burst was
+            -- predicted or a re-dress forced it.
+            if ctx.burst then info(action_tag(spell) .. 'Burst Detected!') end
+            if spell.action_type ~= 'Ranged Attack' then
+                merge_children(built_set, root, ctx, 'root')
+            end
 
             -- A shot in flight. The info line names the offense mode the shot uses.
             if spell.action_type == 'Ranged Attack' then
@@ -777,23 +1243,9 @@ return function(E)
 
                     if state.OffenseMode.value ~= 'TP' and sets.Midcast.RA[state.OffenseMode.value] then
                         merge_named(built_set, sets.Midcast.RA, 'sets.Midcast.RA', state.OffenseMode.value)
-                        if state.OffenseMode.value == 'ACC' then
-                            message = 'Ranged Attack with Accuracy'
-                        elseif state.OffenseMode.value == 'PDL' then
-                            message = 'Ranged Attack with Physical Damage Limit'
-                        elseif state.OffenseMode.value == 'SB' then
-                            message = 'Ranged Attack with Subtle Blow'
-                        elseif state.OffenseMode.value == 'MEVA' then
-                            message = 'Ranged Attack with Magic Evasion'
-                        elseif state.OffenseMode.value == 'DT' then
-                            message = 'Ranged Attack with Damage Taken'
-                        elseif state.OffenseMode.value == 'PDT' then
-                            message = 'Ranged Attack with Physical Damage Taken'
-                        elseif state.OffenseMode.value == 'CRIT' then
-                            message = 'Ranged Attack with Critical Hit'
-                        elseif state.OffenseMode.value == 'True Shot' then
-                            message = 'Ranged Attack with True Shot'
-                        end
+                        -- Nil for a mode the phrase table does not name, such as one the job
+                        -- file adds. The line names that mode where it is assembled below.
+                        message = RA_MODE_PHRASE[state.OffenseMode.value]
                     else
                         message = 'Ranged Attack Set'
                     end
@@ -804,13 +1256,13 @@ return function(E)
                     -- A multi-shot buff's set replaces the message and drops the Aftermath
                     -- label.
                     if buffactive['Triple Shot'] and sets.Midcast.RA.TripleShot then
-                        merge_report(built_set, sets.Midcast.RA.TripleShot)
+                        merge_on_buff(built_set, sets.Midcast.RA.TripleShot, 'Triple Shot')
                         message, am_label = 'Using Triple Shot Set', nil
                     elseif buffactive['Double Shot'] and sets.Midcast.RA.DoubleShot then
-                        merge_report(built_set, sets.Midcast.RA.DoubleShot)
+                        merge_on_buff(built_set, sets.Midcast.RA.DoubleShot, 'Double Shot')
                         message, am_label = 'Using Double Shot Set', nil
                     elseif buffactive['Barrage'] and sets.Midcast.RA.Barrage then
-                        merge_report(built_set, sets.Midcast.RA.Barrage)
+                        merge_on_buff(built_set, sets.Midcast.RA.Barrage, 'Barrage')
                         message, am_label = 'Using Barrage Set', nil
                     end
 
@@ -818,6 +1270,7 @@ return function(E)
                     -- trailing merges. The line is assembled past the gate, since this runs
                     -- on every shot.
                     if settings.info then
+                        message = message or ('Ranged Attack in ' .. state.OffenseMode.value .. ' mode')
                         if am_label then
                             message = message .. ' and with ' .. am_label
                                 .. ' [' .. state.WeaponMode.value .. ']'
@@ -832,7 +1285,7 @@ return function(E)
                 -- then the job file's Enfeebling_Ninjitsu list. Whatever is left is a nuke.
             elseif spell.type == 'Ninjutsu' then
                 if sets.Midcast[spell.english] then
-                    merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
+                    merge_ladder(built_set, sets.Midcast, 'sets.Midcast', spell.english, ctx, 'own')
                     -- A named set for a nuke takes the day, weather and distance pieces the
                     -- fallthrough nuke takes. Utsusemi, a self-targeted spell and the job
                     -- file's Enfeebling_Ninjitsu take none, as in the ladder below.
@@ -841,13 +1294,13 @@ return function(E)
                         built_set = elemental_check(spell, built_set, 'magic')
                     end
                 elseif UtsusemiSpell:contains(spell.name) then
-                    merge_named(built_set, sets.Midcast.Utsusemi, 'sets.Midcast.Utsusemi')
+                    merge_ladder(built_set, sets.Midcast.Utsusemi, 'sets.Midcast.Utsusemi', nil, ctx)
                 elseif spell.target.type == 'SELF' then
-                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
+                    merge_ladder(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing', nil, ctx)
                 elseif Enfeebling_Ninjitsu:contains(spell.english) then
-                    merge_named(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling')
+                    merge_ladder(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling', nil, ctx)
                 else
-                    merge_named(built_set, sets.Midcast.Nuke, 'sets.Midcast.Nuke')
+                    merge_ladder(built_set, sets.Midcast.Nuke, 'sets.Midcast.Nuke', nil, ctx)
                     built_set = elemental_check(spell, built_set, 'magic')
                 end
                 -- White magic. The cure tests match substrings, so their order matters.
@@ -855,73 +1308,76 @@ return function(E)
                 -- Curaga would take the Cura set.
             elseif spell.type == 'WhiteMagic' then
                 if spell.name:contains('Cure') then
-                    merge_named(built_set, sets.Midcast.Cure, 'sets.Midcast.Cure')
+                    merge_ladder(built_set, sets.Midcast.Cure, 'sets.Midcast.Cure', nil, ctx)
                     built_set = elemental_check(spell, built_set, 'cure')
                 elseif spell.name:contains('Curaga') then
-                    merge_named(built_set, sets.Midcast.Curaga, 'sets.Midcast.Curaga')
+                    merge_ladder(built_set, sets.Midcast.Curaga, 'sets.Midcast.Curaga', nil, ctx)
                     built_set = elemental_check(spell, built_set, 'cura')
                 elseif spell.name:contains('Cura') then
-                    merge_named(built_set, sets.Midcast.Cura, 'sets.Midcast.Cura')
+                    merge_ladder(built_set, sets.Midcast.Cura, 'sets.Midcast.Cura', nil, ctx)
                     built_set = elemental_check(spell, built_set, 'cura')
                     -- Cursna takes sets.Midcast.Enhancing, with its own set over it.
                 elseif spell.name == 'Cursna' then
-                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
-                    merge_named(built_set, sets.Midcast.Cursna, 'sets.Midcast.Cursna')
-                elseif sets.Midcast[spell.english] then
-                    merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
+                    merge_ladder(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing', nil, ctx)
+                    merge_ladder(built_set, sets.Midcast.Cursna, 'sets.Midcast.Cursna', nil, ctx)
+                    -- A set named for the spell. Tier-one Refresh, Regen and Phalanx are named
+                    -- like their family sets, so they pass on to the enhancing ladder below.
+                elseif sets.Midcast[spell.english] and not ENHANCING_FAMILY_SPELL[spell.english] then
+                    merge_ladder(built_set, sets.Midcast, 'sets.Midcast', spell.english, ctx, 'own')
                     -- Every other healing spell, such as Raise, Reraise and the status cures,
                     -- takes the plain enhancing set.
                 elseif spell.skill == 'Healing Magic' then
-                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
-                    -- Enhancing magic, the one ladder here with two layers. The Others set goes
-                    -- on alongside whichever family set follows, and in the family ladder the
-                    -- first match wins.
+                    merge_ladder(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing', nil, ctx)
+                    -- Enhancing magic. The enhancing set goes on first, with its Others set for a
+                    -- buff on someone else, then the first family set that matches.
                 elseif spell.skill == 'Enhancing Magic' then
                     if sets.Midcast.Enhancing then
-                        merge_report(built_set, sets.Midcast.Enhancing)
-                        -- A buff cast on someone else takes the Others set. Under Accession a
-                        -- self-cast reaches the party too, so it counts as cast on others.
-                        if spell.target.type ~= 'SELF' or (spell.target.type == 'SELF' and buffactive['Accession']) then
-                            merge_named(built_set, sets.Midcast.Enhancing.Others, 'sets.Midcast.Enhancing.Others')
-                        end
+                        -- A buff cast on someone else, or on yourself under Accession, which
+                        -- reaches the party, takes the Others set in the target child's place.
+                        merge_ladder(built_set, sets.Midcast.Enhancing, nil, nil, ctx, 'enhancing')
                         if spell.name:contains('Refresh') then
-                            merge_named(built_set, sets.Midcast.Refresh, 'sets.Midcast.Refresh')
+                            merge_ladder(built_set, sets.Midcast.Refresh, 'sets.Midcast.Refresh', nil, ctx)
                         elseif spell.name:contains('Regen') then
-                            merge_named(built_set, sets.Midcast.Regen, 'sets.Midcast.Regen')
+                            merge_ladder(built_set, sets.Midcast.Regen, 'sets.Midcast.Regen', nil, ctx)
                         elseif Storms:contains(spell.name) then
-                            merge_named(built_set, sets.Storms, 'sets.Storms')
+                            merge_ladder(built_set, sets.Storms, 'sets.Storms', nil, ctx, 'outside')
                         elseif spell.name:contains('Gain') then
-                            merge_named(built_set, sets.Midcast.Enhancing.Gain, 'sets.Midcast.Enhancing.Gain')
+                            merge_ladder(built_set, sets.Midcast.Enhancing.Gain, 'sets.Midcast.Enhancing.Gain', nil, ctx)
                         elseif spell.name:contains('Phalanx') then
-                            merge_named(built_set, sets.Midcast.Phalanx, 'sets.Midcast.Phalanx')
+                            merge_ladder(built_set, sets.Midcast.Phalanx, 'sets.Midcast.Phalanx', nil, ctx)
                         elseif Elemental_Bar:contains(spell.name) then
-                            merge_named(built_set, sets.Midcast.Enhancing.Elemental, 'sets.Midcast.Enhancing.Elemental')
+                            merge_ladder(built_set, sets.Midcast.Enhancing.Elemental, 'sets.Midcast.Enhancing.Elemental',
+                                nil, ctx)
                         elseif Status_Bar:contains(spell.name) then
-                            merge_named(built_set, sets.Midcast.Enhancing.Status, 'sets.Midcast.Enhancing.Status')
+                            merge_ladder(built_set, sets.Midcast.Enhancing.Status, 'sets.Midcast.Enhancing.Status', nil, ctx)
                         elseif Enhancing_Skill:contains(spell.name) then
-                            merge_named(built_set, sets.Midcast.Enhancing.Skill, 'sets.Midcast.Enhancing.Skill')
+                            merge_ladder(built_set, sets.Midcast.Enhancing.Skill, 'sets.Midcast.Enhancing.Skill', nil, ctx)
                         end
                     else
                         warn('sets.Midcast.Enhancing not found!')
                     end
                 elseif Divine_Skill:contains(spell.name) then
-                    merge_named(built_set, sets.Midcast.Divine, 'sets.Midcast.Divine')
-                    -- A missing sets.Midcast.Enfeebling is reported on info rather than warn,
-                    -- here and in the black-magic arm below, since many jobs never declare it.
+                    merge_ladder(built_set, sets.Midcast.Divine, 'sets.Midcast.Divine', nil, ctx)
+                    -- A missing sets.Midcast.Enfeebling is named on info rather than warn,
+                    -- here and in black magic's enfeebling arm below. A file that never
+                    -- declares it wears the engine's empty placeholder instead, so the line
+                    -- comes only where the job file set the key to false or removed it at run
+                    -- time.
                 elseif spell.skill == 'Enfeebling Magic' then
                     if sets.Midcast.Enfeebling then
-                        merge_report(built_set, sets.Midcast.Enfeebling)
-                        apply_enfeebling(built_set, spell)
+                        merge_ladder(built_set, sets.Midcast.Enfeebling, nil, nil, ctx)
+                        apply_enfeebling(built_set, spell, false, ctx)
                     else
                         info(action_tag(spell) .. 'No sets.Midcast.Enfeebling defined!')
                     end
                 end
-                -- Black magic, four skills sharing one type. The named-set branch tests the
+                -- Black magic, several skills sharing one type. The named-set branch tests the
                 -- skill itself, so a nuke with its own set still gets the day, weather and
-                -- distance pieces.
+                -- distance pieces. The key Burst is the burst set's, never the spell Burst's
+                -- own set, so that spell takes the nuke ladder as every nuke does.
             elseif spell.type == 'BlackMagic' then
-                if sets.Midcast[spell.english] then
-                    merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
+                if spell.english ~= 'Burst' and sets.Midcast[spell.english] then
+                    merge_ladder(built_set, sets.Midcast, 'sets.Midcast', spell.english, ctx, 'own')
                     -- A named helix set takes the pieces a helix takes: the sash, the cape
                     -- and the ring, never an obi.
                     if spell.skill == 'Elemental Magic' then
@@ -929,67 +1385,67 @@ return function(E)
                             spell.name:contains('helix') and 'helix' or 'magic')
                     end
                 elseif spell.name:contains('Aspir') then
-                    merge_named(built_set, sets.Midcast.Aspir, 'sets.Midcast.Aspir')
+                    merge_ladder(built_set, sets.Midcast.Aspir, 'sets.Midcast.Aspir', nil, ctx)
                 elseif spell.name:contains('Drain') then
-                    merge_named(built_set, sets.Midcast.Drain, 'sets.Midcast.Drain')
+                    merge_ladder(built_set, sets.Midcast.Drain, 'sets.Midcast.Drain', nil, ctx)
                 elseif spell.skill == 'Enfeebling Magic' then
                     if sets.Midcast.Enfeebling then
-                        merge_report(built_set, sets.Midcast.Enfeebling)
-                        apply_enfeebling(built_set, spell)
+                        merge_ladder(built_set, sets.Midcast.Enfeebling, nil, nil, ctx)
+                        apply_enfeebling(built_set, spell, false, ctx)
                     else
                         info(action_tag(spell) .. 'No sets.Midcast.Enfeebling defined!')
                     end
-                    -- Dark magic has its own three-way split, then falls back to the
+                    -- Dark magic takes its own set, then the set of the first list that holds
+                    -- the spell, Dark_Acc, Dark_Absorb or Dark_Enhancing, or else the
                     -- enfeebling tiers without their accuracy set.
                 elseif spell.skill == 'Dark Magic' then
                     if sets.Midcast.Dark then
-                        merge_report(built_set, sets.Midcast.Dark)
+                        merge_ladder(built_set, sets.Midcast.Dark, nil, nil, ctx)
                         if Dark_Acc:contains(spell.name) then
-                            merge_named(built_set, sets.Midcast.Dark.MACC, 'sets.Midcast.Dark.MACC')
+                            merge_ladder(built_set, sets.Midcast.Dark.MACC, 'sets.Midcast.Dark.MACC', nil, ctx)
                         elseif Dark_Absorb:contains(spell.name) then
-                            merge_named(built_set, sets.Midcast.Dark.Absorb, 'sets.Midcast.Dark.Absorb')
+                            merge_ladder(built_set, sets.Midcast.Dark.Absorb, 'sets.Midcast.Dark.Absorb', nil, ctx)
                         elseif Dark_Enhancing:contains(spell.name) then
-                            merge_named(built_set, sets.Midcast.Dark.Enhancing, 'sets.Midcast.Dark.Enhancing')
+                            merge_ladder(built_set, sets.Midcast.Dark.Enhancing, 'sets.Midcast.Dark.Enhancing', nil, ctx)
                         else
-                            apply_enfeebling(built_set, spell, true)
+                            apply_enfeebling(built_set, spell, true, ctx)
                         end
                     else
                         info(action_tag(spell) .. 'No sets.Midcast.Dark defined!')
                     end
                 elseif spell.skill == 'Enhancing Magic' then
-                    merge_named(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing')
+                    merge_ladder(built_set, sets.Midcast.Enhancing, 'sets.Midcast.Enhancing', nil, ctx)
                     -- Elemental debuffs, on the job file's Elemental_Enfeeble list. They take
                     -- the enfeebling accuracy set directly, without the tier ladder.
                 elseif Elemental_Enfeeble:contains(spell.name) then
                     if sets.Midcast.Enfeebling then
-                        merge_report(built_set, sets.Midcast.Enfeebling)
-                        merge_named(built_set, sets.Midcast.Enfeebling.MACC, 'sets.Midcast.Enfeebling.MACC')
+                        merge_ladder(built_set, sets.Midcast.Enfeebling, nil, nil, ctx)
+                        merge_ladder(built_set, sets.Midcast.Enfeebling.MACC, 'sets.Midcast.Enfeebling.MACC', nil, ctx)
                     else
                         warn('sets.Midcast.Enfeebling not found!')
                     end
-                    -- Nukes. A magic burst needs three things: the mob the skillchain was made
-                    -- on, a cast within eight seconds of the chain as run_burst recorded it,
-                    -- and this spell's element among the chain's elements. Otherwise it is an
-                    -- ordinary nuke.
+                    -- Nukes. A nuke predicted to burst wears sets.Midcast.Burst in the nuke
+                    -- set's place, when the job file declared one, even empty. A file that
+                    -- never touched the engine's placeholder bursts in sets.Midcast.Nuke, and
+                    -- its Burst child applies there. Any other nuke wears the nuke set.
                 elseif spell.skill == 'Elemental Magic' then
-                    local element = res.spells[spell.id].element
-                    local element_name = res.elements[element].en
-                    if spell.target.id == E.last_skillchain_id and os.clock() - E.last_skillchain_time < 8 and E.last_skillchain_elements[element_name] then
-                        info(action_tag(spell) .. "Burst Detected!")
-                        merge_named(built_set, sets.Midcast.Burst, 'sets.Midcast.Burst')
+                    local burst_set = sets.Midcast.Burst
+                    if ctx.burst and type(burst_set) == 'table'
+                        and (PLACEHOLDER_NAME[burst_set] == nil or next(burst_set) ~= nil) then
+                        merge_ladder(built_set, burst_set, 'sets.Midcast.Burst', nil, ctx)
                     else
-                        merge_named(built_set, sets.Midcast.Nuke, 'sets.Midcast.Nuke')
+                        merge_ladder(built_set, sets.Midcast.Nuke, 'sets.Midcast.Nuke', nil, ctx)
                     end
                     -- A helix takes sets.Helix and its Light or Dark child, then the bonus
                     -- pieces a helix can use: the sash, the cape and the ring, never an obi,
                     -- since the spell forces its own procs.
                     if spell.name:contains('helix') then
                         if sets.Helix then
-                            merge_report(built_set, sets.Helix)
+                            merge_ladder(built_set, sets.Helix, nil, nil, ctx, 'outside')
                             if spell.element == 'Dark' then
-                                merge_named(built_set, sets.Helix.Dark, 'sets.Helix.Dark')
+                                merge_ladder(built_set, sets.Helix.Dark, 'sets.Helix.Dark', nil, ctx, 'outside')
                             elseif spell.element == 'Light' then
-                                merge_named(built_set, sets.Helix.Light, 'sets.Helix.Light')
+                                merge_ladder(built_set, sets.Helix.Light, 'sets.Helix.Light', nil, ctx, 'outside')
                             end
                         else
                             warn('sets.Helix not found!')
@@ -997,16 +1453,16 @@ return function(E)
                         built_set = elemental_check(spell, built_set, 'helix')
                     else
                         -- An Earth nuke also takes sets.Midcast.Nuke.Earth, when the job file
-                        -- declares it, before the bonus pieces.
+                        -- declares it, over the burst or nuke set and before the bonus pieces.
                         if spell.element == "Earth" and sets.Midcast.Nuke.Earth then
-                            merge_report(built_set, sets.Midcast.Nuke.Earth)
+                            merge_ladder(built_set, sets.Midcast.Nuke.Earth, nil, nil, ctx)
                             info(action_tag(spell) .. 'Earth Element Detected!')
                         end
                         built_set = elemental_check(spell, built_set, 'magic')
                     end
                 end
             elseif spell.type == 'BardSong' then
-                build_song_set(spell, built_set)
+                build_song_set(spell, built_set, ctx)
                 -- Blue magic is classified by the job file's lists, declared in interface.lua,
                 -- because a blue spell's own data does not say whether it deals physical or
                 -- breath damage or only applies a buff.
@@ -1015,39 +1471,47 @@ return function(E)
                 -- day, weather and distance pieces scale magic damage only.
             elseif spell.type == 'BlueMagic' then
                 if sets.Midcast[spell.english] then
-                    merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
+                    merge_ladder(built_set, sets.Midcast, 'sets.Midcast', spell.english, ctx, 'own')
                     if BlueNuke:contains(spell.english) then built_set = elemental_check(spell, built_set, 'magic') end
                 else
+                    -- sets.Midcast.BlueMagic only holds the sub-sets below. It is never merged,
+                    -- so it carries no midcast children, and its ACC is the BlueACC bucket.
                     if sets.Midcast.BlueMagic then
-                        -- Physical: damage comes from the mainhand weapon, accuracy, DEX and
-                        -- physical attack.
+                        -- Physical: accuracy, attack and each spell's stat modifiers decide the
+                        -- damage.
                         if BluePhysical:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Physical, 'sets.Midcast.BlueMagic.Physical')
-                            -- Breath: damage scales off the caster's own HP and level. Magic
-                            -- attack, INT and blue magic skill contribute nothing at all.
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Physical, 'sets.Midcast.BlueMagic.Physical',
+                                nil, ctx)
+                            -- Breath: damage follows the caster's current HP and level. Stats,
+                            -- magic attack and the Magic Damage stat do nothing for it.
                         elseif BlueBreath:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Breath, 'sets.Midcast.BlueMagic.Breath')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Breath, 'sets.Midcast.BlueMagic.Breath', nil, ctx)
                         elseif BlueNuke:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Nuke, 'sets.Midcast.BlueMagic.Nuke')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Nuke, 'sets.Midcast.BlueMagic.Nuke', nil, ctx)
                             built_set = elemental_check(spell, built_set, 'magic')
                         elseif BlueSkill:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Skill, 'sets.Midcast.BlueMagic.Skill')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Skill, 'sets.Midcast.BlueMagic.Skill', nil, ctx)
                             -- Fixed-potency buffs. Only their duration answers to gear, so
                             -- they must not borrow the skill set the arm above uses.
                         elseif BlueBuff:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Buff, 'sets.Midcast.BlueMagic.Buff')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Buff, 'sets.Midcast.BlueMagic.Buff', nil, ctx)
                         elseif BlueTank:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Enmity, 'sets.Midcast.BlueMagic.Enmity')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Enmity, 'sets.Midcast.BlueMagic.Enmity', nil, ctx)
                         elseif BlueHealing:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.Healing, 'sets.Midcast.BlueMagic.Healing')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.Healing, 'sets.Midcast.BlueMagic.Healing',
+                                nil, ctx)
                         elseif BlueACC:contains(spell.english) then
-                            merge_named(built_set, sets.Midcast.BlueMagic.ACC, 'sets.Midcast.BlueMagic.ACC')
+                            merge_ladder(built_set, sets.Midcast.BlueMagic.ACC, 'sets.Midcast.BlueMagic.ACC', nil, ctx)
                         end
                         -- Diffusion applies over whichever arm matched, not instead of one:
                         -- it extends a blue buff to the party without changing what it does.
                         if buffactive["Diffusion"] then
                             if sets.Diffusion then
-                                merge_report(built_set, sets.Diffusion)
+                                -- A ladder set picked on the buff: merged through merge_on_buff,
+                                -- then its midcast children, as merge_ladder would.
+                                if merge_on_buff(built_set, sets.Diffusion, "Diffusion") then
+                                    merge_children(built_set, E.mr_count, ctx, 'outside')
+                                end
                                 info(action_tag(spell) .. 'Diffusion Augment')
                             else
                                 warn('sets.Diffusion not found!')
@@ -1063,13 +1527,13 @@ return function(E)
             elseif spell.type == 'Geomancy' then
                 if sets.Geomancy then
                     if sets.Geomancy[spell.english] then
-                        merge_named(built_set, sets.Geomancy, 'sets.Geomancy', spell.english)
+                        merge_ladder(built_set, sets.Geomancy, 'sets.Geomancy', spell.english, ctx, 'own')
                     elseif Indicolure_List:contains(spell.english) then
                         if sets.Geomancy.Indi then
-                            merge_report(built_set, sets.Geomancy.Indi)
+                            merge_ladder(built_set, sets.Geomancy.Indi, nil, nil, ctx, 'outside')
                             if spell.target.type ~= "SELF" then
                                 if sets.Geomancy.Indi.Entrust then
-                                    merge_report(built_set, sets.Geomancy.Indi.Entrust)
+                                    merge_ladder(built_set, sets.Geomancy.Indi.Entrust, nil, nil, ctx, 'outside')
                                     info(action_tag(spell) .. 'Indicolure set - Entrust')
                                 else
                                     warn('sets.Geomancy.Indi.Entrust not found!')
@@ -1079,46 +1543,24 @@ return function(E)
                             warn('sets.Geomancy.Indi not found!')
                         end
                     elseif Geomancy_List:contains(spell.english) then
-                        merge_named(built_set, sets.Geomancy.Geo, 'sets.Geomancy.Geo')
+                        merge_ladder(built_set, sets.Geomancy.Geo, 'sets.Geomancy.Geo', nil, ctx, 'outside')
                     end
                 else
                     warn('sets.Geomancy not found!')
                 end
-                -- Nothing worn changes a Trust summon. sets.Midcast is merged again inside the
-                -- branch so the report names the set the cast wore.
+                -- Nothing worn changes a Trust summon. sets.Midcast merges again inside the
+                -- branch, over SIRD and its own children, so the report has a set to name.
+                -- The line names sets.Midcast alone, though a slot it leaves empty keeps what
+                -- a child of it put there.
             elseif spell.type == 'Trust' then
                 merge_report(built_set, sets.Midcast)
-                -- Blood pacts take a set named for the pact, or sets.Midcast.BP. Under Astral
-                -- Conduit, which removes the recast, the build is emptied, so nothing is
-                -- swapped.
-            elseif spell.type == "BloodPactWard" or spell.type == "BloodPactRage" then
-                if not buffactive["Astral Conduit"] then
-                    if sets.Midcast[spell.english] then
-                        merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
-                    elseif sets.Midcast.BP then
-                        merge_report(built_set, sets.Midcast.BP)
-                    else
-                        warn('sets.Midcast.BP not found!')
-                    end
-                else
-                    built_set = {}
-                end
-                -- Beastmaster Ready moves, which arrive as type Monster.
-            elseif spell.type == 'Monster' then
-                merge_named(built_set, sets.Ready, 'sets.Ready')
-                -- The two summoning-magic cases, each falling back to a general set when the
-                -- job file named none for the spell.
-            elseif spell.name == "Elemental Siphon" then
-                if sets.Midcast[spell.english] then
-                    merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
-                else
-                    merge_named(built_set, sets.Midcast.SummoningMagic, 'sets.Midcast.SummoningMagic')
-                end
+                -- Summoning an avatar or spirit takes a set named for it, or
+                -- sets.Midcast.Summon when the job file named none.
             elseif spell.type == "SummonerPact" then
                 if sets.Midcast[spell.english] then
-                    merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
+                    merge_ladder(built_set, sets.Midcast, 'sets.Midcast', spell.english, ctx, 'own')
                 else
-                    merge_named(built_set, sets.Midcast.Summon, 'sets.Midcast.Summon')
+                    merge_ladder(built_set, sets.Midcast.Summon, 'sets.Midcast.Summon', nil, ctx)
                 end
             end
         else
@@ -1129,10 +1571,11 @@ return function(E)
         -- The buff children of sets.Midcast and of every set the branch merged for this
         -- action, read from the merge record. They merge after the branch end and before
         -- every trailing merge below, which win over them: the round, the weapon mode under
-        -- the lock, the song weapons, Treasure Hunter and the pair. The elemental chooser
-        -- wrote inside the branch, so a child naming waist, back or the ring slot wins over
-        -- its pick. The call is gated on sets.Midcast because the mark is set only inside
-        -- that test. Without the set, the span would cover the idle floor alone.
+        -- the lock, the song weapons and the Pianissimo instrument, Treasure Hunter and the
+        -- pair. The elemental chooser wrote inside the branch, so a child naming waist, back
+        -- or the ring slot wins over its pick. The call is gated on sets.Midcast because the
+        -- mark is set only inside that test. Without the set, the span would cover the idle
+        -- floor alone.
         if sets.Midcast then apply_buff_children(built_set, sets.Midcast, 'sets.Midcast') end
 
         -- The round a shot fires, after the children, so the Ammo table wins over a child's
@@ -1144,10 +1587,10 @@ return function(E)
                 { ammo = Ammo[state.OffenseMode.value] })
         end
 
-        -- Three spells that do not take hold over their own active buff, so the old buff is
-        -- canceled by id at midcast: 37 Stoneskin, 71 Sneak and 66 Copy Image. Sneak is
-        -- canceled only when self-cast, since only the player's own buff can be canceled.
-        -- The Copy Image cancel waits half a second.
+        -- Spells that do not take hold over their own active buff, so the old buff is
+        -- canceled by id at midcast: 37 Stoneskin, 71 Sneak, and 66 Copy Image for Utsusemi:
+        -- Ichi. Sneak is canceled only when self-cast, since only the player's own buff can
+        -- be canceled. The Copy Image cancel waits half a second.
         if spell.name == "Stoneskin" and buffactive["Stoneskin"] then
             send_command('cancel 37;')
         elseif spell.name == "Sneak" and buffactive["Sneak"] and spell.target.type == "SELF" then
@@ -1158,7 +1601,8 @@ return function(E)
 
         -- The weapon mode, as in precast: only under the weapon lock, for an action it does
         -- not exempt. Under Locked and Locked+R nothing is exempt, a Geomancy spell included.
-        -- The pair is written back as this builder's last line.
+        -- Unlike precast, it does not withhold the shield when the mode has no set of its
+        -- own. The pair is written back as this builder's last line.
         local held = E.lock_main_sub and not lock_exempts(spell)
         if held then
             apply_weapon_mode(built_set, false, false, false)
@@ -1174,10 +1618,10 @@ return function(E)
                 log('Pianissimo Check')
                 if Instrument then
                     if Instrument.Pianissimo then
-                        -- Merged through the report, unlike the instruments in
-                        -- build_song_set, so the gear report names the choice between a
-                        -- family instrument and the general one. A blank entry is skipped,
-                        -- and the family set keeps the slot.
+                        -- The family's instrument, or the general Pianissimo one. A blank
+                        -- entry is skipped, and range keeps what build_song_set chose. The
+                        -- merge is recorded, but as an inline set merged after the branch it
+                        -- is named in no report line.
                         local pianissimo = equip_pianissimo_gear(spell)
                         if not blank_instrument(pianissimo, 'Instrument.Pianissimo') then
                             merge_report(built_set, { range = pianissimo })
@@ -1203,28 +1647,11 @@ return function(E)
         return built_set
     end
 
-    -- The engaged or idle build with the job file's choose_set_custom layer over it.
-    -- choose_set is only the engine's half. This is what gs c update auto runs.
-    local function build_current_set()
-        local built_set = choose_set()
-        if choose_set_custom then
-            merge_into(built_set, choose_set_custom())
-        else
-            warn('choose_set_custom() not found!')
-        end
-        return built_set
-    end
-
-    -- What to wear once an action finishes: the current build. While a pet is mid-action
-    -- this returns nothing and leaves the gear as it is. That path still resets the merge
-    -- report, so the next build starts clean.
+    -- What to wear once an action finishes: the current build. A pet's move in flight keeps
+    -- its set through the master's aftercast by the hold in hooks.lua, which does not call
+    -- this then.
     function aftercastequip(spell)
-        if pet_midaction() then
-            merge_report_begin()
-            return
-        else
-            return build_current_set()
-        end
+        return build_current_set()
     end
 
     -- Conditional gear ---------------------------------------------------------------------------
@@ -1352,9 +1779,9 @@ return function(E)
 
     -- The song weapons, for precast or midcast. Each phase takes its own child of
     -- sets.Weapons.Songs, since the instrument that speeds a song is rarely the one that
-    -- strengthens it. The shield merges last, only when the character is neither dual
-    -- wielding nor holding a two-hander, and not at all while either trait is unknown, as
-    -- in apply_weapon_mode.
+    -- strengthens it. The shield merges last, only when the character has no Dual Wield
+    -- trait and holds neither a two-hander nor a hand-to-hand weapon, and not at all while
+    -- either trait is unknown, as in apply_weapon_mode.
     function build_song_weapons(built_set, precast)
         if not sets.Weapons then
             warn('sets.Weapons not found!')
@@ -1371,7 +1798,7 @@ return function(E)
             merge_named(built_set, sets.Weapons.Songs.Midcast, 'sets.Weapons.Songs.Midcast')
         end
         if E.DualWield == nil or E.TwoHand == nil then return built_set end
-        if not E.DualWield and not E.TwoHand then
+        if not E.DualWield and not E.TwoHand and not E.HandToHand then
             merge_named(built_set, sets.Weapons.Shield, 'sets.Weapons.Shield')
         end
         return built_set
@@ -1383,30 +1810,39 @@ return function(E)
     -- A dummy song on the SongCount list only holds a song slot for the next song to
     -- overwrite, so it takes sets.Midcast.DummySongs and the Count instrument and nothing
     -- else.
-    function build_song_set(spell, built_set)
+    --
+    -- Each set merged here is followed by its midcast children, for the cast whose context
+    -- ctx is. A caller that passes none gets this cast's.
+    function build_song_set(spell, built_set, ctx)
+        ctx = ctx or cast_context(spell)
         if SongCount:contains(spell.name) then
-            merge_named(built_set, sets.Midcast.DummySongs, 'sets.Midcast.DummySongs')
+            merge_ladder(built_set, sets.Midcast.DummySongs, 'sets.Midcast.DummySongs', nil, ctx)
             merge_instrument(built_set, Instrument.Count, 'Instrument.Count')
         else
+            -- Every other song first takes sets.Midcast.Songs, the gear for all songs, so the
+            -- song's own set, the enfeebling set, the instrument and the family set below each
+            -- win over it.
+            merge_ladder(built_set, sets.Midcast.Songs, 'sets.Midcast.Songs', nil, ctx)
             -- A set named for the song wins, with no instrument chosen here. Otherwise a
             -- Horde song takes the enfeebling set and the AOE_Sleep instrument, a song on the
             -- Enfeebling_Song list takes the enfeebling set and the Enfeebling instrument,
             -- and any other song is a buff and takes the Potency instrument.
             if sets.Midcast[spell.english] then
-                merge_named(built_set, sets.Midcast, 'sets.Midcast', spell.english)
+                merge_ladder(built_set, sets.Midcast, 'sets.Midcast', spell.english, ctx, 'own')
             elseif spell.name:contains('Horde') then
-                merge_named(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling')
+                merge_ladder(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling', nil, ctx)
                 merge_instrument(built_set, Instrument.AOE_Sleep, 'Instrument.AOE_Sleep')
             elseif Enfeebling_Song:contains(spell.english) then
-                merge_named(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling')
+                merge_ladder(built_set, sets.Midcast.Enfeebling, 'sets.Midcast.Enfeebling', nil, ctx)
                 merge_instrument(built_set, Instrument.Enfeebling, 'Instrument.Enfeebling')
             else
                 merge_instrument(built_set, Instrument.Potency, 'Instrument.Potency')
             end
-            -- The family set goes on last, and the instrument chosen above is put back over
-            -- it, so the family set's own range cannot displace it.
+            -- The family set goes on last with its children, and the instrument chosen above
+            -- is put back over them, so neither the family set's range nor a child's can
+            -- displace it.
             local song_instrument = built_set['range']
-            merge_report(built_set, equip_song_gear(spell))
+            merge_ladder(built_set, equip_song_gear(spell), nil, nil, ctx)
             if song_instrument then
                 merge_into(built_set, { range = song_instrument })
             end
@@ -1470,8 +1906,10 @@ return function(E)
     -- The gear the engine owns for a spell, as a set or nil. That is what a spell cannot be
     -- cast without: Daybreak for Dispelga, Marsyas for Honor March, Loughnashade for Aria
     -- of Passion, and a cloak for Impact. It also covers Yagrush for a White Mage's Cursna.
-    -- A job file cannot override these. hooks.lua merges the result over everything else
-    -- the build chose, in both phases, and dresses it over the weapon lock.
+    -- Only a spell takes it, an action GearSwap marks Magic. Another action sharing a
+    -- spell's name takes nothing: the blood pact Impact, or the scroll whose item name is
+    -- Cursna. A job file cannot override these. hooks.lua merges the result over everything
+    -- else the build chose, in both phases, and dresses it over the weapon lock.
     --
     -- An implement yields to every layer above it. When one of those holds any of its
     -- slots, nothing is returned, and the second return maps each held slot to its holder's
@@ -1483,6 +1921,7 @@ return function(E)
     -- disagree. Impact takes whichever cloak is carried, Crepuscular first, and empties
     -- head, because the cloak covers both slots.
     function check_equipment_spells(spell)
+        if spell.action_type ~= 'Magic' then return nil end
         local built_set
         if spell.name == "Dispelga" then
             built_set = { main = "Daybreak" }
@@ -1532,12 +1971,12 @@ return function(E)
     -- Consumable checks -------------------------------------------------------------------------
 
     -- Count the rounds left for this action and decide whether it may proceed. It is the
-    -- only function in this file that cancels an action, and it runs while the ammunition
-    -- slot is still being chosen.
+    -- only function in this file that cancels an action, and it runs inside the precast
+    -- build, before the job file's precast layer and the equip.
     --
-    -- No channel toggle silences it. The refusals and substitutions print on notice, and
-    -- the low-ammunition banner writes straight to chat in color 167 and is echoed on the
-    -- other characters.
+    -- No channel toggle silences its answers. The refusals and substitutions print on
+    -- notice, and the low-ammunition banner writes straight to chat in color 167 and is
+    -- echoed on the other characters.
     function do_bullet_checks(spell, built_set)
         if spell and built_set then
             local bullet_name = built_set.ammo
@@ -1603,8 +2042,8 @@ return function(E)
                 end
             end
 
-            -- The last rounds are kept back: a shot or weaponskill must leave more rounds than
-            -- it could spend. Quick Draw may spend its last one.
+            -- The last rounds are kept back: every action but Quick Draw must leave more
+            -- rounds than it could spend, so Quick Draw alone may spend its last one.
             if spell.type ~= 'CorsairShot' and available_bullets <= bullet_min_count then
                 notice('Not enough ammo.  Canceling.')
                 cancel_spell()
@@ -1668,8 +2107,13 @@ return function(E)
     E.reassert_pair = reassert_pair
     E.build_current_set = build_current_set
     E.wears_yagrush = wears_yagrush
+    E.forget_pet = forget_pet
+    E.pet_tp_packet = pet_tp_packet
+    E.take_pet_ws_worn = take_pet_ws_worn
+    E.pet_mode_shown = pet_mode_shown
+    E.pet_mode_forms = pet_mode_forms
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

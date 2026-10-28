@@ -44,8 +44,8 @@
 --          change. sr_failsafe_active, which lets the debug box read the private failsafe
 --          flag. roll_action and roll_clear, the eleven tracker's packet read and its zone
 --          clear, both called by th. roll_query, the tracker's question, which the root
---          schedules once after the load. The file also clears accession_predicted and
---          divine_seal_predicted, which the state component declares.
+--          schedules once after the load. The two buff handlers also end core.lua's buff
+--          prediction of the buff they report.
 -- LOADS    After hooks and before th. Three globals it calls are defined by components that
 --          load later: cancel (monitor), display_box_update (display) and equip_set_command
 --          (the root). None of them may be bound in the import block, where it would be nil.
@@ -53,13 +53,11 @@
 --          completes. E.repaint_slot, the display component's one-cell recolor, is read
 --          through E at each call for the same reason.
 
--- requires: rahvings/state, rahvings/core, rahvings/equip, rahvings/hoxne, rahvings/builders
+-- requires: rahvings/state, rahvings/core, rahvings/equip, rahvings/hoxne, rahvings/builders, rahvings/hooks
 return function(E)
-    -- Immutable dependencies, bound once at construction. The shared flags
-    -- accession_predicted and divine_seal_predicted are never bound here. They are reached
-    -- through E at every touch, because a file-local copy would not be the value the other
-    -- components read and write.
-    local BUFF_ACCESSION, BUFF_DIVINE_SEAL, Mage_Job = E.BUFF_ACCESSION, E.BUFF_DIVINE_SEAL, E.Mage_Job
+    -- Immutable dependencies, bound once at construction.
+    local Mage_Job                                   = E.Mage_Job
+    local buff_prediction, end_buff_prediction       = E.buff_prediction, E.end_buff_prediction
     local ability_info, spell_info, res, settings    = E.ability_info, E.spell_info, E.res, E.settings
     local build_current_set, count_keys, debug       = E.build_current_set, E.count_keys, E.debug
     local finish_outgoing_cast, get_time, merge_into = E.finish_outgoing_cast, E.get_time, E.merge_into
@@ -68,7 +66,9 @@ return function(E)
     local hoxne_sleep_open, hoxne_sleep_close        = E.hoxne_sleep_open, E.hoxne_sleep_close
     local assert_over_lock, report_refused           = E.assert_over_lock, E.report_refused
     local set_roll_eleven                            = E.set_roll_eleven
+    local pet_move_holds                             = E.pet_move_holds
     local send_ipc, get_party, is_target_in_party    = E.send_ipc, E.get_party, E.is_target_in_party
+    local rebuild_waits, ensure_placeholders         = E.rebuild_waits, E.ensure_placeholders
 
     -- Private state, kept as upvalues because only this file writes it. The caster pool is a
     -- set rather than a count: several characters may cast on this one at once, and the gear
@@ -87,8 +87,9 @@ return function(E)
     -- handlers. The outgoing half, which announces this character's own casts, is core's
     -- announce_tracked_cast and finish_outgoing_cast.
 
-    -- The received set each equip key names. This table is the only place that mapping lives.
-    -- The set is fetched, named in the chat report and warned about through it.
+    -- The received set for each equip key in core's tables of tracked spells and abilities.
+    -- This table is the only place that mapping lives. The set is fetched, named in the chat
+    -- report and warned about through it.
     local SR_SET_KEY = {
         cure_set          = 'Cure_Received',
         cursna_set        = 'Cursna_Received',
@@ -99,9 +100,9 @@ return function(E)
         waltz_set         = 'Waltz_Received',
     }
 
-    -- The two announce tags that start a cast here, and the lookup table each one selects. A
-    -- tag not listed selects nothing, and the listener passes the message on to its COMPLETE
-    -- branch.
+    -- The two announce tags that start a cast here, each with the kind that picks the table
+    -- the id is read from. A tag not listed picks nothing, and the listener passes the message
+    -- on to its COMPLETE branch.
     local IPC_CAST_KIND = {
         SPELL   = 'spell',
         ABILITY = 'ability',
@@ -252,15 +253,18 @@ return function(E)
     end
 
     -- The Sleep hold. Sleep gear is for a drain piece that wakes the character on its first
-    -- tick, so being slept dresses idle gear plus sets.Weapons.Sleep and holds the slots that
-    -- set names. It holds only the ones no higher layer holds: an item use, the disable hold,
-    -- a strip hold and the Hoxne hold outrank it, and every layer below yields to it. The
-    -- registry is the equip component's, keyed by canonical slot and holding the item, so the
-    -- resolver answers 'sleep' for the slot, and a higher layer that hands the slot back can
-    -- put the drain gear on again. An empty set holds nothing. The status box is repainted
-    -- once the slots are recorded, and only when something was held. Returns whether
-    -- anything was held.
+    -- tick, so being slept dresses sets.Idle with sets.Weapons.Sleep over it and holds the
+    -- slots that set names. It holds only the ones no higher layer holds: an item use, the
+    -- disable hold, a strip hold and the Hoxne hold outrank it, and every layer below yields
+    -- to it. The registry is the equip component's, keyed by canonical slot and holding the
+    -- item, so the resolver answers 'sleep' for the slot, and a higher layer that hands the
+    -- slot back can put the drain gear on again. An empty set holds nothing. The status box is
+    -- repainted once the slots are recorded, and only when something was held. Returns
+    -- whether anything was held. Like every build, it first puts back any placeholder the job
+    -- file dropped, so sets.Weapons.Sleep is found even when the job file replaced
+    -- sets.Weapons.
     local function hold_sleep_gear()
+        ensure_placeholders()
         local built_set = {}
         if sets.Idle then built_set = sets.Idle else warn('sets.Idle not found!') end
         local sleep_set = sets.Weapons and sets.Weapons.Sleep
@@ -570,25 +574,26 @@ return function(E)
         end
     end
 
-    -- Buff gained. Registered by the root on 'gain buff'. Three jobs: clear the two
-    -- prediction flags, use a status-removal item where the job file allows it, and dress
-    -- and hold gear for the ailments that need it.
+    -- Buff gained. Registered by the root on 'gain buff'. Three jobs: end the buff's
+    -- prediction, use a status-removal item where the job file allows it, and dress and hold
+    -- gear for the ailments that need it.
     --
     -- The buff ids handled: 2 sleep, 4 paralysis, 6 silence (with a mage main job or subjob),
     -- 7 petrification, 10 stun, 15 doom.
     E.sr_gain_buff = function(id)
-        -- A prediction covers the gap between using the ability and its buff becoming
-        -- readable. Once the buff is here, the prediction is dropped.
-        if id == BUFF_ACCESSION then E.accession_predicted = false end
-        if id == BUFF_DIVINE_SEAL then E.divine_seal_predicted = false end
+        -- A prediction covers the gap between the result that gives a buff and GearSwap's list
+        -- showing it. Once the buff is here, the prediction ends.
+        if buff_prediction.n > 0 then end_buff_prediction(id, true) end
         if id == 4 or (id == 6
                 and (Mage_Job:contains(player.main_job) or Mage_Job:contains(player.sub_job))) then
-            if player.inventory['Remedy'] ~= nil then
-                if AutoItem == true then
+            -- Only while AutoItem is on, as with Holy Water, so a player who handles cures by
+            -- hand is not told about a Remedy the engine would never use.
+            if AutoItem == true then
+                if player.inventory['Remedy'] ~= nil then
                     windower.chat.input('/item "Remedy" <me>')
+                else
+                    info('No Remedies in inventory.')
                 end
-            else
-                info('No Remedies in inventory.')
             end
         elseif id == 2 then
             hold_sleep_gear()
@@ -599,6 +604,8 @@ return function(E)
                 cancel('Stoneskin')
             end
         elseif id == 7 or id == 10 then
+            -- The current set goes on at once. Unlike the rebuild at a buff's loss below, this
+            -- one does not wait for a cast in flight.
             log(id == 7 and 'Petrification' or 'Stunned', ' - Checking Gear')
             equip(build_current_set())
         elseif id == 15 then
@@ -640,13 +647,12 @@ return function(E)
     end
 
     -- Buff lost. Registered by the root on 'lose buff'. Releases the gear the matching gain
-    -- held, clears the two prediction flags, and takes a roll's total out of the eleven
-    -- tracker. Only sleep and doom hold gear, so only those two are released here. The other
-    -- ailments above never hold anything.
+    -- held, ends the buff's prediction, and takes a roll's total out of the eleven tracker.
+    -- Only sleep and doom hold gear, so only those two are released here. The other ailments
+    -- above never hold anything.
     E.sr_lose_buff = function(id)
-        -- Cleared on loss as well as on gain, so a prediction never outlives its buff.
-        if id == BUFF_ACCESSION then E.accession_predicted = false end
-        if id == BUFF_DIVINE_SEAL then E.divine_seal_predicted = false end
+        -- Ended on loss as well as on gain, so a prediction never outlives its buff.
+        if buff_prediction.n > 0 then end_buff_prediction(id, false) end
         -- A roll's buff leaving clears that roll from the tracker, however it ended.
         if ROLL_BUFF[id] then roll_lost(id) end
         local buff = res.buffs[id]
@@ -660,15 +666,21 @@ return function(E)
             -- slots the hold took would otherwise be passed over and never come back.
             if doom then release_spell_received_gear() else release_sleep_gear() end
             UnlockByMode()
+            info(doom and 'Unlocking Cursna Received Gear' or 'Unlocking Sleep Gear')
+            -- The slots are released either way. The rebuild waits for a held pet's move, as at
+            -- any buff change, and the move's end rebuilds. It waits for a cast in flight too,
+            -- whose aftercast dresses for the state without the buff.
+            local move = E.pet_move
+            if move and pet_move_holds(move.awaiting == true) then return end
+            if rebuild_waits() then return end
             local built_set = build_current_set()
-            -- A job file without buff_change_custom is passed over silently here. The
-            -- ordinary buff-change path, which runs on the same event, already warns that
-            -- the hook is missing.
+            -- The job file's buff-change hook goes on top, as at any buff change. A job file
+            -- without buff_change_custom is passed over silently here, because the ordinary
+            -- buff-change hook, which runs on the same loss, warns that it is missing.
             if buff_change_custom then
                 merge_into(built_set, buff_change_custom(name, gain))
             end
             equip(built_set)
-            info(doom and 'Unlocking Cursna Received Gear' or 'Unlocking Sleep Gear')
         end
     end
 
@@ -685,5 +697,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

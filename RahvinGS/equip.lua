@@ -23,20 +23,20 @@
 --     Set diagnostics ..... placeholder tracking, empty-set warnings, gs c checksets
 --     The merge report .... the record of what a build merged, and how a set is named
 --     Buff children ....... sets merged while a named buff is active
+--     Midcast children .... sets a cast's mode, target, spell and burst choose under each
+--                           set its midcast build merges
 --     The finished build .. the report's lines, and the last adjustments before the equip
 --     The Hoxne hold ...... the equip() override, and the two ways a slot is held
 --     Slot ownership ...... the precedence stack, the holds, and the release paths
 --     The weapon lock ..... the weapon mode's pair, held against the layers below it
 --     Slot locking ........ the blanket and routine unlocks
 --
--- THIS FILE IS THE ARBITER. Every engine file except interface, state and core leans on it
---          for one question above all: who owns this slot. Nothing else decides that. A
---          routine release goes through release_slot, which asks slot_claim first and hands
---          the slot to the next layer in line. Unlock, the manual override, is the one
---          exception. It frees every slot the weapon lock does not shut, because that is
---          what the player asked for.
+-- THIS FILE DECIDES WHO OWNS A SLOT, and nothing else does. A routine release goes through
+--          release_slot, which asks slot_claim first and hands the slot to the next layer in
+--          line. Unlock, the manual override, is the one exception. It frees every slot the
+--          weapon lock does not shut, because that is what the player asked for.
 --
--- THE PRECEDENCE STACK is the idea the whole file is built around. Highest first:
+-- THE PRECEDENCE STACK orders the layers that can hold a slot, highest first:
 --      1. item use ........... an enchanted item use, which asked for its slot explicitly
 --      2. disable hold ....... gs c disable, which keeps the slot wearing what it wears
 --      3. strip hold ......... gs c naked and its other shapes, which keep the slot bare
@@ -56,12 +56,12 @@
 --          captured original, for the paths that must bypass that filter.
 --
 -- EXPORTS  The E fields in the export block at the end, the shared fields this file writes
---          onto E directly, and six globals: equip, set_diagnostics, invalidate_set_index,
+--          onto E directly, and these globals: equip, set_diagnostics, invalidate_set_index,
 --          hoxne_owns_slot, Unlock and UnlockByMode. The importers are enchant,
---          spellreceived, builders, hoxne, hooks, monitor, th, display, commands, lifecycle
---          and the root. The hoxne state table is declared here rather than in the Hoxne
---          component, because the equip override and slot ownership both read it.
--- LOADS    After state and core, and before every component that asks it anything. Four
+--          spellreceived, builders, hoxne, hooks, th, display, commands, lifecycle and the
+--          root. The hoxne state table is declared here rather than in the Hoxne component,
+--          because the equip override and slot ownership both read it.
+-- LOADS    After state and core, and before every component that asks it anything. Some
 --          names it uses belong to files that load later. equip_set_command, declared in
 --          the root, and display_box_update, declared in the display component, are globals
 --          read at call time. E.cast_proper_in_flight, the hooks component's predicate, and
@@ -76,6 +76,8 @@ return function(E)
     -- one the other components see.
     local CANON_SLOT, PRECAST_FINAL           = E.CANON_SLOT, E.PRECAST_FINAL
     local have_item, res, settings, unwearable_reason = E.have_item, E.res, E.settings, E.unwearable_reason
+    local PET_COMMAND_TYPES, PET_JOBS         = E.PET_COMMAND_TYPES, E.PET_JOBS
+    local buff_prediction, buff_shown_predicted = E.buff_prediction, E.buff_shown_predicted
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 12 - EQUIPMENT APPLICATION AND SLOT CONTROL
@@ -109,13 +111,13 @@ return function(E)
 
     -- Set diagnostics -----------------------------------------------------------------------------
 
-    -- The section 2 placeholders, recorded before the job file declares anything.
-    -- PLACEHOLDER_NAME keys each placeholder table to its dotted name. A gearless set still
-    -- keyed there was never declared, and a gearless set not keyed there was declared and
-    -- left empty. PLACEHOLDER_LIST holds the same names, parent first. PLACEHOLDER_PATH keys
-    -- the names by path instead of table, for a reader that holds a path. A job file that
-    -- replaces a family's table keeps the path, so the path still answers that section 2
-    -- declares it.
+    -- The placeholders interface.lua's section 2 declares, recorded before the job file
+    -- declares anything. PLACEHOLDER_NAME keys each placeholder table to its dotted name, and
+    -- a placeholder the repair below puts back is keyed there too. A gearless set still keyed
+    -- there was never declared, and a gearless set not keyed there was declared and left
+    -- empty. PLACEHOLDER_LIST holds the same names, parent first. PLACEHOLDER_PATH keys the
+    -- names by path instead of table, for a reader that holds a path. A job file that replaces
+    -- a family's table keeps the path, so the path still answers that section 2 declares it.
     local PLACEHOLDER_NAME = {}
     local PLACEHOLDER_LIST = {}
     local PLACEHOLDER_PATH = {}
@@ -132,13 +134,37 @@ return function(E)
         record(Instrument, 'Instrument')
     end
 
-    -- Job files replace whole parents (sets.Midcast = { ... }), which removes every
-    -- engine placeholder beneath them. Re-create any placeholder path the job file
-    -- dropped, so the merge guards see the tree section 2 promised. Runs once, on
-    -- the first set build after a load.
+    -- Job files replace whole parents (sets.Midcast = { ... }), which removes every engine
+    -- placeholder beneath them. ensure_placeholders re-creates any placeholder path the job
+    -- file dropped, so the merge guards see the tree section 2 promised. The repair runs once
+    -- per load, at whichever comes first: the load-time discovery pass the root schedules, or
+    -- the first build. It runs again on a build after the job file has replaced a parent it
+    -- filled, as a file that re-runs get_sets() does. The builders call it at the start of
+    -- every build. Each parent it filled is kept with its path, so a call with nothing to
+    -- repair reads a few tables and makes none.
     local placeholders_ensured = false
+    -- Each parent a repair has filled, by its dotted path: its root, its keys below that root,
+    -- and the table that stood at the path when the repair last ran.
+    local repaired_parents = {}
+    -- The table that stands at a repaired parent's path now, or nil.
+    local function parent_at(r)
+        local node = r.root == 'sets' and sets or r.root == 'Instrument' and Instrument
+        for j = 1, #r.path do
+            node = type(node) == 'table' and node[r.path[j]] or nil
+        end
+        return node
+    end
     local function ensure_placeholders()
-        if placeholders_ensured then return end
+        if placeholders_ensured then
+            local replaced = false
+            for _, r in pairs(repaired_parents) do
+                if parent_at(r) ~= r.node then
+                    replaced = true
+                    break
+                end
+            end
+            if not replaced then return end
+        end
         placeholders_ensured = true
         local created = false
         for i = 1, #PLACEHOLDER_LIST do
@@ -155,9 +181,18 @@ return function(E)
                     node[segs[#segs]] = fresh
                     PLACEHOLDER_NAME[fresh] = name
                     created = true
+                    local key = table.concat(segs, '.', 1, #segs - 1)
+                    if not repaired_parents[key] then
+                        local path = {}
+                        for j = 2, #segs - 1 do path[#path + 1] = segs[j] end
+                        repaired_parents[key] = { root = segs[1], path = path }
+                    end
                 end
             end
         end
+        -- Every parent ever filled is read again from the tree as it now stands, so a later
+        -- replacement of any of them is found, whichever repair filled it.
+        for _, r in pairs(repaired_parents) do r.node = parent_at(r) end
         if created then invalidate_set_index() end
     end
 
@@ -169,6 +204,13 @@ return function(E)
             end
         end
         return false
+    end
+
+    -- Whether the job file declared a set: any table but an engine placeholder still
+    -- carrying no gear. A placeholder the job file wrote gear into counts as declared, and
+    -- one holding only children does not. The pet sets skip an undeclared one quietly.
+    local function set_declared(t)
+        return type(t) == 'table' and (PLACEHOLDER_NAME[t] == nil or set_has_gear(t))
     end
 
     -- The keys of a set table in one fixed order, so a table reachable by two paths is
@@ -232,9 +274,9 @@ return function(E)
 
     -- Empty-set warnings, throttled per set -------------------------------------------------------
 
-    -- The throttle's state. Each set warns at most once per window and reports how many
-    -- warnings it held back. These locals must stay above the functions below that read
-    -- them.
+    -- The throttle's state. Each set warns at most once per window of SET_WARN_WINDOW
+    -- seconds and reports how many warnings it held back. These locals must stay above the
+    -- functions below that read them.
     local SET_WARN_WINDOW = 60
     local set_warn_until, set_warn_held = {}, {}
     local set_warn_hinted = false
@@ -347,11 +389,15 @@ return function(E)
 
     -- The report's record. Each build records every merged set in order in mr_history,
     -- with marks separating the base layers, the chosen-set branch and the trailing merges.
-    -- mr_am spans the Aftermath layers within that history, and the builders write it.
+    -- mr_am spans an overlay within that history, and the builders write it: the Aftermath
+    -- layers, or a pet move's TP bonus set, whose span also writes label for the trace.
     local mr_history, mr_mark, mr_branch_end, mr_am = {}, 0, nil, { from = 0, to = 0 }
     -- The buff children's span within the same history. Two plain numbers rather than a
     -- table like mr_am, because nothing outside this file writes them.
     local mr_bc_from, mr_bc_to = 0, 0
+    -- Whether merge_report_floor made the layers so far the build's floor. The fallback walk
+    -- then stops at the mark, because the floor reported itself.
+    local mr_floored = false
     -- The count the last flush reset: how far into mr_history that build's layers reach,
     -- for a reader that runs after the flush, as keep_weaponskill_weapons does. The entries
     -- themselves survive the flush.
@@ -367,17 +413,34 @@ return function(E)
     -- The number of layers this build has recorded. An E field, because the builders read
     -- it to mark the Aftermath span.
     E.mr_count = 0
+    -- The layers merged on a buff that is only predicted, by their history index, and whether
+    -- any stands. merge_on_buff writes them, only while a prediction stands, and the next
+    -- build's start takes them. A build touches neither unless a prediction stands or the
+    -- build before it picked.
+    local mr_pick, mr_picked = {}, false
 
-    -- Reset the record. Builders call this once at entry.
+    -- Reset the record. Builders call this once at entry. The picks go too, so no build's
+    -- marks land on the next build's layers. This is the one place they are cleared.
     local function merge_report_begin()
-        E.mr_count, mr_mark, mr_branch_end = 0, 0, nil
-        mr_am.from, mr_am.to = 0, 0
+        E.mr_count, mr_mark, mr_branch_end, mr_floored = 0, 0, nil, false
+        mr_am.from, mr_am.to, mr_am.label = 0, 0, nil
         mr_bc_from, mr_bc_to = 0, 0
+        if mr_picked then mr_pick, mr_picked = {}, false end
     end
 
     -- Mark the end of the base layers. The chosen-set branch merges from here on.
     local function merge_report_mark()
         mr_mark = E.mr_count
+    end
+
+    -- Make everything recorded so far the build's floor: the mark moves past it, and its
+    -- overlays are no longer reported. A pet command's precast takes the idle or engaged
+    -- build as its floor, which runs a report of its own, and reports its command set alone,
+    -- even when that set is empty.
+    local function merge_report_floor()
+        mr_mark, mr_branch_end, mr_floored = E.mr_count, nil, true
+        mr_am.from, mr_am.to, mr_am.label = 0, 0, nil
+        mr_bc_from, mr_bc_to = 0, 0
     end
 
     -- Mark the end of the chosen-set branch. Weapon and instrument merges follow it.
@@ -425,6 +488,26 @@ return function(E)
         return false
     end
 
+    -- Merge a set the engine picks because a buff is up, and note the buff it was picked on,
+    -- so the report marks the set while that buff is only predicted. With a path the set
+    -- merges as merge_named merges it, else as merge_report does. buff is the name or id the
+    -- pick tested. Every set a builder picks on a buff merges through here, a buff child
+    -- aside, which the report knows by its key. Returns whether the set merged.
+    local function merge_on_buff(built_set, t, buff, path, key)
+        local before, merged = E.mr_count, nil
+        if path then
+            merged = merge_named(built_set, t, path, key)
+        else
+            merge_report(built_set, t)
+            merged = type(t) == 'table'
+        end
+        -- Only a recorded layer is marked: one that is no table merges unrecorded.
+        if E.mr_count > before and buff_prediction.n > 0 and buff_shown_predicted(buff) then
+            mr_pick[E.mr_count], mr_picked = true, true
+        end
+        return merged
+    end
+
     -- Name a merged layer from its record: the path its merge asked for, or, for a buff
     -- child, its parent's name and its own key. A layer with no recorded path is named from
     -- the placeholder record taken at load, or else from the live tree. A buff child whose
@@ -445,11 +528,14 @@ return function(E)
 
     -- Buff children -------------------------------------------------------------------------------
 
-    -- A buff child is a set the job file declares under a set the build merges, keyed by a
-    -- buff's English name in any casing. It merges whenever that buff is active. Which keys
-    -- are children is discovered from the keys themselves, checked against the buff
-    -- resource, so a declared child is never silently dead. The only way to get one wrong
-    -- is a misspelling, which is named where naming is allowed. One key is not a buff name:
+    -- A buff child is a set the job file declares under a set a build reads children from,
+    -- keyed by a buff's English name in any casing. It merges whenever that buff is active.
+    -- The builds that read them are the engaged and idle builds, a weaponskill's and a pet
+    -- command's precast, and a spell's midcast. Each reads its base, where it has one, and the
+    -- sets its chosen branch merges. Which keys are children is discovered from the keys
+    -- themselves, checked against the buff resource. Where a key can only be a child, under a
+    -- mode child of sets.OffenseMode or sets.Idle or under a buff child's own table, the
+    -- load-time pass names a key that is no buff's name. One key is not a buff name:
     -- XIRoll, in any casing, stands in for a Corsair roll at eleven on this character. It
     -- merges wherever a buff child does while the eleven flag is up. A child may carry
     -- children of its own, each merging while every condition on its chain holds, up to
@@ -460,15 +546,25 @@ return function(E)
     -- The Aftermath names belong to the tier ladder, not to this convention. Both tables are
     -- built on the first walk and kept for the load.
     local BUFF_NAME, AFTERMATH_NAME
-    -- The spell and weaponskill names, lowercased, built only if a key reaches the test that
-    -- needs one: a declared key must already be a buff name to get that far.
-    local SPELL_NAME, WS_NAME
+    -- The spell, weaponskill and pet command names, lowercased, built only if a key reaches the
+    -- test that needs one: a declared key must already be a buff name to get that far.
+    local SPELL_NAME, WS_NAME, PET_COMMAND_NAME
 
     -- Every English name in a resource, as a lowercased set.
     local function name_set(rows)
         local names = {}
         for _, row in pairs(rows) do
             if row.en then names[row.en:lower()] = true end
+        end
+        return names
+    end
+
+    -- Every pet command's English name, lowercased: the job abilities of the types a master
+    -- gives a pet, maneuvers and blood pacts among them.
+    local function pet_command_names()
+        local names = {}
+        for _, row in pairs(res.job_abilities) do
+            if row.en and PET_COMMAND_TYPES[row.type] then names[row.en:lower()] = true end
         end
         return names
     end
@@ -489,10 +585,17 @@ return function(E)
 
     -- The keys reserved under a walked parent, whatever they spell: the offense-mode values,
     -- which key the engaged mode child and the idle one alike, Resting, and RA, which marks
-    -- the ranged branch. MODE_VALUE holds the offense-mode values alone. Under sets.OffenseMode
-    -- or sets.Idle, a key in it names a mode child, which is walked strictly. Rebuilt with
-    -- each scheduled pass, because a job file names its own offense modes while it loads.
-    local RESERVED, MODE_VALUE
+    -- the ranged branch. On a pet job, so are the pet mode's values, from the second job
+    -- mode's list and from Pet_Modes, which key the pet-mode children of the pet sets and of
+    -- the offense mode's set. So are the buff level's values, which key the weaponskill sets'
+    -- level children, so a level a job file spells like a buff is only ever its level child.
+    -- MODE_VALUE holds the offense-mode values alone. Under sets.OffenseMode or sets.Idle, a
+    -- key in it names a mode child, which is walked strictly. LEVEL_ONLY holds the levels that
+    -- are no other reserved key, since a level spelled like an offense mode is also that
+    -- mode's child. The scheduled pass names a key in it wherever no weaponskill build reads
+    -- it. Rebuilt with each scheduled pass, because a job file names its own modes while it
+    -- loads.
+    local RESERVED, MODE_VALUE, LEVEL_ONLY
     local function build_reserved()
         local modes, reserved = {}, { Resting = true, RA = true }
         for i = 1, #state.OffenseMode do
@@ -500,7 +603,236 @@ return function(E)
             modes[value] = true
             reserved[value] = true
         end
-        RESERVED, MODE_VALUE = reserved, modes
+        if player and PET_JOBS[player.main_job] then
+            local list = state.JobMode2
+            if type(list) == 'table' then
+                for i = 1, #list do reserved[list[i]] = true end
+            end
+            if type(Pet_Modes) == 'table' then
+                for _, value in pairs(Pet_Modes) do
+                    if type(value) == 'string' then
+                        reserved[value] = true
+                    elseif type(value) == 'table' then
+                        for _, inner in pairs(value) do
+                            if type(inner) == 'string' then reserved[inner] = true end
+                        end
+                    end
+                end
+            end
+        end
+        local levels, level_only = state.BuffLevel, {}
+        if type(levels) == 'table' then
+            for i = 1, #levels do
+                local value = levels[i]
+                if not reserved[value] then level_only[value] = true end
+                reserved[value] = true
+            end
+        end
+        RESERVED, MODE_VALUE, LEVEL_ONLY = reserved, modes, level_only
+    end
+
+    -- How a weaponskill build reads a buff level's child under a table below sets.WS. A
+    -- weaponskill's own set, the one its exact English name keys, reads every level, and so
+    -- does each of its stance children. sets.WS, sets.WS.RA and their stance children read
+    -- every level but MidBuff. Their TP children read none, since TP reads no generic child.
+    -- LEVEL_READER holds each such table with how it reads: 'own' or 'generic' for a set
+    -- whose level children stand alone, 'own stance' or 'generic stance' for a stance child,
+    -- whose level children are stance-and-level pairs, and 'tp'. It is keyed by the table, as
+    -- fixed_mode_child decides, so a set aliased under another name is judged by what it is.
+    -- The scheduled pass, its only reader, drops it at its start and builds it on the first
+    -- level key it meets, so a file that declares none pays nothing for it.
+    local LEVEL_READER
+    local function build_level_readers()
+        local readers = {}
+        LEVEL_READER = readers
+        local ws = sets.WS
+        if type(ws) ~= 'table' then return end
+        -- A table recorded twice keeps the later answer, so the calls run from the reader
+        -- that reads least to the one that reads most.
+        local function record(t, how)
+            if type(t) == 'table' then readers[t] = how end
+        end
+        local ra = type(ws.RA) == 'table' and ws.RA or nil
+        if MODE_VALUE.TP then
+            record(ws.TP, 'tp')
+            if ra then record(ra.TP, 'tp') end
+        end
+        for stance in pairs(MODE_VALUE) do
+            if stance ~= 'TP' then
+                record(ws[stance], 'generic stance')
+                if ra then record(ra[stance], 'generic stance') end
+            end
+        end
+        record(ws, 'generic')
+        record(ra, 'generic')
+        for _, row in pairs(res.weapon_skills) do
+            local own = row.en and ws[row.en]
+            if type(own) == 'table' then
+                for stance in pairs(MODE_VALUE) do record(own[stance], 'own stance') end
+                record(own, 'own')
+            end
+        end
+    end
+
+    -- Whether a weaponskill build reads parent[level] as a level child.
+    local function level_read(parent, level)
+        if not LEVEL_READER then build_level_readers() end
+        local how = LEVEL_READER[parent]
+        if how == 'own' or how == 'own stance' then return true end
+        return (how == 'generic' or how == 'generic stance') and level ~= 'MidBuff'
+    end
+
+    -- Name, once at load, a buff level's key no weaponskill build reads, with the reason that
+    -- holds where it sits. Where a build reads the key's child as a level child, name instead
+    -- each stance nested below it, with the path the build reads. TP below the generic level
+    -- child is told that TP reads no generic child. A stance below a pair is no level's key,
+    -- and draws no line. Only the scheduled pass calls it, for a key that is a level.
+    local function warn_unread_level(parent, path, key)
+        local read = level_read(parent, key)
+        local how = LEVEL_READER[parent]
+        if read then
+            if how == 'own' or how == 'generic' then
+                local child = parent[key]
+                for stance in pairs(MODE_VALUE) do
+                    if type(child[stance]) == 'table' then
+                        local sub = path .. '.' .. key .. '.' .. stance
+                        if how == 'generic' and stance == 'TP' then
+                            warn(sub .. ' is never read: TP reads no generic child')
+                        else
+                            warn(sub .. ' is never read: nest the stance first, as ' .. path .. '.' .. stance
+                                .. '.' .. key)
+                        end
+                    end
+                end
+            end
+            return
+        end
+        local reason
+        if how == nil then
+            reason = 'a buff level\'s child is read only under sets.WS, sets.WS.RA, a weaponskill\'s own set'
+                .. ' and their stance children'
+        elseif key == 'MidBuff' then
+            reason = 'MidBuff reads only a weaponskill\'s own MidBuff child'
+        else
+            reason = 'TP reads no generic child'
+        end
+        warn(path .. '.' .. key .. ' is never read: ' .. reason)
+    end
+
+    -- The midcast children's kinds, as the bits of a chain. The section after this one
+    -- merges them, and the discovery pass below follows them so it reaches every set a build
+    -- can. A chain carries a bit for each kind already on it, because a kind is never read
+    -- twice on one chain. OUTSIDE_MIDCAST marks a chain that began under a ladder set outside
+    -- sets.Midcast, where a buff name stays a buff child.
+    local KIND_MODE = 1
+    local KIND_TARGET = 2
+    local KIND_NAME = 4
+    local KIND_BURST = 8
+    local OUTSIDE_MIDCAST = 16
+
+    -- True when a chain carries the bit. Lua 5.1 has no bitwise operators, so the bit is
+    -- tested with arithmetic.
+    local function carries(chain, bit)
+        return chain % (bit + bit) >= bit
+    end
+
+    -- The chain a root's own children start from: none for sets.Midcast, OUTSIDE_MIDCAST for
+    -- the ladder sets kept outside it, and nil for a root that reads no midcast child.
+    local function root_chain(name)
+        if name == 'Midcast' then return 0 end
+        if name == 'Helix' or name == 'Storms' or name == 'Geomancy' or name == 'Diffusion' then
+            return OUTSIDE_MIDCAST
+        end
+        return nil
+    end
+
+    -- Whether a path lies where midcast children are read: under a root that reads them, and
+    -- outside the ranged branch of sets.Midcast.
+    local function in_ladder(path)
+        local root, second = path:match('^sets%.([^%.]+)%.?([^%.]*)')
+        return root ~= nil and root_chain(root) ~= nil and not (root == 'Midcast' and second == 'RA')
+    end
+
+    -- Whether a lowercased key spells a midcast child's condition in any casing: a target,
+    -- Burst, or a spell's name. The mode values are tested apart, by exact key.
+    local function condition_key(lower)
+        if lower == 'self' or lower == 'others' or lower == 'other' or lower == 'burst' then return true end
+        if not SPELL_NAME then SPELL_NAME = name_set(res.spells) end
+        return SPELL_NAME[lower] == true
+    end
+
+    -- Name a midcast child declared below a buff child, where no build reads it. The
+    -- condition works above the buff instead, as sets.Midcast.Nuke.Occult.Saboteur.
+    local function warn_below_buff(path, key)
+        warn(path .. '.' .. key .. ' is never read below a buff child: put the condition above the buff')
+    end
+
+    -- The engine's own named sets, which a site merges by name: every section 2 path and
+    -- sets.Midcast.Nuke.Earth. Keyed by the set's own key, each entry lists the paths of the
+    -- parents it sits under, as segments below sets. sets.Midcast.ACC is left out: it is
+    -- sets.Midcast's child in ACC mode. Built on first use from the paths recorded at load.
+    local FIXED_PARENTS
+    local function build_fixed_parents()
+        FIXED_PARENTS = {}
+        local paths = { 'sets.Midcast.Nuke.Earth' }
+        for i = 1, #PLACEHOLDER_LIST do paths[#paths + 1] = PLACEHOLDER_LIST[i] end
+        for i = 1, #paths do
+            local segs = {}
+            for seg in paths[i]:gmatch('[^%.]+') do segs[#segs + 1] = seg end
+            if paths[i] ~= 'sets.Midcast.ACC' and segs[1] == 'sets' and #segs >= 2 then
+                local key = table.remove(segs)
+                table.remove(segs, 1)
+                local list = FIXED_PARENTS[key] or {}
+                list[#list + 1] = segs
+                FIXED_PARENTS[key] = list
+            end
+        end
+    end
+
+    -- Whether parent[key] is one of the engine's own named sets: the parent is the table that
+    -- now sits at a path under which key names one. Decided by the table, so a set a job file
+    -- replaced at run time, or aliased under another name, is judged by what it is. Such a key
+    -- is never read as a mode child, so an offense mode spelled like one, such as MACC beside
+    -- sets.Midcast.Enfeebling.MACC, dresses nothing new.
+    local function fixed_mode_child(parent, key)
+        if not FIXED_PARENTS then build_fixed_parents() end
+        local list = FIXED_PARENTS[key]
+        if not list then return false end
+        for i = 1, #list do
+            local t, segs = sets, list[i]
+            for j = 1, #segs do
+                t = type(t) == 'table' and t[segs[j]] or nil
+            end
+            if t == parent then return true end
+        end
+        return false
+    end
+
+    -- The kind a key names under a ladder set on the given chain, or nil when it names no
+    -- condition there or a kind the chain already carries. parent is the set the key sits
+    -- under. At sets.Midcast itself a spell's name keys the spell's own set and Burst the
+    -- burst set, so neither is a condition. Outside sets.Midcast a buff name stays a buff
+    -- child. A mode value that is one of the engine's own named sets keeps that role.
+    local function grammar_kind(key, chain, at_root, parent)
+        local kind
+        if MODE_VALUE[key] then
+            if fixed_mode_child(parent, key) then return nil end
+            kind = KIND_MODE
+        elseif key == 'Self' or key == 'Others' then
+            kind = KIND_TARGET
+        elseif at_root then
+            return nil
+        elseif key == 'Burst' then
+            kind = KIND_BURST
+        else
+            local lower = key:lower()
+            if not SPELL_NAME then SPELL_NAME = name_set(res.spells) end
+            if not SPELL_NAME[lower] then return nil end
+            if carries(chain, OUTSIDE_MIDCAST) and BUFF_NAME[lower] then return nil end
+            kind = KIND_NAME
+        end
+        if carries(chain, kind) then return nil end
+        return kind
     end
 
     -- Return one parent's buff children as a list of keys, sorted by name. The list's xi
@@ -519,11 +851,22 @@ return function(E)
         if not RESERVED then build_reserved() end
         local under_midcast = path ~= nil
             and (path == 'sets.Midcast' or path:sub(1, 13) == 'sets.Midcast.')
+        local under_commands = path ~= nil
+            and (path == 'sets.Pet_Command' or path:sub(1, 17) == 'sets.Pet_Command.')
         for key, value in pairs(parent) do
             if type(key) == 'string' and type(value) == 'table' then
                 local lower = key:lower()
                 if CANON_SLOT[key] or CANON_SLOT[lower] or RESERVED[key] then
-                    -- a slot carrying its augments, or a branch the builders index themselves
+                    -- A slot carrying its augments, or a branch the builders index themselves.
+                    -- A mode value below a buff child where midcast children are read is a
+                    -- mode child no build reaches there. A buff level's value is named where
+                    -- no weaponskill build reads it, and where one reads it as a level child,
+                    -- each stance nested below that child.
+                    if announce and strict and path and MODE_VALUE[key] and in_ladder(path) then
+                        warn_below_buff(path, key)
+                    elseif announce and path and LEVEL_ONLY[key] then
+                        warn_unread_level(parent, path, key)
+                    end
                 elseif AFTERMATH_NAME[lower] then
                     -- The tier ladder reads AM3, AM2, AM1 and AM on the set each site
                     -- passes it, so the warning has to name that set. A reader told only
@@ -543,14 +886,22 @@ return function(E)
                     end
                 elseif not BUFF_NAME[lower] then
                     if announce and strict and path then
-                        warn(path .. '.' .. key .. ' is not a buff name')
+                        if in_ladder(path) and condition_key(lower) then
+                            warn_below_buff(path, key)
+                        else
+                            warn(path .. '.' .. key .. ' is not a buff name')
+                        end
                     end
                 elseif not (path and PLACEHOLDER_PATH[path .. '.' .. key]) then
-                    -- A buff name that is also a placeholder path, a weaponskill name, or
-                    -- under sets.Midcast a spell name, keys that action's own set instead.
+                    -- A buff name that is also a placeholder path, a weaponskill name, under
+                    -- sets.Midcast a spell name, or under sets.Pet_Command a pet command's name,
+                    -- keys that action's own set instead. A maneuver's own set read as a buff
+                    -- child would merge on every other pet command while its buff is up.
                     if not WS_NAME then WS_NAME = name_set(res.weapon_skills) end
                     if under_midcast and not SPELL_NAME then SPELL_NAME = name_set(res.spells) end
-                    if not WS_NAME[lower] and not (under_midcast and SPELL_NAME[lower]) then
+                    if under_commands and not PET_COMMAND_NAME then PET_COMMAND_NAME = pet_command_names() end
+                    if not WS_NAME[lower] and not (under_midcast and SPELL_NAME[lower])
+                        and not (under_commands and PET_COMMAND_NAME[lower]) then
                         list[#list + 1] = key
                     end
                 end
@@ -585,10 +936,11 @@ return function(E)
     -- an eleven stands or not.
     local children_possible = true
     -- Set by a lazy walk that found a buff child, and never cleared. The pass walks only the
-    -- roots, to depth three, so a table it never saw is only ever discovered lazily: one
-    -- assigned after the pass ran, or one nested deeper. Without this, a pass that found
-    -- nothing under its roots would close the gate over a child already in the cache. This
-    -- closure is fresh on every load and job change, so it needs no reset.
+    -- roots, to depth three and along the midcast children and the level children it
+    -- follows, so a table it never saw is only ever discovered lazily: one assigned after the
+    -- pass ran, or one nested deeper. Without this, a pass that found nothing under its roots
+    -- would close the gate over a child already in the cache. This closure is fresh on every
+    -- load and job change, so it needs no reset.
     local lazy_found = false
     -- Whether any parent declares an XIRoll stand-in, the eleven flag's half of the gate.
     -- The scheduled pass decides it with the gate. A lazy walk that finds a stand-in sets it
@@ -764,28 +1116,49 @@ return function(E)
     end
 
     -- Every set a build can reach a child through: the engaged and idle bases, the
-    -- weaponskill and midcast roots, and the five sets the midcast chain merges from outside
-    -- sets.Midcast. The lazy walk sits behind the gate, so a root missing here leaves a child
-    -- under it dead in a file that declares no other child.
+    -- weaponskill and midcast roots, the sets the midcast chain merges from outside
+    -- sets.Midcast, and sets.Pet_Command, which a pet command's precast merges. The lazy walk
+    -- sits behind the gate, so a root missing here leaves a child under it dead in a file that
+    -- declares no other child.
     --
-    -- LEGACY_BUFF_SETS maps three legacy set names onto the convention. A job file that
+    -- LEGACY_BUFF_SETS maps the legacy set names onto the convention. A job file that
     -- declares sets.Impetus, sets.Foot_Work or sets.Boost gets the same table under the
     -- buff's name in each listed parent before the walk, so the convention discovers it. A
     -- file that declares both names keeps the buff-named one. A file whose own hook code
     -- still merges the legacy set merges that table twice, which writes the same slots.
     local BUFF_CHILD_ROOTS = { 'Idle', 'OffenseMode', 'WS', 'Midcast',
-        'Helix', 'Storms', 'Geomancy', 'Diffusion', 'Ready' }
+        'Helix', 'Storms', 'Geomancy', 'Diffusion', 'Pet_Command' }
     local LEGACY_BUFF_SETS = {
         { legacy = 'Impetus',   buff = 'Impetus',  parents = { 'OffenseMode', 'WS' } },
         { legacy = 'Foot_Work', buff = 'Footwork', parents = { 'OffenseMode' } },
         { legacy = 'Boost',     buff = 'Boost',    parents = { 'OffenseMode', 'Idle' } },
     }
 
+    -- Whether a table is the Burst child of one of the BlueMagic container's subcategories,
+    -- where a build wears it. Declared above record_parent, its one caller.
+    local function blue_burst_child(container, t)
+        for _, sub in pairs(container) do
+            if type(sub) == 'table' and sub ~= t and sub.Burst == t then return true end
+        end
+        return false
+    end
+
     -- Record one parent's children and walk its descendants, to depth three counting the
-    -- root as one, so a subfamily can carry children of its own. Anything deeper is left to
-    -- the walk a builder makes on first use. A mode child under sets.OffenseMode or
-    -- sets.Idle, and a buff child's or stand-in's own table, are parents where a key that is
-    -- not a slot can only be a child, so they are walked strictly.
+    -- root as one, so a subfamily can carry children of its own. A level child a weaponskill
+    -- build reads is followed past that depth, so a buff child under a stance-and-level pair,
+    -- four tables below sets.WS, still opens the gate. Anything deeper is left to the walk a
+    -- builder makes on first use. A mode child under sets.OffenseMode or sets.Idle, and a buff
+    -- child's or stand-in's own table, are parents where a key that is not a slot can only be
+    -- a child, so they are walked strictly.
+    --
+    -- A midcast child does not count toward that depth. chain is the parent's own chain, or
+    -- nil where no midcast child is read, and conds counts the conditions on it. The pass
+    -- follows a chain to three conditions, the limit a build reads, so a buff child at its
+    -- end still opens the gate. Below a midcast child only further children are walked,
+    -- since a build reads nothing else there. rooted marks a chain that began at one of
+    -- sets.Midcast's own children, where a spell's name merges before every family set. Under
+    -- a ladder set the pass names, once each, a target or Burst key in another casing and a
+    -- spell's name under one of sets.Midcast's own children.
     --
     -- sets.Midcast.SIRD can never carry a child. The midcast build merges it as a base layer
     -- below the mark, so the per-build pass never reaches it, and the branch loop, which
@@ -793,7 +1166,11 @@ return function(E)
     -- so. It warns once per key, on the channel the misspelling warning uses, and records no
     -- children for SIRD. The key neither opens the gate nor is walked, and nothing below it
     -- is visited.
-    local function record_parent(parent, path, depth, strict, seen)
+    --
+    -- sets.Midcast.BlueMagic is never merged either, so a Burst set declared on it is never
+    -- worn. The pass names it once, in any casing, unless the same table is also one of the
+    -- subcategories' Burst children, where a build wears it.
+    local function record_parent(parent, path, depth, strict, seen, chain, conds, rooted)
         -- One table, one walk per pass, whatever else names it. A job file that assigns
         -- sets.Idle to itself under every offense mode puts one table under many paths.
         -- Entering it again under a mode path would walk the base's own keys strictly and
@@ -818,8 +1195,8 @@ return function(E)
         if #list > 0 then children_possible = true end
         if list.xi ~= nil then stand_in_possible = true end
         children_of[parent] = (#list == 0 and list.xi == nil) and NO_CHILDREN or list
-        if depth >= 3 then return end
         local mode_parent = path == 'sets.OffenseMode' or path == 'sets.Idle'
+        local at_root = path == 'sets.Midcast'
         for _, key in ipairs(sorted_keys(parent)) do
             local value = parent[key]
             if type(key) == 'string' and type(value) == 'table'
@@ -828,20 +1205,134 @@ return function(E)
                 for i = 1, #list do
                     if list[i] == key then strict_walk = true end
                 end
-                record_parent(value, path .. '.' .. key, depth + 1, strict_walk, seen)
+                local sub = path .. '.' .. key
+                if path == 'sets.Midcast.BlueMagic' and key:lower() == 'burst'
+                    and not blue_burst_child(parent, value) then
+                    warn(sub .. ' is never worn: put blue burst gear in each subcategory\'s Burst child,'
+                        .. ' such as sets.Midcast.BlueMagic.Nuke.Burst')
+                end
+                local kind = chain and not strict_walk and grammar_kind(key, chain, at_root, parent)
+                if chain then
+                    -- The grammar reads exact keys, so a target or Burst key in any other
+                    -- casing, and Other for Others, dresses nothing.
+                    local lower = key:lower()
+                    local spelled = (lower == 'other' or lower == 'others') and 'Others'
+                        or lower == 'self' and 'Self' or lower == 'burst' and 'Burst' or nil
+                    if spelled and key ~= spelled then
+                        warn(sub .. ' is never read: spell it ' .. spelled)
+                    end
+                end
+                if kind then
+                    if rooted and kind == KIND_NAME then
+                        warn(sub .. ' merges before every family set, which overrides it: put the'
+                            .. ' condition under the family set or under sets.Midcast[\'' .. key .. '\']')
+                    end
+                    if conds < 3 then
+                        record_parent(value, sub, depth, false, seen, chain + kind, conds + 1,
+                            rooted or at_root)
+                    end
+                elseif (depth < 3 or LEVEL_ONLY[key] and level_read(parent, key))
+                    and (conds == 0 or strict_walk) then
+                    -- A structural child carries its parent's chain: a family set or a
+                    -- sub-set. A buff child or a stand-in carries none, and neither does the
+                    -- ranged branch or the BlueMagic container, which is never merged, though
+                    -- its sub-sets are ladder sets.
+                    local child_chain = chain
+                    if strict_walk or (at_root and (key == 'RA' or key == 'BlueMagic')) then
+                        child_chain = nil
+                    elseif path == 'sets.Midcast.BlueMagic' then
+                        child_chain = 0
+                    end
+                    record_parent(value, sub, depth + 1, strict_walk, seen, child_chain, 0, false)
+                end
             end
         end
     end
 
-    -- Apply the legacy aliases and record every declared parent's children, once per load.
+    -- The elements and tiers of the automaton's nukes, Stone to Thunder V. Named here for the
+    -- load-time line below, which nothing on a cast path reads.
+    local AUTOMATON_NUKE_ELEMENTS = { Stone = true, Water = true, Aero = true, Fire = true, Blizzard = true,
+        Thunder = true }
+    local AUTOMATON_NUKE_TIERS = { [''] = true, [' II'] = true, [' III'] = true, [' IV'] = true, [' V'] = true }
+
+    -- On a Puppetmaster, name each set under sets.Pet_Midcast that the game reads too late,
+    -- once a load. The automaton decides its weaponskill before the readying reaches GearSwap,
+    -- and its nuke lands within half a second of its casting start, so gear put on at either
+    -- arrives after the game has read it. A Summoner's set named Fire IV is a pact's, so the
+    -- line is for the Puppetmaster's own file alone.
+    local function report_late_pet_sets()
+        local pet_sets = sets.Pet_Midcast
+        if type(pet_sets) ~= 'table' or not (player and player.main_job == 'PUP') then return end
+        for _, key in ipairs(sorted_keys(pet_sets)) do
+            if type(key) == 'string' and type(pet_sets[key]) == 'table' then
+                local element, tier = key:match('^(%a+)(.*)$')
+                if Automaton_Weaponskills and Automaton_Weaponskills[key] then
+                    warn('sets.Pet_Midcast.' .. key .. ' is put on too late: the automaton decides its weaponskill'
+                        .. ' before it readies. Put its gear in sets.Pet_WS.')
+                elseif element and AUTOMATON_NUKE_ELEMENTS[element] and AUTOMATON_NUKE_TIERS[tier] then
+                    warn('sets.Pet_Midcast.' .. key .. ' is put on too late: the automaton\'s nuke lands within'
+                        .. ' half a second of its casting start. Put its gear in sets.Idle.Pet.Engaged, worn while'
+                        .. ' it fights.')
+                end
+            end
+        end
+    end
+
+    -- The sets the idle build merges after it reads buff children, so a buff-named key under
+    -- them, at any depth, is never worn.
+    local UNWORN_CHILD_PARENTS = { { 'Idle', 'Pet' }, { 'Idle', 'Sublimation' }, { 'Movement' } }
+
+    -- Name each buff-named key under those sets once a load, so a job file that declares one
+    -- is told it does nothing. A placeholder, and a key the pet sets read as a mode child, an
+    -- offense mode's or the pet mode's value, are not named, but the walk looks below them.
+    -- Slots are skipped, and so is anything deeper than three tables below the set. Declared
+    -- above discover_buff_children, its one caller, which builds the buff names and the
+    -- reserved keys first.
+    local function report_unworn_buff_children()
+        local function walk(parent, path, root, depth)
+            for _, key in ipairs(sorted_keys(parent)) do
+                local value = parent[key]
+                if type(key) == 'string' and type(value) == 'table'
+                    and not (CANON_SLOT[key] or CANON_SLOT[key:lower()]) then
+                    local sub, lower = path .. '.' .. key, key:lower()
+                    if (BUFF_NAME[lower] or lower == 'xiroll') and not RESERVED[key]
+                        and not PLACEHOLDER_PATH[sub] then
+                        warn(sub .. ' is never worn: the engine does not merge buff sets under ' .. root)
+                    elseif depth < 3 then
+                        walk(value, sub, root, depth + 1)
+                    end
+                end
+            end
+        end
+        if not BUFF_NAME then build_buff_names() end
+        for i = 1, #UNWORN_CHILD_PARENTS do
+            local names, parent = UNWORN_CHILD_PARENTS[i], sets
+            for j = 1, #names do parent = type(parent) == 'table' and parent[names[j]] or nil end
+            if type(parent) == 'table' then
+                local root = 'sets.' .. table.concat(names, '.')
+                walk(parent, root, root, 1)
+            end
+        end
+    end
+
+    -- Put back the placeholders the job file dropped, apply the legacy aliases and record
+    -- every declared parent's children, once per load.
     -- The root schedules it after the job file's own load. The job file calls jobsetup
     -- above get_sets, so nothing called from there can see a set, and a load that failed
     -- leaves sets nil. It walks every parent whether or not it is cached, because it is the
     -- only pass allowed to name a key it refused. A build that reached a parent first has
-    -- already cached it, in silence.
+    -- already cached it, in silence. It also names an offense mode named like a midcast
+    -- child key, a sets.Midcast.ACC declared with gear, and a Puppetmaster's pet set the
+    -- game reads too late.
     local function discover_buff_children()
         if type(sets) ~= 'table' then return end
+        -- The placeholders the job file dropped are put back at load, whether or not a build
+        -- has run yet.
+        ensure_placeholders()
         build_reserved()
+        -- The tables below sets.WS that read a level's child, rebuilt on the first level key
+        -- the walk below meets.
+        LEVEL_READER = nil
         local aliased = false
         for i = 1, #LEGACY_BUFF_SETS do
             local row = LEGACY_BUFF_SETS[i]
@@ -865,12 +1356,146 @@ return function(E)
         local seen = {}
         for i = 1, #BUFF_CHILD_ROOTS do
             local name = BUFF_CHILD_ROOTS[i]
-            record_parent(sets[name], 'sets.' .. name, 1, false, seen)
+            record_parent(sets[name], 'sets.' .. name, 1, false, seen, root_chain(name), 0, false)
         end
         -- A buff child or a stand-in a build already found outside those roots keeps its
         -- half of the gate.
         children_possible = children_possible or lazy_found
         stand_in_possible = stand_in_possible or lazy_xi_found
+        -- An offense mode named like a child key is read as both, so in that mode the key's
+        -- children merge on every cast.
+        for i = 1, #state.OffenseMode do
+            local value = state.OffenseMode[i]
+            if value == 'Burst' or value == 'Self' or value == 'Others' then
+                warn('Offense mode ' .. value .. ' is also a midcast child key, so in that mode every '
+                    .. value .. ' child merges on every cast')
+            end
+        end
+        -- sets.Midcast.ACC is the ACC mode's child of sets.Midcast, merged under every family
+        -- set, so a file that declares it with gear is told once where it applies.
+        local acc = type(sets.Midcast) == 'table' and sets.Midcast.ACC
+        if type(acc) == 'table' and set_has_gear(acc) then
+            warn('sets.Midcast.ACC merges in ACC mode, as the first layer of every spell\'s midcast,'
+                .. ' before the family set')
+        end
+        report_late_pet_sets()
+        report_unworn_buff_children()
+    end
+
+    -- Midcast children ----------------------------------------------------------------------------
+
+    -- A midcast child is a set the job file declares under a ladder set, a set a spell's
+    -- midcast build merges by name: sets.Midcast, a family set or the spell's own set, a
+    -- fixed sub-set, or another child. Under a ladder set S four kinds are read, each by its
+    -- exact key and only while its condition holds:
+    --   the mode's     S[state.OffenseMode.value], in that offense mode
+    --   the target's   S.Self for a cast on yourself, S.Others for any other cast and for
+    --                  one on yourself under Accession
+    --   the name's     S[spell.english], for that spell
+    --   the burst's    S.Burst, while the cast is predicted to burst
+    -- A child merges right after its parent, so every set the ladder merges later, and the
+    -- elemental pieces, still win over it. Its own children follow, of the kinds its chain
+    -- does not carry, to three conditions. Every one-condition child of a parent merges
+    -- before any two-condition child, so the most nested set wins a slot they share. An
+    -- untouched engine placeholder is never merged as a child. A child is recorded under its
+    -- parent's index and its key, so the report names it down its chain.
+
+    -- The chain each merged child carries, by its index in mr_history. merge_child writes it
+    -- and merge_children reads it back for the level below, within one call.
+    local mr_chain = {}
+
+    -- Whether a spell's name is also a buff's. Under a set outside sets.Midcast such a key
+    -- belongs to the buff child.
+    local function buff_named(name)
+        if not BUFF_NAME then build_buff_names() end
+        return BUFF_NAME[name:lower()] == true
+    end
+
+    -- Merge parent[key] as the child of the layer at parent_index, recorded under that index
+    -- and the key with the chain it carries. Nothing merges for a key holding no table, for
+    -- an untouched engine placeholder, or for a table this parent already merged under an
+    -- earlier kind (a, b or c). Returns the table merged, or nil.
+    local function merge_child(built_set, parent, parent_index, key, chain, a, b, c)
+        local child = parent[key]
+        if type(child) ~= 'table' or PLACEHOLDER_NAME[child] ~= nil
+            or child == a or child == b or child == c then
+            return nil
+        end
+        merge_report(built_set, child)
+        local n = E.mr_count
+        mr_path[n], mr_key[n], mr_chain[n] = parent_index, key, chain
+        return child
+    end
+
+    -- Merge one parent's children in kind order, each of a kind its chain does not carry:
+    -- the mode's, the target's, the name's, then the burst's. where shapes this parent's own
+    -- reading and never its children's, as merge_children describes. The mode's key is
+    -- skipped where it is one of the engine's own named sets. sets.Midcast.Enhancing's Others
+    -- set is read only in the enhancing ladder, by name, so the table never reads it as a
+    -- target child, whatever name a job file merges it under.
+    local function merge_kinds(built_set, parent, parent_index, ctx, chain, where)
+        local by_mode, by_target, by_name
+        if not carries(chain, KIND_MODE) then
+            local mode = ctx.mode
+            local child = parent[mode]
+            if type(child) == 'table' and PLACEHOLDER_NAME[child] == nil
+                and not fixed_mode_child(parent, mode) then
+                by_mode = merge_child(built_set, parent, parent_index, mode, chain + KIND_MODE)
+            end
+        end
+        if not carries(chain, KIND_TARGET) then
+            if ctx.target == 'Others' and where == 'enhancing' then
+                local others = parent.Others
+                if (by_mode == nil or others ~= by_mode)
+                    and merge_named(built_set, others, 'sets.Midcast.Enhancing.Others')
+                    and type(others) == 'table' then
+                    mr_chain[E.mr_count] = chain + KIND_TARGET
+                    by_target = others
+                end
+            elseif not (ctx.target == 'Others' and type(sets.Midcast) == 'table'
+                    and parent == sets.Midcast.Enhancing) then
+                by_target = merge_child(built_set, parent, parent_index, ctx.target,
+                    chain + KIND_TARGET, by_mode)
+            end
+        end
+        -- The key Burst is always the burst's, never a spell's name.
+        local name = ctx.name
+        if not carries(chain, KIND_NAME) and where ~= 'root' and name ~= 'Burst'
+            and type(parent[name]) == 'table'
+            and not (carries(chain, OUTSIDE_MIDCAST) and buff_named(name)) then
+            by_name = merge_child(built_set, parent, parent_index, name, chain + KIND_NAME,
+                by_mode, by_target)
+        end
+        if ctx.burst and where ~= 'root' and not carries(chain, KIND_BURST) then
+            merge_child(built_set, parent, parent_index, 'Burst', chain + KIND_BURST,
+                by_mode, by_target, by_name)
+        end
+    end
+
+    -- Merge the midcast children of the ladder set just recorded at parent_index, for the
+    -- cast whose context is ctx: its own children, then theirs, level by level to three
+    -- conditions. where names the parent's place, which shapes how its own children are read
+    -- and never theirs:
+    --   nil          a set under sets.Midcast, read for all four kinds
+    --   'root'       sets.Midcast itself, whose name key is a spell's own set and whose
+    --                Burst key is the burst set, so neither is read as its child
+    --   'own'        a spell's own set, which carries the spell's name already
+    --   'outside'    a ladder set outside sets.Midcast, where a buff name stays a buff child
+    --   'enhancing'  sets.Midcast.Enhancing in the enhancing ladder, whose Others set is
+    --                merged by name in the target's place, declared or not, so the report
+    --                names it, and an undeclared one warns as a missing family set does
+    local function merge_children(built_set, parent_index, ctx, where)
+        local chain = where == 'own' and KIND_NAME or where == 'outside' and OUTSIDE_MIDCAST or 0
+        local lo = E.mr_count + 1
+        merge_kinds(built_set, mr_history[parent_index], parent_index, ctx, chain, where)
+        for _ = 2, 3 do
+            local hi = E.mr_count
+            if hi < lo then return end
+            for k = lo, hi do
+                merge_kinds(built_set, mr_history[k], k, ctx, mr_chain[k], nil)
+            end
+            lo = hi + 1
+        end
     end
 
     -- The finished build --------------------------------------------------------------------------
@@ -891,13 +1516,21 @@ return function(E)
     -- this call, and the name the report gives it. pet_midcast passes them. When nothing in
     -- the build covered the empty chosen set but that layer carries gear, the info line and
     -- the trace name the hook as what dressed, in place of nothing to equip.
+    --
+    -- A set dressed on a buff that is only predicted prints "[Used, predicted]" and
+    -- "[Filled, predicted]": a buff child by its key, an engine pick by the mark
+    -- merge_on_buff left.
     local function merge_report_flush(phase, spell, custom, custom_name)
-        local mark, last = mr_mark, mr_branch_end or E.mr_count
-        local am_from, am_to = mr_am.from, mr_am.to
+        local mark, last, floored = mr_mark, mr_branch_end or E.mr_count, mr_floored
+        local am_from, am_to, am_label = mr_am.from, mr_am.to, mr_am.label
         local bc_from, bc_to = mr_bc_from, mr_bc_to
+        -- The engine's picks on a predicted buff. Only a build's start clears them, so they
+        -- always belong to the build whose layers the record holds.
+        local picks = mr_picked and mr_pick or nil
+        local predicted = buff_prediction.n > 0
         mr_flushed = E.mr_count
-        E.mr_count, mr_mark, mr_branch_end = 0, 0, nil
-        mr_am.from, mr_am.to = 0, 0
+        E.mr_count, mr_mark, mr_branch_end, mr_floored = 0, 0, nil, false
+        mr_am.from, mr_am.to, mr_am.label = 0, 0, nil
         mr_bc_from, mr_bc_to = 0, 0
 
         -- Warnings and the info summary belong to the phase that chose the
@@ -923,19 +1556,21 @@ return function(E)
         local trace_on = settings.gear_reporting
         local clauses = can_info or trace_on
 
-        -- The Aftermath overlay, named in a clause of its own rather than joined
-        -- into the fallback chain. Built past the gate above, so silence is free.
+        -- The overlay, the Aftermath tier or a pet move's TP bonus set, named in a clause of
+        -- its own rather than joined into the fallback chain. Built past the gate above, so
+        -- silence is free.
         local am_info, am_trace = '', ''
         if clauses and am_from > 0 and am_to >= am_from then
-            local parts, dressed_name, first_name = trace_on and {} or nil, nil, nil
+            local parts, dressed_name, first_name, dressed_mark = trace_on and {} or nil, nil, nil, ''
             for j = am_from, am_to do
                 local t = mr_history[j]
                 local n = mr_name(j, t)
                 if n then
                     first_name = first_name or n
                     if set_has_gear(t) then
-                        if parts then parts[#parts + 1] = n .. ' [Filled]' end
-                        dressed_name = n
+                        local m = picks and picks[j] and ', predicted' or ''
+                        if parts then parts[#parts + 1] = n .. ' [Filled' .. m .. ']' end
+                        dressed_name, dressed_mark = n, m
                     elseif parts then
                         parts[#parts + 1] = n .. ' [Empty]'
                     end
@@ -943,11 +1578,11 @@ return function(E)
             end
             if first_name then
                 if parts then
-                    am_trace = ' + Aftermath ' .. table.concat(parts, ' -> ')
+                    am_trace = ' + ' .. (am_label or 'Aftermath') .. ' ' .. table.concat(parts, ' -> ')
                         .. (dressed_name and '' or ', added nothing')
                 end
                 if can_info then
-                    am_info = dressed_name and (' + [' .. dressed_name .. '][Used]')
+                    am_info = dressed_name and (' + [' .. dressed_name .. '][Used' .. dressed_mark .. ']')
                         or (' + [' .. first_name .. '][Empty]')
                 end
             end
@@ -968,8 +1603,9 @@ return function(E)
                 local n = mr_name(j, t)
                 if n then
                     if set_has_gear(t) then
-                        if parts then parts[#parts + 1] = n .. ' [Filled]' end
-                        if can_info then bc_info = bc_info .. ' + [' .. n .. '][Used]' end
+                        local m = predicted and buff_shown_predicted(mr_key[j]) and ', predicted' or ''
+                        if parts then parts[#parts + 1] = n .. ' [Filled' .. m .. ']' end
+                        if can_info then bc_info = bc_info .. ' + [' .. n .. '][Used' .. m .. ']' end
                         dressed = true
                     else
                         if parts then parts[#parts + 1] = n .. ' [Empty]' end
@@ -984,9 +1620,9 @@ return function(E)
         end
 
         -- The set the branch chose: the most specific nameable layer it merged. Inline
-        -- literals are stepped over, and so are the Aftermath layers and the buff
-        -- children. Both sit inside the branch in precastequip and would otherwise take
-        -- the head from the set the build reached for. The midcast build merges its
+        -- literals are stepped over, and so are the overlay's layers and the buff children.
+        -- They sit inside the branch in precastequip and pet_midcast, and would otherwise
+        -- take the head from the set the build reached for. The midcast build merges its
         -- children past the branch end, above where this walk starts.
         local i, head, name = last, nil, nil
         while i > mark do
@@ -1003,9 +1639,10 @@ return function(E)
 
         -- The build wore the set it reached for: name it as the one it used.
         if set_has_gear(head) then
-            if can_info then info(tag .. '[' .. name .. '][Used]' .. am_info .. bc_info) end
+            local m = picks and picks[i] and ', predicted' or ''
+            if can_info then info(tag .. '[' .. name .. '][Used' .. m .. ']' .. am_info .. bc_info) end
             if settings.gear_reporting then
-                gear_report(label .. 'Using ' .. name .. ' [Filled]' .. am_trace .. bc_trace)
+                gear_report(label .. 'Using ' .. name .. ' [Filled' .. m .. ']' .. am_trace .. bc_trace)
             end
             return
         end
@@ -1018,20 +1655,23 @@ return function(E)
         if not settings.gear_reporting and not can_info then return end
 
         -- The head is gearless. Walk one step per layer the branch fell through, ending on
-        -- the gear that covered. A base layer can only be that ending. The children's span
-        -- is stepped over here to match the head-finder above. The children are the last
-        -- nameable merges of every branch, since the ranged arm's ammo literal after them
-        -- cannot be a head. So the head sits below the span, and as the builders stand this
-        -- walk never enters it.
+        -- the gear that covered. A base layer can only be that ending. A floored build's walk
+        -- stops at its floor instead, which reported itself, so a pet command's line never
+        -- names a layer of the idle or engaged build. The children's span is stepped over
+        -- here to match the head-finder above. The children are the last nameable merges of
+        -- every branch, since the ranged arm's ammo literal after them cannot be a head. So
+        -- the head sits below the span, and as the builders stand this walk never enters it.
         local steps = { 'Attempted to use ' .. name .. ' [Empty]' }
-        local covered, cover_name = false, nil
+        local covered, cover_name, cover_mark = false, nil, ''
+        local bottom = floored and mark or 0
         i = i - 1
-        while i > 0 do
+        while i > bottom do
             if (i < am_from or i > am_to) and (i < bc_from or i > bc_to) then
                 local t = mr_history[i]
                 local n = mr_name(i, t)
                 if set_has_gear(t) then
-                    if n then steps[#steps + 1] = 'Using ' .. n .. ' [Filled]' end
+                    cover_mark = picks and picks[i] and ', predicted' or ''
+                    if n then steps[#steps + 1] = 'Using ' .. n .. ' [Filled' .. cover_mark .. ']' end
                     covered, cover_name = true, n
                     break
                 end
@@ -1050,7 +1690,7 @@ return function(E)
         if can_info then
             if covered then
                 info(tag .. '[' .. name .. '][Not Usable] -> [' .. (cover_name or 'unnamed set')
-                    .. '][Used]' .. am_info .. bc_info)
+                    .. '][Used' .. cover_mark .. ']' .. am_info .. bc_info)
             elseif hooked then
                 info(tag .. '[' .. name .. '][Empty] + [' .. tostring(custom_name) .. '][Used]'
                     .. am_info .. bc_info)
@@ -1147,36 +1787,94 @@ return function(E)
     -- per item name, as the two-hand test's is.
     local RANGE_YIELDS = { [41] = true, [42] = true, [45] = true }
     local range_yields_memo = {}
+    -- An item's resource row by the name a set wrote. GearSwap equips a set's name in any
+    -- case and by the item's log name, so a name the exact lookup misses is looked up that
+    -- way too, with a walk of the item table. A value that is no name, such as a range entry
+    -- a job file wrote without one, has no row. The range rule's lookup just below and the
+    -- song's instrument rule further down both ask it, each memoizing its own answer.
+    local function item_row_by_name(name)
+        if type(name) ~= 'string' then return nil end
+        local row = res.items:with('en', name)
+        if row ~= nil then return row end
+        local lower = name:lower()
+        for _, item in pairs(res.items) do
+            if item.en:lower() == lower or item.enl:lower() == lower then return item end
+        end
+    end
     local function range_yields_to_ammo(name)
         local known = range_yields_memo[name]
         if known == nil then
-            local row = res.items:with('en', name)
+            local row = item_row_by_name(name)
             known = row ~= nil and RANGE_YIELDS[row.skill] == true
             range_yields_memo[name] = known
         end
         return known
     end
-    -- Clear range in a spell's precast build when its ammo would strip the worn handbell or
-    -- instrument. Nothing changes when the build names no ammo or clears it, when that ammo
-    -- is already worn, or when range is bare. A range item the build names stands as its own
-    -- choice, unless it is the item already worn. Every precast build carries that item from
-    -- the idle floor, and the equip would drop it as worn, so it is no choice and the slot
-    -- is cleared. Runs on the precast hook for a spell, right before the equip.
+    -- Clear range in a spell's precast build when its ammo would strip the handbell or
+    -- instrument, the one worn or the one the build names. A bell the build names goes out
+    -- beside the ammo and loses the slot to it as surely as a worn one, and the midcast's bell
+    -- then reads as already sent. That holds with range bare at the cast's start too.
+    -- Nothing changes when the build names no ammo or clears it, when that ammo is already
+    -- worn, or when the build clears range itself. A range item that is no bell or
+    -- instrument keeps its slot. Runs on the precast hook for a spell, right before the
+    -- equip.
     local function yield_range_to_ammo(built_set)
         local ammo = built_set.ammo
         if ammo == nil or ammo == empty then return end
-        local worn = player.equipment.range
-        if worn == nil or worn == 'empty' then return end
-        local named_range = built_set.range
-        if named_range ~= nil then
-            local range_name = named_range == empty and 'empty'
-                or (type(named_range) == 'table' and named_range.name or named_range)
-            if range_name ~= worn then return end
-        end
         local named = type(ammo) == 'table' and ammo.name or ammo
         if named == player.equipment.ammo then return end
-        if not range_yields_to_ammo(worn) then return end
+        local named_range = built_set.range
+        local range = named_range ~= nil and (type(named_range) == 'table' and named_range.name or named_range)
+            or player.equipment.range
+        if range == nil or range == 'empty' then return end
+        if not range_yields_to_ammo(range) then return end
         built_set.range = empty
+    end
+
+    -- A song's instrument displaces the ammo, the reverse of the rule above. An ammo that
+    -- excludes an instrument and goes out beside it takes the instrument's place, because
+    -- the server keeps the later of one equip set's entries, and GearSwap sends ammo after
+    -- range when their priorities are equal. Every song's build starts from the idle set,
+    -- so it carries the idle's ammo unless a set empties it. Honor March is then refused, and
+    -- a song with no instrument of its own required lands with none. So a song's build that
+    -- names an instrument in range has its ammo emptied, and the idle's ammo returns at
+    -- aftercast.
+    --
+    -- INSTRUMENT_SKILLS holds the resource skills of an instrument: 41, stringed, and 42,
+    -- wind. A handbell is not one, so a Geomancer singing with the bell in range keeps the
+    -- ammo its sets name, as a Corsair singing with a gun does. The name is looked up as
+    -- GearSwap equips it, through item_row_by_name above. The answer is memoized per name,
+    -- as the rule above memoizes its own. An exact name costs at most one walk of the item
+    -- table, and any other name two, once.
+    local INSTRUMENT_SKILLS = { [41] = true, [42] = true }
+    local instrument_memo = {}
+    local function range_is_instrument(name)
+        local known = instrument_memo[name]
+        if known == nil then
+            local row = item_row_by_name(name)
+            known = row ~= nil and INSTRUMENT_SKILLS[row.skill] == true
+            instrument_memo[name] = known
+        end
+        return known
+    end
+    -- Empty the ammo slot of a song's build that names an instrument in range, and return
+    -- the slots the instrument holds until the cast ends: range with the instrument, and the
+    -- ammo slot empty. The ammo is emptied whether or not the build names one, so the slot
+    -- the hold records as bare is sent bare. Nothing changes, and nothing is returned, when
+    -- the build names no instrument. A range entry without a name is no instrument. Under
+    -- Locked+R the lock holds range with the gun, so no instrument the build names goes on,
+    -- and the bullets stay. The precast hook runs this before the rule above, for a song
+    -- under Nightingale or one carrying its required instrument, and that rule then never
+    -- clears the instrument. The midcast hook runs it for every song, after the implements.
+    -- Each call follows every merge of its hook.
+    local function yield_ammo_to_instrument(built_set)
+        if E.lock_range then return nil end
+        local range = built_set.range
+        if range == nil or range == empty then return nil end
+        local name = type(range) == 'table' and range.name or range
+        if type(name) ~= 'string' or not range_is_instrument(name) then return nil end
+        built_set.ammo = empty
+        return { range = range, ammo = empty }
     end
 
     -- Hoxne Ampulla slot hold ---------------------------------------------------------------------
@@ -1199,9 +1897,10 @@ return function(E)
         release_next   = 0,     -- os.clock() gate between those attempts
     }
 
-    -- The Ampulla's 5 second equip delay, plus the server's activation latency and a margin.
-    -- It also covers the moment after the engine's own equip, when extdata still reports
-    -- the previous activation_time.
+    -- How long, in seconds, no use of the Ampulla is tried after it goes on: its 5 second
+    -- equip delay, plus the server's activation latency and a margin. It also covers the
+    -- moment after the engine's own equip, when extdata still reports the previous
+    -- activation_time.
     local HOXNE_EQUIP_LOCKOUT = 9
 
     -- True in either ON mode.
@@ -1261,9 +1960,9 @@ return function(E)
 
     -- Slot ownership ------------------------------------------------------------------------------
     --
-    -- This block sits above Unlock and UnlockByMode because both call into it. A local
-    -- referenced above its own declaration resolves to a global nil rather than raising, so
-    -- moving the block down would break those two silently.
+    -- This block sits above Unlock and UnlockByMode because both call into it. A local named
+    -- above its own declaration is read as a global, which is nil, so moving the block down
+    -- would break those two with no error at load.
 
     -- The slot a running enchanted item use is holding, or nil when none is. The enchant
     -- component sets it when a use takes its slot and clears it when the use ends. It is
@@ -1316,11 +2015,15 @@ return function(E)
     local strip_n = 0
 
     -- The slots a disable hold is holding, keyed by canonical slot name. Each value records
-    -- what the slot was wearing when the hold took it, as a table whose name is the item, or
-    -- 'empty' where the slot was bare. The release branch below can then put that same piece
-    -- back, rather than baring the slot as the strip hold does. E.disabled_n counts the
-    -- entries, so the idle case costs one integer test, as with locked_n. It is an E field
-    -- because the status box counts the hold.
+    -- the piece the hold keeps on the slot, as a table whose name is the item, or 'empty'
+    -- where the slot is bare. That is what the slot wore when the hold took it, or what the
+    -- player has put on it since. When an item use hands the slot back, the release branch
+    -- below puts that same piece back on. Any other layer handing the slot back only shuts
+    -- it again. owed marks a slot an item use's hand-back found not wearing its record, until
+    -- the sweep sees the record worn, so the sweep finishes that hand-back rather than taking
+    -- the use's piece as the player's.
+    -- E.disabled_n counts the entries, so the idle case costs one integer test, as with
+    -- locked_n. It is an E field because the status box counts the hold.
     local disabled = {}
     E.disabled_n = 0
 
@@ -1493,11 +2196,12 @@ return function(E)
     -- slot to ordinary gear even while a lower layer was waiting for it, so a lock mode
     -- would silently lose its item the first time an item use finished in its slot. When
     -- nothing claims the slot, it is enabled. When an item use, the Hoxne hold or received
-    -- gear claims it, nothing is done, because that layer holds the slot itself. Any other
-    -- claimer's item is re-asserted here. The enable, equip and disable must stay in that
-    -- order and inside one event, or the gear parked for the current state wins the flush
-    -- instead.
-    local function release_slot(slot)
+    -- gear claims it, nothing is done, because that layer holds the slot itself. A disable
+    -- hold's slot is only shut again, unless put_back says an item use is handing it back.
+    -- Any other claimer's item is re-asserted here. The enable, equip and disable must stay
+    -- in that order and inside one event, or the gear parked for the current state wins the
+    -- flush instead.
+    local function release_slot(slot, put_back)
         local claim = slot_claim(slot)
         if not claim then
             enable(slot)
@@ -1505,15 +2209,27 @@ return function(E)
         end
         local canon = CANON_SLOT[slot] or slot
 
-        -- A disable hold is next in line: the piece the hold recorded goes back on and the
-        -- slot is shut again, behind two guards. A recorded copy no longer carried can never
-        -- come back, and the hold would shut the slot indefinitely for it, so the slot is
-        -- forgotten, freed and named instead. A slot already wearing the record is only
-        -- shut, because the strip release hands back every registered slot, disabled ones
-        -- included, and a redundant equip is wasted traffic. Like the strip branch, this must
-        -- stay above the `claim ~= 'lock'` fall-through.
+        -- A disable hold is next in line. A held slot acts as one GearSwap's own disable
+        -- holds, so nothing the engine does dresses it: a layer handing it back only shuts it
+        -- again, and the hold takes what it wears as its record. An enchanted item use is the
+        -- one exception. It borrowed the slot, and asks with put_back for the piece the hold
+        -- recorded to go back on and the slot to be shut again, behind two guards. A recorded
+        -- copy no longer carried can never come back, and the hold would shut the slot
+        -- indefinitely for it, so the slot is forgotten, freed and named instead. A slot
+        -- already wearing the record is only shut, since a redundant equip is wasted traffic.
+        -- Like the strip branch, this must stay above the `claim ~= 'lock'` fall-through.
         if claim == 'disable' then
             local record = disabled[canon]
+            -- Read defensively. A raw handler can reach this before player is readable,
+            -- since the lost-cast release in the polling engine runs above the guards that
+            -- test it, and a slot can be implement-held and disabled at once. With no
+            -- reading nothing is equipped or recorded, and the slot is only shut.
+            local worn = player and player.equipment and player.equipment[canon]
+            if not put_back then
+                if type(worn) == 'string' then record.name = worn end
+                disable(slot)
+                return
+            end
             if record.name ~= 'empty' and not have_item(record.name) then
                 disabled[canon] = nil
                 E.disabled_n = E.disabled_n - 1
@@ -1525,16 +2241,16 @@ return function(E)
                 display_box_update()
                 return
             end
-            -- Read defensively. A raw handler can reach this before player is readable,
-            -- since the lost-cast release in the polling engine runs above the guards that
-            -- test it, and a slot can be implement-held and disabled at once. With no
-            -- reading nothing is equipped. The slot is shut, and the next build's sweep puts
-            -- the record back.
-            local worn = player and player.equipment and player.equipment[canon]
             if worn and worn ~= record.name then
                 enable(slot)
                 gs_equip({ [slot] = record.name == 'empty' and empty or record.name })
             end
+            -- A put-back from inside a raw handler is discarded, and one with no reading is
+            -- never sent. Either way the slot can be left wearing the use's piece with
+            -- GearSwap's flag set, which is how the sweep sees a piece the player put on. So
+            -- the record is marked until the sweep sees it worn, and the sweep puts it back
+            -- meanwhile.
+            if worn ~= record.name then record.owed = true end
             disable(slot)
             return
         end
@@ -1612,11 +2328,12 @@ return function(E)
     end
 
     -- The player-facing name of each layer, so a refusal can say which one is holding the
-    -- slot. A lock mode has no entry, because a lock never refuses another layer. It is the
-    -- one that yields. Each strip take overwrites the strip entry with its command word, so
-    -- a refusal names the word the player typed. The generic value here stands only until
-    -- the first take, and no refusal can read it before then. The disable entry is fixed,
-    -- because that hold answers to one word.
+    -- slot, and gs c enable which hold keeps a slot it was asked to free. A lock mode never
+    -- refuses another layer, since it is the one that yields, so only the enable line names
+    -- it. Each strip take overwrites the strip entry with its command word, so a refusal names
+    -- the word the player typed. The generic value here stands only until the first take, and
+    -- no line can read it before then. The disable entry is fixed, because that hold answers
+    -- to one word.
     local HOLDER_NAME = {
         ench      = 'an item use',
         disable   = 'gs c disable',
@@ -1625,16 +2342,16 @@ return function(E)
         sleep     = 'Sleep gear',
         implement = 'the cast in progress',
         spell     = 'received gear',
+        lock      = 'a lock mode',
         weapon    = 'the weapon lock',
     }
 
-    -- The precedence stack as a rank, one entry per layer that can hold a slot against
-    -- another, so a refusal naming several layers prints them highest first. HOLDER_NAME is
-    -- keyed by claim, and a hash walks in no fixed order. The order is the file header's
-    -- stack with the lock mode left out, since a lock mode never refuses and is absent from
-    -- both tables.
+    -- The precedence stack as a rank, one entry per layer that can hold a slot, so a refusal
+    -- naming several layers prints them highest first. HOLDER_NAME is keyed by claim, and a
+    -- hash walks in no fixed order. The order is the file header's stack. A lock mode never
+    -- refuses, so no refusal ranks it, and its standing keeps the two tables alike.
     local HOLDER_RANK = { ench = 1, disable = 2, strip = 3, hoxne = 4, sleep = 5,
-        implement = 6, spell = 7, weapon = 8 }
+        implement = 6, spell = 7, lock = 8, weapon = 9 }
 
     -- The canonical slots ranked down the body, from the sixteen names the disable hold
     -- already carries, so a refusal listing several slots always lists them in the same
@@ -1723,17 +2440,41 @@ return function(E)
     -- recorded would answer 'disable' and be re-asserted by the very call meant to free it.
     -- `whole` marks the all form, which reports the release without listing sixteen names
     -- and says nothing about the slots that were not held.
+    --
+    -- A named slot the hold does not hold is opened too when GearSwap's own flag shuts it
+    -- and no layer holds it. That is the failsafe for a slot word typed while the job file
+    -- was switched off, which GearSwap's own disable takes, and for a job file's own
+    -- disable() call. A slot another layer holds stays that layer's, and the line names the
+    -- hold that has it, where a slot nothing holds is already off.
     local function disable_release(canons, whole)
-        local released, absent, seen = {}, {}, {}
+        local released, kept, seen = {}, {}, {}
+        local g = gearswap
+        local flags = type(g) == 'table' and g.disable_table
+        local ids = type(g) == 'table' and g.slot_map
         for _, canon in ipairs(canons) do
             if not seen[canon] then
                 seen[canon] = true
+                local claim = not disabled[canon] and slot_claim(canon)
                 if disabled[canon] then
                     disabled[canon] = nil
                     E.disabled_n = E.disabled_n - 1
                     released[#released + 1] = canon
+                elseif type(flags) == 'table' and type(ids) == 'table' and flags[ids[canon]] == true
+                    and not claim then
+                    released[#released + 1] = canon
                 else
-                    absent[#absent + 1] = canon
+                    kept[#kept + 1] = { canon = canon, claim = claim }
+                end
+            end
+        end
+        -- The slots the command could not free, in the order it named them.
+        local function say_kept()
+            for _, k in ipairs(kept) do
+                if k.claim then
+                    notice(('%s: %s is held by %s'):format(DISABLE_LABEL, k.canon,
+                        HOLDER_NAME[k.claim] or k.claim))
+                else
+                    notice(('%s: %s already [OFF]'):format(DISABLE_LABEL, k.canon))
                 end
             end
         end
@@ -1741,9 +2482,7 @@ return function(E)
             if whole then
                 notice(DISABLE_LABEL .. ': already [OFF]')
             else
-                for _, canon in ipairs(absent) do
-                    notice(('%s: %s already [OFF]'):format(DISABLE_LABEL, canon))
-                end
+                say_kept()
             end
             return
         end
@@ -1755,9 +2494,7 @@ return function(E)
         if whole then
             notice(DISABLE_LABEL .. ': [OFF]')
         else
-            for _, canon in ipairs(absent) do
-                notice(('%s: %s already [OFF]'):format(DISABLE_LABEL, canon))
-            end
+            say_kept()
             notice(DISABLE_LABEL .. ': [OFF] ' .. table.concat(released, ', '))
         end
         display_box_update()
@@ -1980,7 +2717,7 @@ return function(E)
         strip_take(word)
     end
 
-    -- The command surface behind the three stripping words. A bare word releases the hold
+    -- The command surface behind the stripping words. A bare word releases the hold
     -- when its own shape stands, and otherwise takes its shape or switches to it. on takes,
     -- re-takes as the manual repair, or switches. off releases whatever stands, or says it
     -- was already off. Anything else warns with the usage. One hold stands at a time.
@@ -2184,8 +2921,10 @@ return function(E)
     -- reads this registry and a slot still recorded would answer 'implement' and be
     -- re-dressed by the call meant to free it. Each is then handed to the next layer in
     -- line, so the weapon lock re-dresses its pair and an unclaimed slot is enabled, and its
-    -- rig cell is recolored. Runs at aftercast, when a busy window expires with no
-    -- aftercast, on a zone, and at the job file's unload.
+    -- rig cell is recolored. Runs at aftercast and wherever else the busy window closes: a
+    -- cancel in precast, a cast dropped at a sleep or stun, a lost end's expiry, a zone
+    -- change, and the master's own pet command ended at pet_aftercast. The job file's unload
+    -- runs it too.
     local function release_implement()
         for slot in pairs(implement_held) do
             implement_held[slot] = nil
@@ -2206,24 +2945,52 @@ return function(E)
         end
     end
 
-    -- Put back what a held slot was recorded wearing, when something opened or re-dressed
-    -- it without telling the engine, such as a console enable or an in-game /equipset. It
-    -- runs on the path where gear is chosen, as the strip hold's, the lock modes' and the
-    -- weapon lock's sweeps do. It yields to an item use, which holds the slot legitimately,
-    -- and reads nothing at all while no hold stands.
+    -- Keep a held slot in line with the hold when something changed it without telling the
+    -- engine. A held slot acts as one GearSwap's own disable holds: a piece the player put
+    -- on by hand or by an in-game /equipset, one the game removed, or one another piece
+    -- forced off, becomes the hold's record, and nothing is sent. Two changes are answered
+    -- otherwise. A record an item use's hand-back marked owed, not yet seen worn, goes back
+    -- on through release_slot, since the use is the one layer that may dress a held slot.
+    -- And a slot whose GearSwap flag is clear was opened by GearSwap's own enable outside the
+    -- engine's interception of the console words, such as a job file's enable() call or a
+    -- word typed while the user file was switched off, so the hold on it ends as gs c enable
+    -- ends it, quietly, the slot going to the next layer in line. Only disable() and enable()
+    -- write that flag, and the flag is read only for a slot that changed. A slot with no
+    -- reading whose flag is set is left alone.
     --
-    -- release_slot does the work, so the re-assert and the one line a lost record earns are
-    -- written once. The worn reading is defensive, because this runs from a build, and a
-    -- build can be reached before player is readable.
+    -- It runs on the path where gear is chosen, as the strip hold's, the lock modes' and the
+    -- weapon lock's sweeps do. It yields to an item use, which holds the slot legitimately,
+    -- and reads nothing at all while no hold stands. The worn reading is defensive, because
+    -- this runs from a build, and a build can be reached before player is readable.
     local function verify_disabled_slots()
         if E.disabled_n == 0 then return end
         local worn = player and player.equipment
         if not worn then return end
+        local dropped = false
         for canon, record in pairs(disabled) do
-            if worn[canon] ~= record.name and slot_claim(canon) == 'disable' then
-                release_slot(canon)
+            local now = worn[canon]
+            if now == record.name then
+                if record.owed then record.owed = nil end
+            elseif slot_claim(canon) == 'disable' then
+                if record.owed then
+                    release_slot(canon, true)
+                else
+                    local g = gearswap
+                    local flags = type(g) == 'table' and g.disable_table
+                    local ids = type(g) == 'table' and g.slot_map
+                    if type(flags) == 'table' and type(ids) == 'table' and flags[ids[canon]] == false then
+                        disabled[canon] = nil
+                        E.disabled_n = E.disabled_n - 1
+                        dropped = true
+                        release_slot(canon)
+                    elseif type(now) == 'string' then
+                        record.name = now
+                    end
+                end
             end
         end
+        -- The status box counts the hold, so it is repainted once after the writes.
+        if dropped then display_box_update() end
     end
 
     -- Strip again a held slot that something dressed without telling the engine, such as an
@@ -2386,26 +3153,32 @@ return function(E)
             'body', 'hands', 'ring1', 'ring2', 'waist', 'legs', 'feet', 'back' })
     end
 
-    -- The exports. Every engine file except interface, state and core binds some of them.
+    -- The exports, which the components that load after this one bind.
     E.merge_into = merge_into
     E.PLACEHOLDER_NAME = PLACEHOLDER_NAME
     E.ensure_placeholders = ensure_placeholders
     E.set_has_gear = set_has_gear
+    E.set_declared = set_declared
+    E.sorted_keys = sorted_keys
     E.reset_set_warnings = reset_set_warnings
     E.warn_if_empty = warn_if_empty
     E.keep_weaponskill_weapons = keep_weaponskill_weapons
     E.yield_range_to_ammo = yield_range_to_ammo
+    E.yield_ammo_to_instrument = yield_ammo_to_instrument
     E.blank_instrument = blank_instrument
     E.mr_am = mr_am
     E.merge_report_begin = merge_report_begin
     E.merge_report_mark = merge_report_mark
+    E.merge_report_floor = merge_report_floor
     E.merge_report_branch_end = merge_report_branch_end
     E.merge_report = merge_report
     E.merge_named = merge_named
+    E.merge_on_buff = merge_on_buff
     E.merge_report_flush = merge_report_flush
     E.apply_buff_children = apply_buff_children
     E.set_roll_eleven = set_roll_eleven
     E.discover_buff_children = discover_buff_children
+    E.merge_children = merge_children
     E.action_tag = action_tag
     E.HOXNE_AMPULLA = HOXNE_AMPULLA
     E.BUFF_ENCHANTMENT = BUFF_ENCHANTMENT
@@ -2441,5 +3214,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

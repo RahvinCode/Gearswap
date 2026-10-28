@@ -24,6 +24,7 @@
 -- EXPORTS  These fields, and the components that read and write each:
 --   is_moving ............... read by builders, display, enchant, hoxne. Written by monitor.
 --   DualWield, TwoHand ...... read by builders, display. Written by monitor.
+--   HandToHand .............. read by builders. Written by monitor.
 --   lock_main_sub ........... read by builders, hooks, equip, display. Written by equip.
 --   lock_range .............. read by equip, commands. Written by equip.
 --   lock_songs .............. read by equip for the Songs exemption. Written by equip.
@@ -32,14 +33,14 @@
 --   lock_pair ............... read and written by builders and equip.
 --   lock_pair_changed ....... a callback, called by builders and set by equip.
 --   outgoing_cast_active .... read by display and hooks. Read and written by core.
---   accession_predicted,
---   divine_seal_predicted ... read and written by builders and hooks. Cleared by
---                             spellreceived when the buff arrives or wears off.
---   last_skillchain_* ....... read by builders. Read and written by monitor.
---   SpellCastTime ........... read and written by hooks and monitor.
+--   burst_records ........... read and written by builders and monitor. Emptied by th.
+--   burst_pending ........... written by builders, read by commands, read and marked by
+--                             monitor. Cleared by commands and hooks.
+--   pet_move ................ read and written by hooks, commands and th.
+--   SpellCastTime ........... read by monitor. Read and written by hooks.
 --   Spellstart .............. read by monitor. Read and written by hooks.
 --   th_info ................. read by builders. Read and written by th.
---   get_mob_by_id ........... bound by core, monitor and th.
+--   get_mob_by_id ........... bound by core and th.
 --   get_ability_recasts ..... bound by hooks. Core and hoxne call windower.ffxi's own
 --                             get_ability_recasts directly instead.
 --   get_spell_recasts ....... bound by hooks.
@@ -49,30 +50,31 @@
 --          it needs no other component, and every later component can bind its handles at
 --          construction.
 --
--- Every field here is shared by two or more components. A shared field that one subsystem
--- owns is declared with that subsystem instead. The equip component declares
--- ench_held_slot, locked_n, disabled_n, strip_shape and mr_count, and the enchanted item
--- engine declares ench_active. SpellCastTime, accession_predicted and divine_seal_predicted
--- are two-way state rather than one-way exports. Every component that reads one also
--- writes it, so moving one changes a contract between components, not just an export.
+-- A shared field that one subsystem owns is declared with that subsystem instead. The equip
+-- component declares ench_held_slot, locked_n, disabled_n, strip_shape and mr_count, and the
+-- enchanted item engine declares ench_active. Core declares the buff prediction's record,
+-- which only its own functions write. The weapon lock's flags are kept together here, though
+-- only the equip component reads lock_songs and lock_geomancy.
 
 return function(E)
     ------------------------------------------------------------------------------------------------
     -- SECTION 10 - RUNTIME STATE
     ------------------------------------------------------------------------------------------------
-    -- The shared runtime state, in four groups: combat, movement and timing, the multibox
-    -- flags, the cached Windower handles, and the Treasure Hunter registry.
+    -- The shared runtime state: combat, movement and timing, the multibox flag, the cached
+    -- Windower handles, and the Treasure Hunter registry.
 
     -- Combat, movement and timing -----------------------------------------------------------------
 
-    -- The two weapon traits the builders read to choose an offhand: whether the character
-    -- has Dual Wield, and whether the current weapon is two-handed. Both start nil, which
-    -- means unknown, and the builders add no offhand until both are known. The monitor
-    -- component writes both after load and after a subjob change. It re-reads DualWield on
-    -- every 30 second housekeeping pass, and TwoHand on every weapon-mode change and on
+    -- The weapon traits the builders read to choose an offhand: whether the character has
+    -- Dual Wield, whether the current weapon is two-handed, and whether it is a hand-to-hand
+    -- weapon, which holds the sub slot too. Each starts nil, which means unknown, and the
+    -- builders add no offhand until DualWield and TwoHand are known. The monitor component
+    -- writes them after load and after a subjob change. It re-reads DualWield on every 30
+    -- second housekeeping pass, and TwoHand and HandToHand on every weapon-mode change and on
     -- gs c two_hand_check.
     E.DualWield                               = nil
     E.TwoHand                                 = nil
+    E.HandToHand                              = nil
 
     -- The weapon lock as four flags, resolved from state.WeaponLock by the equip component
     -- at startup and on every lock change. lock_main_sub says main and sub are held, and
@@ -100,13 +102,17 @@ return function(E)
     E.lock_pair                               = {}
     E.lock_pair_changed                       = nil
 
-    -- The busy window. Precast sets Spellstart and sizes SpellCastTime from the action it
-    -- starts, and the is_Busy global stays true until SpellCastTime seconds have passed since
-    -- Spellstart. Aftercast restarts the window with a short tail. While is_Busy is true,
-    -- precast refuses a new action, and the movement check, the deferred rebuild, the job
-    -- file's Cycle_Timer and the Hoxne tick all wait. Two paths expire the window, the
-    -- polling engine and precast. Each clears is_Busy and zeroes SpellCastTime, so a lost
-    -- completion cannot leave the engine stuck.
+    -- The busy window. Precast opens it for every action but an item used on an NPC: it sets
+    -- Spellstart, sets SpellCastTime to the age in seconds at which GearSwap drops the
+    -- action's command, and raises the is_Busy global. Aftercast replaces it with a short
+    -- tail, and so does pet_aftercast when GearSwap ends the master's own pet command there.
+    -- Precast closes it at once for an action canceled there, buff_change for a cast GearSwap
+    -- dropped at a disabling buff, and the zone handler at a zone change. While is_Busy is
+    -- true, precast refuses a new action, and the movement check, the deferred rebuild, the
+    -- job file's Cycle_Timer and the Hoxne tick all wait. Two paths expire the window once
+    -- SpellCastTime seconds have passed since Spellstart, the polling engine and precast.
+    -- Each clears is_Busy and zeroes SpellCastTime, so a lost completion cannot leave the
+    -- engine stuck.
     E.SpellCastTime                           = 0
     E.Spellstart                              = os.clock()
 
@@ -117,27 +123,55 @@ return function(E)
     -- set applied.
     E.is_moving                               = false
 
-    -- The last skillchain seen on a monster within 21 yalms: the monster's id, the time, and
-    -- the elements a magic burst on it can match. An elemental nuke on that monster
-    -- within eight seconds, of a matching element, wears sets.Midcast.Burst in place of
-    -- sets.Midcast.Nuke.
-    E.last_skillchain_id                      = 0
-    E.last_skillchain_time                    = 0
-    E.last_skillchain_elements                = {}
+    -- The magic burst windows, one record per monster a skillchain was made on, keyed by the
+    -- monster's id. A record holds elements, the chain's element set keyed by element id,
+    -- at, the clock at the chain's packet, ends, the clock its window closes, and step, the
+    -- chain's step on that monster. The monitor component writes a record when a chain
+    -- lands. It drops the record when a move that can end the window hits that monster and
+    -- makes no chain: a weaponskill, a TP move or a blood pact with a skillchain property, a
+    -- physical blue spell under Chain Affinity or Azure Lore, or an elemental spell cast
+    -- under Immanence. A write sweeps the expired records, the builders drop an expired one
+    -- they read, and a zone empties the table in place. The builders read it to predict
+    -- whether a cast bursts.
+    E.burst_records                           = {}
+
+    -- The cast in flight that a chain landing on its target, or that target's window ending,
+    -- could still re-dress, or nil. It holds spell, the cast as GearSwap handed it to midcast,
+    -- target, the monster's id, element, the spell's element id, burst, whether the cast is
+    -- dressed for a burst, and lands, the clock it is predicted to land at. The builders
+    -- write it at every midcast build, nil for a cast that could not burst. The monitor reads
+    -- it when a chain lands or a window ends, and when that changes the cast's burst it sets
+    -- redress, the burst to dress, and sends the re-dress. The burst re-dress command clears
+    -- the mark before it re-dresses, and clears the record when its cast has ended. Aftercast
+    -- clears the record too.
+    E.burst_pending                           = nil
+
+    -- The pet's move in flight, or nil. Its fields: name is the move's name. pet and actor
+    -- are its pet's name and id. at is the clock at its readying. spell is the table GearSwap
+    -- handed pet_midcast. dressed says whether pet_midcast put the move's set on, and held
+    -- whether it holds the master. layer is the job-file layer a held status, buff or pet
+    -- status change kept. ended is set when the action handler ended the move. after_layer is
+    -- the layer the job file's pet_aftercast_custom or aftercast_custom gave when GearSwap
+    -- ended the move after that. While PetMoveHold is on, the completion of the master's pet
+    -- command starts a hold before the readying arrives. That record has awaiting set, name
+    -- holds the command's name, and at the clock at the command's precast. The hooks write
+    -- the record at that completion and at the readying, and clear it at the move's end, at
+    -- the pet's change and on a stale hold. While a held move stands they refuse the master's
+    -- actions, and status changes, buff changes, the pet's status changes, the command
+    -- component's rebuild and th's target change wait for the move's end. th marks the move
+    -- ended at a zone change, its finish packet or the pet's next swing, and the command
+    -- component's rebuild then closes the record.
+    E.pet_move                                = nil
+
     -- Multibox spell-received tracking ------------------------------------------------------------
 
-    -- True from the moment a tracked cast is announced to the other characters until that
-    -- cast completes. It gates the completion message that lets them release the gear they
-    -- hold for it. The core announce and completion helpers write it. The action hooks and
-    -- the debug box only read it.
+    -- True from the moment a tracked cast is announced to the other characters until they are
+    -- told it is over, or until the announce's deadline passes. It gates the completion
+    -- message that lets them release the gear they hold for it. The core announce and
+    -- completion helpers write it. The action hooks and the debug box only read it.
     E.outgoing_cast_active                    = false
+    -- The rest of the multibox state is private to the spell-received component.
 
-    -- Prediction flags for Accession and Divine Seal, two of the effects that widen a spell
-    -- to the party. Each is set when the ability is used and cleared when its buff arrives
-    -- or wears off, so it covers the gap before the buff is readable. The rest of the
-    -- multibox state is private to the spell-received component.
-    E.accession_predicted                     = false
-    E.divine_seal_predicted                   = false
     -- Cached API handles --------------------------------------------------------------------------
 
     -- Windower functions looked up once here, because each is called on a per-frame,
@@ -150,12 +184,14 @@ return function(E)
     local get_mob_by_id                       = ffxi.get_mob_by_id
     local get_party                           = ffxi.get_party
     local send_ipc                            = windower.send_ipc_message
+
     -- Treasure Hunter -----------------------------------------------------------------------------
 
     -- The tagged-mob registry. The Treasure Hunter tracker fills it, and the builders read it
     -- to decide whether a target still needs Treasure Hunter gear. tagged_mobs maps a mob id
     -- to the os.clock() of the player's last action on it. An entry leaves when the mob dies,
-    -- when the player zones, or after three minutes with no action from the player.
+    -- when the player zones, or at the first 30 second housekeeping pass after three minutes
+    -- with no action from the player.
     -- last_player_target_index is the target the target-change handler last rebuilt for, so
     -- a re-target to the same mob does not rebuild again.
     local th_info                             = {}
@@ -173,5 +209,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

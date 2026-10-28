@@ -18,22 +18,22 @@
 -- COMPONENT: lifecycle -- section 22: job file load, unload and subjob change
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 22 - Job lifecycle. Four global functions covering the life of a job file: the
---   setup call the job file makes itself, the startup notice about unsupported leftovers,
---   the teardown that gives every held slot back, and the subjob-change refresh.
+--   Section 22 - Job lifecycle. The global functions covering the life of a job file: the
+--   setup call the job file makes itself, the startup notice about leftovers from older job
+--   files, the teardown that gives every held slot back, and the subjob-change refresh.
 --
 -- EXPORTS  Nothing onto E. The teardown clears two E fields that the enchanted item engine
 --          sets, ench_active and ench_held_slot, because an item use must not outlive the
 --          job file that started it.
--- CALLERS  No other engine file calls these four, and the root registers none of them.
+-- CALLERS  No other engine file calls these, and the root registers none of them.
 --            jobsetup .......... called by the job file, at file scope
 --            file_unload ....... called by GearSwap, which looks it up by name
 --            sub_job_change .... called by GearSwap, which looks it up by name
 --            migration_notice .. scheduled by the root shortly after load
 --          A search for callers of the first three finds none, and that is expected.
--- LOADS    After every component whose exports it binds. sub_job_change reads the three
---          functions it schedules as globals when it runs, long after load. That is how it
---          can schedule equip_set_command, which the root declares after this file.
+-- LOADS    After every component whose exports it binds. sub_job_change reads the functions
+--          it schedules as globals when it runs, long after load. That is how it can
+--          schedule equip_set_command, which the root declares after this file.
 
 -- requires: rahvings/core, rahvings/equip, rahvings/display, rahvings/commands
 return function(E)
@@ -46,13 +46,13 @@ return function(E)
     local weapon_lock_drop, release_implement = E.weapon_lock_drop, E.release_implement
     local strip_clear, disable_clear, sleep_held = E.strip_clear, E.disable_clear, E.sleep_held
     local keybind_apply, keybind_release, keybind_list = E.keybind_apply, E.keybind_release, E.keybind_list
+    local restore_native_words = E.restore_native_words
 
     ------------------------------------------------------------------------------------------------
     -- SECTION 22 - JOB LIFECYCLE
     ------------------------------------------------------------------------------------------------
-    -- The four entry points a job file passes through, in the order they occur: setup on
-    -- load, the leftover notice shortly after, the subjob-change refresh, and teardown on
-    -- unload.
+    -- The entry points a job file passes through, in the order they occur: setup on load,
+    -- the leftover notice shortly after, the subjob-change refresh, and teardown on unload.
 
     -- Apply the job file's macro book, lockstyle and keybinds, and print the key list.
     -- The job file calls this itself, so anything raised here aborts the job file.
@@ -88,12 +88,69 @@ return function(E)
         keybind_list()
     end
 
-    -- Tell the player when the job file still defines something the engine ignores: the
-    -- check_buff_JA or check_buff_SP hooks, which nothing calls, or a job mode labeled
-    -- Auto Tank or Runes, which drives nothing. The root schedules this shortly after load,
-    -- because it must run after the job file's main chunk has defined its functions.
-    -- Called any earlier, the tests below read nil for functions that exist. It prints on
-    -- notice, the one ungated channel, because nothing else reports these leftovers.
+    -- The pet lists the interface still declares for older job files, in the interface's
+    -- order.
+    local LEGACY_PET_LISTS = { 'Buff_BPs_Duration', 'Buff_BPs_Healing', 'Debuff_BPs', 'Debuff_Rage_BPs',
+        'Magic_BPs_NoTP', 'Magic_BPs_TP', 'Merit_BPs', 'Physical_BPs_TP',
+        'Ready_Standard', 'Ready_Magic', 'Ready_TP', 'Ready_Debuff', 'Ready_Multi' }
+
+    -- Lua's debug library, which legacy_list_reads uses to read a function's source and its
+    -- upvalues. Elsewhere in the engine the name debug is core.lua's chat function. The
+    -- library is reached through GearSwap's own global table rather than the job file's
+    -- environment, because a job file that sets its own global debug above its include would
+    -- otherwise stop the engine loading.
+    local getinfo, getupvalue = gearswap.debug.getinfo, gearswap.debug.getupvalue
+
+    -- The pet lists the job file's code reads, in LEGACY_PET_LISTS order. Every function in the
+    -- job file's environment is read in its compiled form, with every function it keeps as an
+    -- upvalue, so a local helper a hook calls is read too. Functions loaded from this file's own
+    -- folder are the engine's, and are skipped. Compiled code holds every name it uses, whether
+    -- a global's, a field's or a local's, as a string with a zero byte on each side, so a name
+    -- is matched whole. A longer name that holds it is no match, and any name spelled exactly like
+    -- a list is one. A read in the file's top-level code is not seen, since no function holds
+    -- that code after the load.
+    local function legacy_list_reads()
+        local engine_dir = getinfo(1, 'S').source:match('^(.*[/\\])')
+        local seen, found = {}, {}
+        local function read(fn)
+            if seen[fn] then return end
+            seen[fn] = true
+            if engine_dir and getinfo(fn, 'S').source:sub(1, #engine_dir) == engine_dir then return end
+            -- A function written in C has no compiled form, and string.dump refuses it.
+            local dumped, code = pcall(string.dump, fn)
+            if dumped then
+                for i = 1, #LEGACY_PET_LISTS do
+                    local name = LEGACY_PET_LISTS[i]
+                    if code:find('\0' .. name .. '\0', 1, true) then found[name] = true end
+                end
+            end
+            local i = 1
+            while true do
+                local upvalue, value = getupvalue(fn, i)
+                if upvalue == nil then break end
+                if type(value) == 'function' then read(value) end
+                i = i + 1
+            end
+        end
+        for _, value in pairs(_G) do
+            if type(value) == 'function' then read(value) end
+        end
+        local names = {}
+        for i = 1, #LEGACY_PET_LISTS do
+            if found[LEGACY_PET_LISTS[i]] then names[#names + 1] = LEGACY_PET_LISTS[i] end
+        end
+        return names
+    end
+
+    -- Tell the player when the job file still holds something the engine ignores or keeps only
+    -- for older job files: the check_buff_JA or check_buff_SP hooks, which nothing calls, a job
+    -- mode labeled Auto Tank or Runes, which drives nothing, code that reads one of the pet
+    -- lists kept for older job files, and sets.Midcast.BP or sets.Ready, which nothing reads.
+    -- The root schedules this shortly after load, because it must run after the job file's
+    -- main chunk has defined its functions and get_sets has built its sets. Called any
+    -- earlier, the tests below read nil for functions that exist. It prints on notice, the one
+    -- ungated channel, because nothing else reports these leftovers. A load that failed
+    -- leaves sets nil, so the set tests check its type first.
     function migration_notice()
         if check_buff_JA or check_buff_SP then
             notice('Auto Buff was removed: this job file still defines check_buff_JA or ' ..
@@ -104,22 +161,41 @@ return function(E)
             notice('Auto Tank and Runes were removed: this job file still names one, so ' ..
                 'the mode is still shown but now drives nothing.')
         end
+        local lists = legacy_list_reads()
+        if #lists > 0 then
+            local named = #lists == 1 and ('the pet list ' .. lists[1])
+                or ('the pet lists ' .. table.concat(lists, ', ', 1, #lists - 1) .. ' and ' .. lists[#lists])
+            notice('This job file is out of date: it reads ' .. named .. ', which the engine keeps only'
+                .. ' for job files written before 2.2. Updating to the 2.2 or later sample job files is'
+                .. ' recommended.')
+        end
+        if type(sets) == 'table' then
+            if type(sets.Midcast) == 'table' and type(sets.Midcast.BP) == 'table' then
+                notice('sets.Midcast.BP is never read: its gear goes in sets.Pet_Command.BloodPact.')
+            end
+            if type(sets.Ready) == 'table' then
+                notice('sets.Ready is never read: its gear goes in sets.Pet_Command.Ready.')
+            end
+        end
     end
 
-    -- Tear the job file down: save a pending box drag, take down the display, release the
-    -- keys, and give back the slots this engine holds. GearSwap calls this when the file
-    -- unloads.
+    -- Tear the job file down: give GearSwap back its own console words, save a pending box
+    -- drag, take down the display, release the keys, and give back the slots this engine
+    -- holds. GearSwap calls this when the file unloads.
     --
     -- GearSwap's slot flags outlive the job file, so a slot left disabled here stays
     -- disabled for whatever file loads next. The root's load-time release of all sixteen
     -- slots covers only a next file that is this engine. Enabling a slot can make GearSwap
     -- send an item it held back while the slot was disabled.
     function file_unload(file_name)
+        -- GearSwap's own console words go back to GearSwap first, since GearSwap's table
+        -- outlives this file and nothing below depends on them.
+        restore_native_words()
         -- A box drag the settle has not saved yet is saved now. It touches no box, and
         -- nothing below depends on it.
         drag_flush()
-        -- The standing renderer steps aside while the status box still exists. Leaving
-        -- restores the box's own background, which raises on a destroyed box.
+        -- The display style in use steps aside while the status box still exists, because
+        -- stepping aside restores the box's own background, which raises on a destroyed box.
         display_unload()
         if gs_status then
             gs_status:destroy()
@@ -189,10 +265,10 @@ return function(E)
     end
 
     -- Refresh everything a subjob change invalidates: the display layout, the set-name index
-    -- and the empty-set warnings, then the two weapon traits and the gear. GearSwap calls
-    -- this by name.
+    -- and the empty-set warnings' throttle, then the two weapon traits and the gear. GearSwap
+    -- calls this by name.
     --
-    -- The three scheduled calls are staggered, and their order matters. Both trait checks
+    -- The scheduled calls are staggered, and their order matters. Both trait checks
     -- must land before the rebuild, or the rebuild dresses the character from a stale flag.
     -- A subjob change moves Dual Wield. two_hand_check is here for a job file whose
     -- sub_job_change_custom switches the weapon mode. The calls are scheduled rather than
@@ -211,5 +287,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

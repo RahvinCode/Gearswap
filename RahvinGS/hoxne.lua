@@ -18,10 +18,10 @@
 -- COMPONENT: hoxne -- section 14: Hoxne Ampulla automation, and the prerender driver
 ----------------------------------------------------------------------------------------------------
 -- CONTENTS
---   Section 14 - Hoxne Ampulla automation. The critical-action tables and the three
---   questions asked of them, the gated job-ability path for Tomahawk and Angon, the
---   Ampulla's equip, release and relock steps, the Sleep hold's window, the once-a-second
---   tick, and the prerender driver.
+--   Section 14 - Hoxne Ampulla automation. The critical-action tables and the questions
+--   asked of them, the gated job-ability path for Tomahawk and Angon, the Ampulla's equip,
+--   release and relock steps, the Sleep hold's window, the once-a-second tick, and the
+--   prerender driver.
 --
 -- While a Hoxne mode is on, the Ampulla is kept in the ammo slot, used whenever its
 -- enchantment is down and the item is ready, and put back whenever something knocks it
@@ -30,10 +30,9 @@
 -- are bard songs, Geomancy, Tomahawk, Angon, and the Sleep hold when its set names range
 -- or ammo.
 --
--- The prerender driver at the end of this file runs three ticks at three rates from one
--- handler: the enchanted-item tick every 0.25 seconds, the Hoxne tick every second, and the
--- gated-ability tick every 0.1 seconds while one is in flight. The root registers it apart
--- from the spell-received failsafe, so an error in one leaves the other running.
+-- The prerender driver at the end of this file runs the enchanted-item tick, the Hoxne tick
+-- and the gated-ability tick from one handler, each at its own rate. The root registers it
+-- apart from the spell-received failsafe, so an error in one leaves the other running.
 --
 -- The driver is a raw handler, and GearSwap discards an equip issued there. So no tick
 -- changes gear directly. A tick sends a self command instead, and the command's wrapped
@@ -43,8 +42,7 @@
 -- player.equipment is stale inside a raw handler too, because GearSwap refreshes it only
 -- when a wrapped event begins. Where a decision must be right, worn state comes from the
 -- status byte of the item's bag copy. The tick's slot-repair test is the one exception. It
--- reads player.equipment.ammo, and a stale reading costs at most one extra relock a second
--- later.
+-- reads player.equipment.ammo, and a stale reading costs at most one needless relock.
 --
 -- STATE    The Hoxne state is the hoxne table, which the equip component declares beside
 --          slot ownership. This file owns only ench_next_check and gated_ja.
@@ -70,8 +68,8 @@ return function(E)
     local find_enchantment, warn_unavailable      = E.find_enchantment, E.warn_unavailable
     local slot_claim                              = E.slot_claim
 
-    -- When the driver next runs the enchanted-item tick. The Hoxne tick's own clock is
-    -- hoxne.next_check.
+    -- When the driver next runs the enchanted-item tick, as an os.clock() time. The Hoxne
+    -- tick's own clock is hoxne.next_check.
     local ench_next_check = 0
     ------------------------------------------------------------------------------------------------
     -- SECTION 14 - HOXNE AMPULLA AUTOMATION
@@ -105,9 +103,10 @@ return function(E)
     -- The clock time at which a critical window closes once its action is over, however the
     -- action ended. An entry that resumes on a delay, a song or Geomancy, keeps the window
     -- open for that delay, so a rotation reads as one window. Anything else closes it after
-    -- half a second. Applied by aftercast, by precast's busy gate and by the action
-    -- handler's interrupt path. The interrupt path passes the window's recorded owner, so a
-    -- nil entry must take the half second rather than raise inside a raw handler.
+    -- half a second. Aftercast applies it, and so do precast's busy gate and its cancel path
+    -- and the action handler's interrupt path. The interrupt path passes the window's
+    -- recorded owner, so a nil entry must take the half second rather than raise inside a
+    -- raw handler.
     local function hoxne_resume_deadline(crit)
         local resume = crit and crit.resume
         return os.clock() + ((resume == 'delay') and (crit.delay or 5) or 0.5)
@@ -194,8 +193,9 @@ return function(E)
     --
     -- Every refusal is answered before any gear moves, in this order: the ON-Locked hold,
     -- an ability this character cannot use, a recast still running, and an item not carried.
-    -- Gear moved for an ability that cannot fire would leave the wrong ammo on for the whole
-    -- watchdog window.
+    -- Gear moved for an ability that cannot fire would leave the throwing item in the ammo
+    -- slot. Under ON-Allow Critical it would stay until the window's 20-second watchdog
+    -- closed it, and under OFF until a later build put other ammo on.
     local function use_gated_ja(ja_id)
         local crit = CRITICAL_JA[ja_id]
         local ja_name = res.job_abilities[ja_id].en
@@ -292,7 +292,7 @@ return function(E)
     end
 
     -- Re-arm the lockout that stops a use from being tried too soon after the engine's own
-    -- re-equip, and return the recast still to run so the caller can report it.
+    -- re-equip, and return the recast still to run, in seconds, so the caller can report it.
     --
     -- The larger of two waits governs: the equip lockout, since a re-equip restarts the
     -- item's equip delay, and any recast still running. The lockout is also a floor. Just
@@ -386,7 +386,7 @@ return function(E)
         return true
     end
 
-    -- The once-a-second tick. With a mode on it has four jobs, in order: close an expired
+    -- The once-a-second tick. With a mode on, its jobs in order are to close an expired
     -- critical window, re-assert the hold, repair the slot when the game clears it, and use
     -- the item once its enchantment has dropped and it is ready. The early returns form a
     -- precedence list, and their order matters.
@@ -427,7 +427,8 @@ return function(E)
 
         -- ON-Locked re-asserts its disable on every tick, which also takes the slots back a
         -- second after gs c enableall frees them. ON-Allow Critical must never disable here.
-        -- That is the whole difference between the two modes.
+        -- It holds the slots by filtering equips instead, because a disabled range slot
+        -- would keep a song's instrument off.
         if state.Hoxne.value == 'ON-Locked' then
             disable('range', 'ammo')
         end
@@ -492,7 +493,8 @@ return function(E)
     end
 
 
-    -- The prerender driver, run every frame: three ticks at three rates from one handler.
+    -- The prerender driver, run every frame: the ticks below, each at its own rate, from one
+    -- handler.
     --
     --   enchanted-item tick   every 0.25 s   always
     --   Hoxne tick            every 1.00 s   always
@@ -530,5 +532,5 @@ return function(E)
 
     -- The version stamp. The root checks it against Rahvin_GS, so a stale copy of this file
     -- stops the load with an error that names it.
-    return '2.1'
+    return '2.2'
 end

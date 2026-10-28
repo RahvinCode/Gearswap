@@ -27,7 +27,7 @@ include('RahvinGS/interface')
 --   Construction ...... E, the version check, and the components in load order
 --   Section 23 ........ the event registrations, equip_set_command, and the startup schedule
 --
--- This is the only file that wires anything. Every other file builds its handlers, sets and
+-- This is the only file that wires anything. Every component builds its handlers, sets and
 -- command tables and hands them back. Only this file includes an engine file, and only this
 -- file registers a Windower event, so it is the one place to read for what runs when.
 --
@@ -96,8 +96,11 @@ do
     enable('main', 'sub', 'range', 'ammo', 'head', 'neck', 'lear', 'rear', 'body', 'hands', 'lring', 'rring', 'waist',
         'legs', 'feet', 'back')
 
-    -- Three of Treasure Hunter's four hooks, and the polling engine. main_engine runs on each
-    -- outgoing chunk, so the client's own traffic drives it rather than a timer.
+    -- Three of the Treasure Hunter component's four handlers, and the polling engine. Two of
+    -- the handlers do more than their names say: the incoming-chunk one also reads the
+    -- automaton's TP for sets.Pet_WS, and the zone one releases everything that does not
+    -- survive a zone. main_engine runs on each outgoing chunk, so the client's own traffic
+    -- drives it rather than a timer.
     windower.register_event('target change', on_target_change_for_th)
     windower.raw_register_event('incoming chunk', on_incoming_chunk_for_th)
     windower.raw_register_event('outgoing chunk', main_engine)
@@ -119,12 +122,12 @@ do
     -- The spell-received failsafe: it releases borrowed gear when a completion never arrives.
     windower.raw_register_event('prerender', E.sr_prerender)
 
-    -- Buff gained: clears the two prediction flags, uses a status-removal item where the job
-    -- file allows one, and dresses and holds gear for the ailments that need it.
+    -- Buff gained: ends the buff's prediction, uses a status-removal item where the job file
+    -- allows one, and dresses and holds gear for the ailments that need it.
     windower.register_event('gain buff', E.sr_gain_buff)
 
-    -- Buff lost: releases what was held for that buff, clears the two prediction flags, and
-    -- drops a Corsair roll from the eleven tracker.
+    -- Buff lost: releases what was held for that buff, ends the buff's prediction, and drops
+    -- a Corsair roll from the eleven tracker.
     windower.register_event('lose buff', E.sr_lose_buff)
 
     -- Logout: both display boxes come down, with whatever the renderer standing owns. The
@@ -137,12 +140,13 @@ do
     -- GearSwap's globals refresh and full set pass for a few hides.
     windower.raw_register_event('logout', E.display_logout)
 
-    -- GearSwap's own console commands. GearSwap registered its handler for '//gs ...' when
-    -- the addon loaded, so that handler runs first and has already acted. This one only
-    -- prints the line that points a player at the tracked 'gs c' form. It is registered
-    -- wrapped, not raw. It fires once per typed command, and the wrapper holds the line back
-    -- while the job file itself is switched off, when the engine has nothing to say.
-    windower.register_event('addon command', E.native_disable_notice)
+    -- GearSwap's own console words. '//gs disable <slot>' and '//gs enable <slot>' run gs c
+    -- disable and gs c enable instead of GearSwap's own. The engine's holds shut slots with
+    -- GearSwap's own disable, so these words go through the engine, which frees only a slot
+    -- nothing else holds and names the hold that has any other. The bare words still go to
+    -- GearSwap. The interception goes into GearSwap's own table here, and the job file's
+    -- unload takes it out again.
+    E.intercept_native_words()
 
     -- A worked example for a job file, commented out: reacting to a tell or to party chat.
     -- It registers nothing here.
@@ -160,10 +164,15 @@ do
     end)
     ]] --
 
-    -- Treasure Hunter's fourth hook, and the widest registration here: every action packet in
-    -- range reaches it. Most of its work is gated on the actor being this player. The
-    -- skillchain dispatch and the eleven tracker's roll read are not, so a skillchain closed
-    -- by anyone opens a burst window, and a roll from any Corsair is read.
+    -- The Treasure Hunter component's fourth handler, and the widest registration here: every
+    -- action packet in range reaches it. The end of this player's item use or interrupted
+    -- cast, and Treasure Hunter tagging, read only this player's packets. The rest reads every
+    -- actor's. A skillchain closed by anyone opens a burst window, and a later move can end
+    -- it. A Corsair roll that lists this character carries its total to the eleven tracker.
+    -- Another Blue Mage's Chain Affinity or Azure Lore, and another Scholar's Immanence, are
+    -- noted, so their spells can end a window. A pet's finish packet or swing ends its move. A
+    -- spell or ability from another player, or this character's own job ability, that gives
+    -- this character a buff starts its prediction.
     windower.raw_register_event('action', E.th_action)
 
     -- This file's one global: ask for a gear rebuild by sending the self command that
@@ -174,18 +183,20 @@ do
         windower.send_command("gs c update auto")
     end
 
-    -- The startup schedule, deferred and staggered. Nothing here can run at load: the job
-    -- file has not finished loading, so its sets do not exist yet, and the client has not
-    -- settled. The steps run in the order each one needs. The job file's buff children are
-    -- discovered and the legacy set names aliased. The boxes appear. The two weapon traits
-    -- are read, and the weapon lock the job file may have set is bridged and resolved. Unlock
-    -- frees every slot the lock does not hold and asks for a rebuild, then the polling engine
-    -- takes over. The two notices come last, after everything they report on has run.
+    -- The startup schedule, deferred and staggered, with every delay in seconds. Nothing here
+    -- can run at load: the job file has not finished loading, so its sets do not exist yet,
+    -- and the client has not settled. The steps run in the order each one needs. The
+    -- placeholders the job file dropped are put back, its buff children discovered and its
+    -- legacy set names aliased. The boxes appear. The Dual Wield trait and the main weapon's
+    -- kind are read, and the weapon lock the job file may have set is bridged and resolved.
+    -- Unlock frees every slot the lock does not hold and asks for a rebuild, and the polling
+    -- engine runs a pass. The two notices come last, after everything they report on has run.
     --
-    -- Discovery has a delay of its own rather than sharing the boxes' delay, because two
-    -- schedules at one delay run in no stated order. The eleven tracker's question shares
-    -- discovery's delay because the order of those two does not matter: every answer arrives
-    -- in a later frame, after discovery has run.
+    -- Two schedules at one delay run in no stated order, so steps share a delay only where
+    -- their order does not matter. The eleven tracker's question shares discovery's, since
+    -- every answer arrives in a later frame, after discovery has run. The main-weapon check and
+    -- the weapon lock's two steps share another: the check touches neither, and the bridge
+    -- resolves the lock itself whenever it changes it.
     coroutine.schedule(E.discover_buff_children, 1.9)
     coroutine.schedule(E.roll_query, 1.9)
     coroutine.schedule(display_box_update, 2.0)
